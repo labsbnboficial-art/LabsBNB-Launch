@@ -274,7 +274,7 @@ function Stepper({ step, labels }: { step: number; labels: string[] }) {
   );
 }
 
-function Summary({ form }: { form: FormState }) {
+function Summary({ form, adv }: { form: FormState; adv: AdvancedState }) {
   const rows: [string, string][] = [
     ["Name", form.name],
     ["Ticker", "$" + form.ticker],
@@ -284,6 +284,15 @@ function Summary({ form }: { form: FormState }) {
     ["Initial buy", `${form.initial_buy_bnb} BNB`],
     ["Curve target", `${form.target_bnb} BNB`],
   ];
+  if (adv.enabled) {
+    rows.push(
+      ["LP %", `${adv.lp_pct}%`],
+      ["Burn %", `${adv.burn_pct}%`],
+      ["Staking %", `${adv.staking_pct}%`],
+      ["Reward %", `${adv.reward_pct}%`],
+      ["Advanced tx", adv.paid_tx ? `${adv.paid_tx.slice(0, 10)}…` : "—"],
+    );
+  }
   return (
     <div className="rounded-xl border border-white/10 bg-white/5 divide-y divide-white/5">
       {rows.map(([k, v]) => (
@@ -292,6 +301,106 @@ function Summary({ form }: { form: FormState }) {
           <span className="font-mono">{v}</span>
         </div>
       ))}
+    </div>
+  );
+}
+
+function AdvancedTokenomics({
+  adv, setAdv, feeWei, adminWallet,
+}: {
+  adv: AdvancedState;
+  setAdv: React.Dispatch<React.SetStateAction<AdvancedState>>;
+  feeWei: string;
+  adminWallet: `0x${string}`;
+}) {
+  const feeBnb = useMemo(() => {
+    try { return Number(BigInt(feeWei)) / 1e18; } catch { return 0; }
+  }, [feeWei]);
+  const total = adv.lp_pct + adv.burn_pct + adv.staking_pct + adv.reward_pct;
+  const { sendTransactionAsync, isPending } = useSendTransaction();
+  const [txHash, setTxHash] = useState<`0x${string}` | undefined>(undefined);
+  const { isLoading: confirming, isSuccess } = useWaitForTransactionReceipt({ hash: txHash });
+
+  async function pay() {
+    try {
+      const value = parseUnits(String(feeBnb || 0), 18);
+      const hash = await sendTransactionAsync({ to: adminWallet, value });
+      setTxHash(hash);
+      setAdv((a) => ({ ...a, paid_tx: hash }));
+      toast.success("Payment sent, waiting for confirmation…");
+    } catch (e) {
+      toast.error((e as Error).message);
+    }
+  }
+
+  const paid = Boolean(adv.paid_tx);
+  const setPct = (k: keyof AdvancedState, v: number) =>
+    setAdv((a) => ({ ...a, [k]: Math.max(0, Math.min(100, Math.floor(v || 0))) }));
+
+  return (
+    <div className="rounded-xl border border-primary/30 bg-primary/5 p-5">
+      <div className="flex items-start justify-between gap-4">
+        <div className="flex items-start gap-3">
+          <div className="h-9 w-9 rounded-lg brand-gradient grid place-items-center glow-primary">
+            <Sparkles className="h-4 w-4 text-primary-foreground" />
+          </div>
+          <div>
+            <div className="font-semibold flex items-center gap-2">
+              Advanced tokenomics
+              {!paid && <Lock className="h-3.5 w-3.5 text-muted-foreground" />}
+            </div>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Customize LP, Burn, Staking and Reward percentages. Unlock fee:{" "}
+              <span className="font-mono text-accent">{feeBnb} BNB</span>
+            </p>
+          </div>
+        </div>
+        <Switch checked={adv.enabled} onCheckedChange={(v) => setAdv((a) => ({ ...a, enabled: v }))} />
+      </div>
+
+      {adv.enabled && (
+        <div className="mt-5 space-y-4">
+          {!paid ? (
+            <div className="rounded-lg border border-white/10 bg-black/20 p-4 flex items-center justify-between gap-3">
+              <div className="text-sm">
+                <div className="font-medium">Unlock required</div>
+                <div className="text-xs text-muted-foreground">
+                  Send {feeBnb} BNB to{" "}
+                  <span className="font-mono">{adminWallet.slice(0, 6)}…{adminWallet.slice(-4)}</span>
+                </div>
+              </div>
+              <Button onClick={pay} disabled={isPending || confirming} className="brand-gradient text-primary-foreground">
+                {isPending ? "Confirm in wallet…" : confirming ? "Confirming…" : `Pay ${feeBnb} BNB`}
+              </Button>
+            </div>
+          ) : (
+            <div className="rounded-lg border border-accent/30 bg-accent/5 p-3 text-xs text-accent flex items-center gap-2">
+              <Check className="h-3.5 w-3.5" /> Payment {isSuccess ? "confirmed" : "sent"} — tx {adv.paid_tx?.slice(0, 10)}…
+            </div>
+          )}
+
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            {(["lp_pct", "burn_pct", "staking_pct", "reward_pct"] as const).map((k) => (
+              <div key={k}>
+                <Label className="text-xs uppercase tracking-widest text-muted-foreground mb-1.5 block">
+                  {k.replace("_pct", "")} %
+                </Label>
+                <Input
+                  type="number"
+                  min={0}
+                  max={100}
+                  value={adv[k] as number}
+                  onChange={(e) => setPct(k, Number(e.target.value))}
+                  disabled={!paid}
+                />
+              </div>
+            ))}
+          </div>
+          <div className={`text-xs ${total === 100 ? "text-accent" : "text-destructive"}`}>
+            Total: {total}% {total === 100 ? "✓" : "(must equal 100)"}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
