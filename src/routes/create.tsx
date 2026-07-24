@@ -1,0 +1,271 @@
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useState } from "react";
+import { z } from "zod";
+import { useAccount } from "wagmi";
+import { useI18n } from "@/lib/i18n";
+import { AppShell } from "@/components/labsbnb/AppShell";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/lib/auth";
+import { toast } from "sonner";
+import { Rocket, Check, ArrowLeft, ArrowRight } from "lucide-react";
+
+export const Route = createFileRoute("/create")({
+  head: () => ({
+    meta: [
+      { title: "Create a token — LabsBNB Launchpad" },
+      { name: "description", content: "Launch a token on BNB Chain in 3 steps. No deploy fees. Only gas." },
+      { property: "og:title", content: "Create a token — LabsBNB Launchpad" },
+      { property: "og:description", content: "Launch a token on BNB Chain in 3 steps." },
+    ],
+  }),
+  component: CreatePage,
+});
+
+const CATEGORIES = ["Meme", "AI", "DeFi", "GameFi", "Utility", "Community", "Other"];
+
+const step1Schema = z.object({
+  name: z.string().trim().min(2).max(48),
+  ticker: z.string().trim().min(2).max(10).regex(/^[A-Z0-9]+$/, "A-Z 0-9 only"),
+  description: z.string().trim().max(500).optional().or(z.literal("")),
+  logo_url: z.string().url().max(500).optional().or(z.literal("")),
+  banner_url: z.string().url().max(500).optional().or(z.literal("")),
+  website: z.string().url().max(200).optional().or(z.literal("")),
+  telegram: z.string().max(200).optional().or(z.literal("")),
+  twitter: z.string().max(200).optional().or(z.literal("")),
+  discord: z.string().max(200).optional().or(z.literal("")),
+  github: z.string().max(200).optional().or(z.literal("")),
+  category: z.string().min(1),
+});
+
+const step2Schema = z.object({
+  supply: z.coerce.number().positive().max(1e15),
+  decimals: z.coerce.number().int().min(0).max(18),
+  initial_buy_bnb: z.coerce.number().min(0).max(1000),
+  target_bnb: z.coerce.number().positive().max(10000),
+});
+
+type FormState = z.infer<typeof step1Schema> & z.infer<typeof step2Schema>;
+
+const initial: FormState = {
+  name: "", ticker: "", description: "", logo_url: "", banner_url: "",
+  website: "", telegram: "", twitter: "", discord: "", github: "",
+  category: "Meme",
+  supply: 1_000_000_000, decimals: 18, initial_buy_bnb: 0, target_bnb: 24,
+};
+
+function CreatePage() {
+  const { t } = useI18n();
+  const [step, setStep] = useState(0);
+  const [form, setForm] = useState<FormState>(initial);
+  const [submitting, setSubmitting] = useState(false);
+  const { user } = useAuth();
+  const { address, isConnected } = useAccount();
+  const navigate = useNavigate();
+
+  const set = <K extends keyof FormState>(k: K, v: FormState[K]) => setForm((f) => ({ ...f, [k]: v }));
+
+  async function goNext() {
+    if (step === 0) {
+      const r = step1Schema.safeParse(form);
+      if (!r.success) { toast.error(r.error.issues[0].message); return; }
+      setStep(1);
+    } else if (step === 1) {
+      const r = step2Schema.safeParse(form);
+      if (!r.success) { toast.error(r.error.issues[0].message); return; }
+      setStep(2);
+    }
+  }
+
+  async function deploy() {
+    if (!user) { toast.error("Sign in first"); navigate({ to: "/auth" }); return; }
+    if (!isConnected || !address) { toast.error("Connect your wallet first"); return; }
+    setSubmitting(true);
+    try {
+      // Persist token record (status: pending). On-chain factory deploy is Phase 2.
+      const { data, error } = await supabase.from("tokens").insert({
+        creator_id: user.id,
+        name: form.name,
+        ticker: form.ticker.toUpperCase(),
+        description: form.description || null,
+        logo_url: form.logo_url || null,
+        banner_url: form.banner_url || null,
+        website: form.website || null,
+        telegram: form.telegram || null,
+        twitter: form.twitter || null,
+        discord: form.discord || null,
+        github: form.github || null,
+        category: form.category,
+        supply: form.supply,
+        decimals: form.decimals,
+        chain_id: 56,
+        status: "pending",
+      }).select("id").single();
+      if (error) throw error;
+      await supabase.from("bonding_curves").insert({
+        token_id: data.id,
+        target_bnb: Math.floor(form.target_bnb * 1e18),
+      });
+      toast.success("Token created (pending on-chain deploy)");
+      navigate({ to: "/token/$address", params: { address: data.id } });
+    } catch (e) {
+      console.error(e);
+      toast.error((e as Error).message);
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <AppShell>
+      <div className="mx-auto max-w-3xl px-4 md:px-6 py-12">
+        <div className="text-center mb-10">
+          <div className="inline-flex items-center justify-center h-14 w-14 rounded-2xl brand-gradient glow-primary mb-4">
+            <Rocket className="h-6 w-6 text-primary-foreground" />
+          </div>
+          <h1 className="font-display text-3xl md:text-4xl font-bold">{t("create.title")}</h1>
+          <p className="mt-2 text-muted-foreground">{t("create.subtitle")}</p>
+        </div>
+
+        <Stepper step={step} labels={[t("create.step1"), t("create.step2"), t("create.step3")]} />
+
+        <div className="glass-strong rounded-3xl p-6 md:p-8 mt-8">
+          {step === 0 && (
+            <div className="grid gap-5 md:grid-cols-2">
+              <Field label={t("create.name")}><Input value={form.name} onChange={(e) => set("name", e.target.value)} /></Field>
+              <Field label={t("create.ticker")}><Input value={form.ticker} onChange={(e) => set("ticker", e.target.value.toUpperCase())} className="font-mono" /></Field>
+              <Field label={t("create.description")} full><Textarea rows={3} value={form.description} onChange={(e) => set("description", e.target.value)} /></Field>
+              <Field label={t("create.logo")}><FileUploader value={form.logo_url} onChange={(url) => set("logo_url", url)} kind="logo" userId={user?.id} /></Field>
+              <Field label={t("create.banner")}><FileUploader value={form.banner_url} onChange={(url) => set("banner_url", url)} kind="banner" userId={user?.id} /></Field>
+              <Field label={t("create.website")}><Input value={form.website} onChange={(e) => set("website", e.target.value)} placeholder="https://…" /></Field>
+              <Field label="Telegram"><Input value={form.telegram} onChange={(e) => set("telegram", e.target.value)} /></Field>
+              <Field label="X / Twitter"><Input value={form.twitter} onChange={(e) => set("twitter", e.target.value)} /></Field>
+              <Field label="Discord"><Input value={form.discord} onChange={(e) => set("discord", e.target.value)} /></Field>
+              <Field label="GitHub"><Input value={form.github} onChange={(e) => set("github", e.target.value)} /></Field>
+              <Field label={t("create.category")}>
+                <select value={form.category} onChange={(e) => set("category", e.target.value)} className="h-10 w-full rounded-md border border-input bg-transparent px-3 text-sm">
+                  {CATEGORIES.map((c) => <option key={c} value={c} className="bg-background">{c}</option>)}
+                </select>
+              </Field>
+            </div>
+          )}
+          {step === 1 && (
+            <div className="grid gap-5 md:grid-cols-2">
+              <Field label={t("create.supply")}><Input type="number" value={form.supply} onChange={(e) => set("supply", Number(e.target.value))} /></Field>
+              <Field label={t("create.decimals")}><Input type="number" value={form.decimals} onChange={(e) => set("decimals", Number(e.target.value))} /></Field>
+              <Field label={t("create.initialBuy")}><Input type="number" step="0.01" value={form.initial_buy_bnb} onChange={(e) => set("initial_buy_bnb", Number(e.target.value))} /></Field>
+              <Field label={t("create.target")}><Input type="number" step="0.1" value={form.target_bnb} onChange={(e) => set("target_bnb", Number(e.target.value))} /></Field>
+              <div className="md:col-span-2 rounded-xl border border-accent/20 bg-accent/5 p-4 text-sm">
+                <div className="font-medium text-accent mb-1">Virtual bonding curve</div>
+                <p className="text-muted-foreground">
+                  Liquidity grows automatically as buys happen. When the curve reaches the target,
+                  the pool is created and liquidity is locked. Zero deploy fees — you only pay gas.
+                </p>
+              </div>
+            </div>
+          )}
+          {step === 2 && (
+            <div className="space-y-5">
+              <Summary form={form} />
+              <div className="rounded-xl border border-white/10 bg-white/5 p-4 text-xs text-muted-foreground">
+                By deploying you agree to sign the transaction with your connected wallet ({address ?? "not connected"}).
+                On-chain factory: <span className="text-accent">pending Phase 2 deployment</span> — the token record
+                is stored now and finalized when the factory address is wired.
+              </div>
+            </div>
+          )}
+
+          <div className="mt-8 flex items-center justify-between">
+            <Button variant="ghost" disabled={step === 0} onClick={() => setStep((s) => Math.max(0, s - 1))}>
+              <ArrowLeft className="h-4 w-4 mr-1" /> {t("create.back")}
+            </Button>
+            {step < 2 ? (
+              <Button onClick={goNext} className="brand-gradient text-primary-foreground glow-primary">
+                {t("create.next")} <ArrowRight className="h-4 w-4 ml-1" />
+              </Button>
+            ) : (
+              <Button onClick={deploy} disabled={submitting} className="brand-gradient text-primary-foreground glow-primary">
+                {submitting ? "…" : t("create.deploy")} <Check className="h-4 w-4 ml-1" />
+              </Button>
+            )}
+          </div>
+        </div>
+      </div>
+    </AppShell>
+  );
+}
+
+function Field({ label, children, full }: { label: string; children: React.ReactNode; full?: boolean }) {
+  return (
+    <div className={full ? "md:col-span-2" : ""}>
+      <Label className="text-xs uppercase tracking-widest text-muted-foreground mb-1.5 block">{label}</Label>
+      {children}
+    </div>
+  );
+}
+
+function Stepper({ step, labels }: { step: number; labels: string[] }) {
+  return (
+    <div className="flex items-center justify-center gap-2">
+      {labels.map((l, i) => (
+        <div key={l} className="flex items-center gap-2">
+          <div className={`h-8 w-8 rounded-full grid place-items-center text-xs font-bold transition ${i <= step ? "brand-gradient text-primary-foreground glow-primary" : "bg-white/5 text-muted-foreground"}`}>
+            {i + 1}
+          </div>
+          <span className={`text-sm ${i === step ? "text-foreground font-medium" : "text-muted-foreground"}`}>{l}</span>
+          {i < labels.length - 1 && <div className="w-8 h-px bg-white/10 mx-1" />}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function Summary({ form }: { form: FormState }) {
+  const rows: [string, string][] = [
+    ["Name", form.name],
+    ["Ticker", "$" + form.ticker],
+    ["Category", form.category],
+    ["Supply", form.supply.toLocaleString()],
+    ["Decimals", String(form.decimals)],
+    ["Initial buy", `${form.initial_buy_bnb} BNB`],
+    ["Curve target", `${form.target_bnb} BNB`],
+  ];
+  return (
+    <div className="rounded-xl border border-white/10 bg-white/5 divide-y divide-white/5">
+      {rows.map(([k, v]) => (
+        <div key={k} className="flex items-center justify-between px-4 py-2.5 text-sm">
+          <span className="text-muted-foreground">{k}</span>
+          <span className="font-mono">{v}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function FileUploader({ value, onChange, kind, userId }: { value?: string; onChange: (url: string) => void; kind: "logo" | "banner"; userId?: string }) {
+  const [busy, setBusy] = useState(false);
+  async function onFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file || !userId) return;
+    setBusy(true);
+    try {
+      const ext = file.name.split(".").pop() || "png";
+      const path = `${userId}/${kind}-${Date.now()}.${ext}`;
+      const up = await supabase.storage.from("token-media").upload(path, file, { upsert: true, contentType: file.type });
+      if (up.error) throw up.error;
+      const { data } = await supabase.storage.from("token-media").createSignedUrl(path, 60 * 60 * 24 * 365);
+      if (data?.signedUrl) onChange(data.signedUrl);
+      toast.success("Uploaded");
+    } catch (err) { toast.error((err as Error).message); }
+    finally { setBusy(false); }
+  }
+  return (
+    <div className="space-y-2">
+      <Input type="file" accept="image/*" disabled={busy} onChange={onFile} />
+      {value && <img src={value} alt="" className="h-16 w-16 rounded-lg object-cover border border-white/10" />}
+    </div>
+  );
+}
