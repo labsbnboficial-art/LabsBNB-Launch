@@ -62,6 +62,8 @@ function coerce(cfg: Record<string, unknown>): LaunchpadConfig {
     buy_fee_bps: Number(g("buy_fee_bps", DEFAULT_CONFIG.buy_fee_bps)),
     sell_fee_bps: Number(g("sell_fee_bps", DEFAULT_CONFIG.sell_fee_bps)),
     staking_cost_bnb: String(g("staking_cost_bnb", "0")),
+    reward_pct: Number(g("reward_pct", 0)),
+    advanced_creation_fee_bnb: String(g("advanced_creation_fee_bnb", DEFAULT_CONFIG.advanced_creation_fee_bnb)),
   };
 }
 
