@@ -182,7 +182,7 @@ function ConfigEditor({ cfg, onSaved }: { cfg: Record<string, unknown>; onSaved:
 
   useEffect(() => {
     const v: Record<string, string> = {};
-    for (const f of [...CONTRACT_FIELDS, ...FEE_FIELDS, ...CURVE_FIELDS, ...ADMIN_FIELDS]) {
+    for (const f of [...CONTRACT_FIELDS, ...FEE_FIELDS, ...CURVE_FIELDS, ...ADVANCED_FIELDS, ...ADMIN_FIELDS]) {
       const raw = cfg[f.key];
       v[f.key] = raw == null ? "" : typeof raw === "string" ? raw : String(raw);
     }
@@ -192,7 +192,7 @@ function ConfigEditor({ cfg, onSaved }: { cfg: Record<string, unknown>; onSaved:
   async function save() {
     setBusy(true);
     try {
-      const rows = [...CONTRACT_FIELDS, ...FEE_FIELDS, ...CURVE_FIELDS, ...ADMIN_FIELDS].map((f) => {
+      const rows = [...CONTRACT_FIELDS, ...FEE_FIELDS, ...CURVE_FIELDS, ...ADVANCED_FIELDS, ...ADMIN_FIELDS].map((f) => {
         let value: number | string | null = values[f.key];
         if (value === "" || value == null) value = null;
         else if (f.type === "number") value = Number(value);
@@ -214,6 +214,7 @@ function ConfigEditor({ cfg, onSaved }: { cfg: Record<string, unknown>; onSaved:
       <Section title="Smart contract" fields={CONTRACT_FIELDS} values={values} setValues={setValues} />
       <Section title="Fees" fields={FEE_FIELDS} values={values} setValues={setValues} />
       <Section title="Bonding curve & tokenomics" fields={CURVE_FIELDS} values={values} setValues={setValues} />
+      <Section title="Advanced tokenomics (paid unlock)" fields={ADVANCED_FIELDS} values={values} setValues={setValues} />
       <Section title="Admin" fields={ADMIN_FIELDS} values={values} setValues={setValues} />
       <div className="flex justify-end">
         <Button onClick={save} disabled={busy} className="brand-gradient text-primary-foreground glow-primary">
