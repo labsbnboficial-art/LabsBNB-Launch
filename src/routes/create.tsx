@@ -53,6 +53,24 @@ const step2Schema = z.object({
 
 type FormState = z.infer<typeof step1Schema> & z.infer<typeof step2Schema>;
 
+type AdvancedState = {
+  enabled: boolean;
+  lp_pct: number;
+  burn_pct: number;
+  staking_pct: number;
+  reward_pct: number;
+  paid_tx: string | null;
+};
+
+const initialAdvanced: AdvancedState = {
+  enabled: false,
+  lp_pct: 60,
+  burn_pct: 10,
+  staking_pct: 20,
+  reward_pct: 10,
+  paid_tx: null,
+};
+
 const initial: FormState = {
   name: "", ticker: "", description: "", logo_url: "", banner_url: "",
   website: "", telegram: "", twitter: "", discord: "", github: "",
@@ -64,10 +82,12 @@ function CreatePage() {
   const { t } = useI18n();
   const [step, setStep] = useState(0);
   const [form, setForm] = useState<FormState>(initial);
+  const [adv, setAdv] = useState<AdvancedState>(initialAdvanced);
   const [submitting, setSubmitting] = useState(false);
   const { user } = useAuth();
   const { address, isConnected } = useAccount();
   const navigate = useNavigate();
+  const { data: cfg } = useLaunchpadConfig();
 
   const set = <K extends keyof FormState>(k: K, v: FormState[K]) => setForm((f) => ({ ...f, [k]: v }));
 
