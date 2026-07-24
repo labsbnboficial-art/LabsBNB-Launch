@@ -17,6 +17,8 @@ export type LaunchpadConfig = {
   buy_fee_bps: number;
   sell_fee_bps: number;
   staking_cost_bnb: string;
+  reward_pct: number;
+  advanced_creation_fee_bnb: string;
 };
 
 export const DEFAULT_CONFIG: LaunchpadConfig = {
