@@ -163,11 +163,16 @@ const CURVE_FIELDS: FieldSpec[] = [
   { key: "liquidity_pct", label: "% Liquidity to Pancake", type: "number" },
   { key: "lp_pct", label: "% LP kept", type: "number" },
   { key: "staking_pct", label: "% Staking allocation", type: "number" },
+  { key: "reward_pct", label: "% Reward pool (default)", type: "number" },
   { key: "staking_cost_bnb", label: "Staking activation cost (wei BNB)", mono: true },
 ];
 
+const ADVANCED_FIELDS: FieldSpec[] = [
+  { key: "advanced_creation_fee_bnb", label: "Advanced tokenomics unlock fee (wei BNB)", mono: true, help: "Users pay this amount in BNB to the admin wallet to unlock custom % LP / Burn / Staking / Reward when creating a token." },
+];
+
 const ADMIN_FIELDS: FieldSpec[] = [
-  { key: "admin_wallet", label: "Admin wallet", mono: true },
+  { key: "admin_wallet", label: "Admin wallet (receives commissions)", mono: true },
 ];
 
 function ConfigEditor({ cfg, onSaved }: { cfg: Record<string, unknown>; onSaved: () => void }) {
