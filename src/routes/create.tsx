@@ -106,9 +106,13 @@ function CreatePage() {
   async function deploy() {
     if (!user) { toast.error("Sign in first"); navigate({ to: "/auth" }); return; }
     if (!isConnected || !address) { toast.error("Connect your wallet first"); return; }
+    if (adv.enabled && !adv.paid_tx) { toast.error("Pay the advanced tokenomics unlock first"); return; }
+    if (adv.enabled) {
+      const total = adv.lp_pct + adv.burn_pct + adv.staking_pct + adv.reward_pct;
+      if (total !== 100) { toast.error(`Advanced % must sum to 100 (current: ${total})`); return; }
+    }
     setSubmitting(true);
     try {
-      // Persist token record (status: pending). On-chain factory deploy is Phase 2.
       const { data, error } = await supabase.from("tokens").insert({
         creator_id: user.id,
         name: form.name,
@@ -132,6 +136,22 @@ function CreatePage() {
         token_id: data.id,
         target_bnb: Math.floor(form.target_bnb * 1e18),
       });
+      if (adv.enabled) {
+        await supabase.from("activity").insert({
+          user_id: user.id,
+          token_id: data.id,
+          kind: "advanced_tokenomics",
+          payload: {
+            lp_pct: adv.lp_pct,
+            burn_pct: adv.burn_pct,
+            staking_pct: adv.staking_pct,
+            reward_pct: adv.reward_pct,
+            payment_tx: adv.paid_tx,
+            payment_wallet: cfg?.admin_wallet ?? null,
+            payment_amount_wei: cfg?.advanced_creation_fee_bnb ?? null,
+          },
+        });
+      }
       toast.success("Token created (pending on-chain deploy)");
       navigate({ to: "/token/$address", params: { address: data.id } });
     } catch (e) {
