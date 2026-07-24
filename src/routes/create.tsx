@@ -208,11 +208,19 @@ function CreatePage() {
                   the pool is created and liquidity is locked. Zero deploy fees — you only pay gas.
                 </p>
               </div>
+              <div className="md:col-span-2">
+                <AdvancedTokenomics
+                  adv={adv}
+                  setAdv={setAdv}
+                  feeWei={cfg?.advanced_creation_fee_bnb ?? "0"}
+                  adminWallet={(cfg?.admin_wallet ?? "0x60e655Fe39Bc7D17661f226bB44Dcc681cc4e05e") as `0x${string}`}
+                />
+              </div>
             </div>
           )}
           {step === 2 && (
             <div className="space-y-5">
-              <Summary form={form} />
+              <Summary form={form} adv={adv} />
               <div className="rounded-xl border border-white/10 bg-white/5 p-4 text-xs text-muted-foreground">
                 By deploying you agree to sign the transaction with your connected wallet ({address ?? "not connected"}).
                 On-chain factory: <span className="text-accent">pending Phase 2 deployment</span> — the token record
