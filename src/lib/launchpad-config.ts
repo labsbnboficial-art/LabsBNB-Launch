@@ -37,6 +37,8 @@ export const DEFAULT_CONFIG: LaunchpadConfig = {
   buy_fee_bps: 50,
   sell_fee_bps: 50,
   staking_cost_bnb: "0",
+  reward_pct: 0,
+  advanced_creation_fee_bnb: "10000000000000000",
 };
 
 function coerce(cfg: Record<string, unknown>): LaunchpadConfig {
