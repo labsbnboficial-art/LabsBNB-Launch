@@ -1,17 +1,20 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { z } from "zod";
-import { useAccount } from "wagmi";
+import { useAccount, useSendTransaction, useWaitForTransactionReceipt } from "wagmi";
+import { parseUnits } from "viem";
 import { useI18n } from "@/lib/i18n";
 import { AppShell } from "@/components/labsbnb/AppShell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
+import { useLaunchpadConfig } from "@/lib/launchpad-config";
 import { toast } from "sonner";
-import { Rocket, Check, ArrowLeft, ArrowRight } from "lucide-react";
+import { Rocket, Check, ArrowLeft, ArrowRight, Sparkles, Lock } from "lucide-react";
 
 export const Route = createFileRoute("/create")({
   head: () => ({
