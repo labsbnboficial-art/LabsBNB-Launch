@@ -121,7 +121,7 @@ function TokenPage() {
               <h1 className="font-display text-2xl md:text-3xl font-bold">{tk.name}</h1>
               <span className="font-mono text-sm text-accent">${tk.ticker}</span>
               <span className="rounded-full bg-white/5 px-2.5 py-0.5 text-[10px] uppercase tracking-widest text-muted-foreground">{tk.status}</span>
-              <Link to="/profile/$id" params={{ id: tk.creator_id }} className="rounded-full bg-white/5 px-2.5 py-0.5 text-[10px] uppercase tracking-widest text-muted-foreground hover:text-accent">by creator</Link>
+              <span className="rounded-full bg-white/5 px-2.5 py-0.5 text-[10px] uppercase tracking-widest text-muted-foreground">creator: {String(tk.creator_id).slice(0, 8)}…</span>
             </div>
             {tk.description && <p className="mt-2 text-sm text-muted-foreground max-w-2xl">{tk.description}</p>}
             <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
