@@ -12,6 +12,9 @@ import { Rocket, Wallet, Loader2 } from "lucide-react";
 import { siweChallenge, siweVerify } from "@/lib/siwe.functions";
 
 export const Route = createFileRoute("/auth")({
+  validateSearch: (search: Record<string, unknown>) => ({
+    redirect: typeof search.redirect === "string" && search.redirect.startsWith("/") ? search.redirect : undefined,
+  }),
   head: () => ({
     meta: [
       { title: "Sign in with wallet — LabsBNB Launchpad" },
