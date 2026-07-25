@@ -1,7 +1,9 @@
 import { Link } from "@tanstack/react-router";
 import { useAccount, useConnect, useDisconnect } from "wagmi";
+import { useQuery } from "@tanstack/react-query";
 import { useI18n } from "@/lib/i18n";
 import { useAuth } from "@/lib/auth";
+import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -9,7 +11,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Wallet, Rocket, Trophy, User, Shield, Globe } from "lucide-react";
+import { Wallet, Rocket, Trophy, User, Shield, Globe, Search, Bell } from "lucide-react";
 
 function shortAddr(a?: string) {
   if (!a) return "";
@@ -45,6 +47,9 @@ export function Header() {
           <Link to="/create" className="px-3 py-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-white/5 transition">
             {t("nav.create")}
           </Link>
+          <Link to="/explorer" className="px-3 py-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-white/5 transition">
+            <span className="inline-flex items-center gap-1.5"><Search className="h-3.5 w-3.5" />Explorer</span>
+          </Link>
           <Link to="/ranking" className="px-3 py-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-white/5 transition">
             <span className="inline-flex items-center gap-1.5"><Trophy className="h-3.5 w-3.5" />{t("nav.ranking")}</span>
           </Link>
@@ -59,6 +64,7 @@ export function Header() {
         </nav>
 
         <div className="flex items-center gap-2">
+          {user && <NotifBell userId={user.id} />}
           <button
             onClick={() => setLocale(locale === "es" ? "en" : "es")}
             className="hidden sm:inline-flex items-center gap-1 h-9 px-3 rounded-lg text-xs uppercase tracking-wider text-muted-foreground hover:text-foreground hover:bg-white/5 transition"
@@ -101,5 +107,36 @@ export function Header() {
         </div>
       </div>
     </header>
+  );
+}
+
+function NotifBell({ userId }: { userId: string }) {
+  const q = useQuery({
+    queryKey: ["notif-count", userId],
+    refetchInterval: 30_000,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("activity")
+        .select("id,payload")
+        .eq("kind", "notification")
+        .eq("user_id", userId)
+        .order("created_at", { ascending: false })
+        .limit(50);
+      return (data ?? []).filter((n) => {
+        const p = (n.payload ?? {}) as { read?: boolean };
+        return !p.read;
+      }).length;
+    },
+  });
+  const unread = q.data ?? 0;
+  return (
+    <Link to="/notifications" className="relative h-9 w-9 grid place-items-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-white/5 transition" aria-label="Notifications">
+      <Bell className="h-4 w-4" />
+      {unread > 0 && (
+        <span className="absolute -top-0.5 -right-0.5 min-w-4 h-4 px-1 rounded-full bg-destructive text-[10px] font-bold text-destructive-foreground grid place-items-center">
+          {unread > 9 ? "9+" : unread}
+        </span>
+      )}
+    </Link>
   );
 }
