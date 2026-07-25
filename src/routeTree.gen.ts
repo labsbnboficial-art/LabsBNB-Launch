@@ -11,6 +11,8 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as RankingRouteImport } from './routes/ranking'
 import { Route as ProfileRouteImport } from './routes/profile'
+import { Route as NotificationsRouteImport } from './routes/notifications'
+import { Route as ExplorerRouteImport } from './routes/explorer'
 import { Route as CreateRouteImport } from './routes/create'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AdminRouteImport } from './routes/admin'
@@ -25,6 +27,16 @@ const RankingRoute = RankingRouteImport.update({
 const ProfileRoute = ProfileRouteImport.update({
   id: '/profile',
   path: '/profile',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const NotificationsRoute = NotificationsRouteImport.update({
+  id: '/notifications',
+  path: '/notifications',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ExplorerRoute = ExplorerRouteImport.update({
+  id: '/explorer',
+  path: '/explorer',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CreateRoute = CreateRouteImport.update({
@@ -58,6 +70,8 @@ export interface FileRoutesByFullPath {
   '/admin': typeof AdminRoute
   '/auth': typeof AuthRoute
   '/create': typeof CreateRoute
+  '/explorer': typeof ExplorerRoute
+  '/notifications': typeof NotificationsRoute
   '/profile': typeof ProfileRoute
   '/ranking': typeof RankingRoute
   '/token/$address': typeof TokenAddressRoute
@@ -67,6 +81,8 @@ export interface FileRoutesByTo {
   '/admin': typeof AdminRoute
   '/auth': typeof AuthRoute
   '/create': typeof CreateRoute
+  '/explorer': typeof ExplorerRoute
+  '/notifications': typeof NotificationsRoute
   '/profile': typeof ProfileRoute
   '/ranking': typeof RankingRoute
   '/token/$address': typeof TokenAddressRoute
@@ -77,6 +93,8 @@ export interface FileRoutesById {
   '/admin': typeof AdminRoute
   '/auth': typeof AuthRoute
   '/create': typeof CreateRoute
+  '/explorer': typeof ExplorerRoute
+  '/notifications': typeof NotificationsRoute
   '/profile': typeof ProfileRoute
   '/ranking': typeof RankingRoute
   '/token/$address': typeof TokenAddressRoute
@@ -88,6 +106,8 @@ export interface FileRouteTypes {
     | '/admin'
     | '/auth'
     | '/create'
+    | '/explorer'
+    | '/notifications'
     | '/profile'
     | '/ranking'
     | '/token/$address'
@@ -97,6 +117,8 @@ export interface FileRouteTypes {
     | '/admin'
     | '/auth'
     | '/create'
+    | '/explorer'
+    | '/notifications'
     | '/profile'
     | '/ranking'
     | '/token/$address'
@@ -106,6 +128,8 @@ export interface FileRouteTypes {
     | '/admin'
     | '/auth'
     | '/create'
+    | '/explorer'
+    | '/notifications'
     | '/profile'
     | '/ranking'
     | '/token/$address'
@@ -116,6 +140,8 @@ export interface RootRouteChildren {
   AdminRoute: typeof AdminRoute
   AuthRoute: typeof AuthRoute
   CreateRoute: typeof CreateRoute
+  ExplorerRoute: typeof ExplorerRoute
+  NotificationsRoute: typeof NotificationsRoute
   ProfileRoute: typeof ProfileRoute
   RankingRoute: typeof RankingRoute
   TokenAddressRoute: typeof TokenAddressRoute
@@ -135,6 +161,20 @@ declare module '@tanstack/react-router' {
       path: '/profile'
       fullPath: '/profile'
       preLoaderRoute: typeof ProfileRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/notifications': {
+      id: '/notifications'
+      path: '/notifications'
+      fullPath: '/notifications'
+      preLoaderRoute: typeof NotificationsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/explorer': {
+      id: '/explorer'
+      path: '/explorer'
+      fullPath: '/explorer'
+      preLoaderRoute: typeof ExplorerRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/create': {
@@ -180,6 +220,8 @@ const rootRouteChildren: RootRouteChildren = {
   AdminRoute: AdminRoute,
   AuthRoute: AuthRoute,
   CreateRoute: CreateRoute,
+  ExplorerRoute: ExplorerRoute,
+  NotificationsRoute: NotificationsRoute,
   ProfileRoute: ProfileRoute,
   RankingRoute: RankingRoute,
   TokenAddressRoute: TokenAddressRoute,
