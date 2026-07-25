@@ -6,14 +6,14 @@ import { useAuth } from "@/lib/auth";
 import { useAccount } from "wagmi";
 import { Button } from "@/components/ui/button";
 import { useEffect } from "react";
-import { User, Wallet } from "lucide-react";
+import { User, Wallet, Award, Rocket, TrendingUp, Users } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
 
 export const Route = createFileRoute("/profile")({
   head: () => ({
     meta: [
       { title: "My profile — LabsBNB Launchpad" },
-      { name: "description", content: "Your tokens, favorites and activity on the LabsBNB Launchpad." },
+      { name: "description", content: "Your tokens, favorites, reputation and activity on the LabsBNB Launchpad." },
       { property: "og:title", content: "My profile — LabsBNB Launchpad" },
       { property: "og:description", content: "Your tokens and activity on LabsBNB." },
       { name: "robots", content: "noindex" },
@@ -22,15 +22,28 @@ export const Route = createFileRoute("/profile")({
   component: ProfilePage,
 });
 
+type Reputation = {
+  tokens_created: number;
+  tokens_graduated: number;
+  total_volume_bnb: string | number;
+  unique_traders: number;
+};
+
+function repTier(score: number): { label: string; color: string } {
+  if (score >= 500) return { label: "Diamond", color: "text-cyan-300" };
+  if (score >= 200) return { label: "Gold", color: "text-yellow-300" };
+  if (score >= 50)  return { label: "Silver", color: "text-slate-200" };
+  if (score >= 10)  return { label: "Bronze", color: "text-amber-500" };
+  return { label: "Rookie", color: "text-muted-foreground" };
+}
+
 function ProfilePage() {
   const { t } = useI18n();
   const { user, loading } = useAuth();
   const { address } = useAccount();
   const navigate = useNavigate();
 
-  useEffect(() => {
-    if (!loading && !user) navigate({ to: "/auth" });
-  }, [loading, user, navigate]);
+  useEffect(() => { if (!loading && !user) navigate({ to: "/auth" }); }, [loading, user, navigate]);
 
   const tokensQ = useQuery({
     queryKey: ["my-tokens", user?.id],
@@ -52,7 +65,21 @@ function ProfilePage() {
     },
   });
 
+  const repQ = useQuery<Reputation | null>({
+    queryKey: ["my-reputation", user?.id],
+    enabled: !!user,
+    queryFn: async () => {
+      const { data } = await supabase.from("creator_reputation" as never).select("*").eq("user_id", user!.id).maybeSingle();
+      return (data as Reputation | null) ?? null;
+    },
+  });
+
   if (loading || !user) return <AppShell><div className="p-12 text-center text-muted-foreground">…</div></AppShell>;
+
+  const rep = repQ.data;
+  const volBnb = rep ? Number(rep.total_volume_bnb) / 1e18 : 0;
+  const score = rep ? (rep.tokens_created * 5 + rep.tokens_graduated * 20 + volBnb * 2 + rep.unique_traders) : 0;
+  const tier = repTier(score);
 
   return (
     <AppShell>
@@ -61,13 +88,25 @@ function ProfilePage() {
           <div className="h-16 w-16 rounded-2xl brand-gradient grid place-items-center glow-primary">
             <User className="h-7 w-7 text-primary-foreground" />
           </div>
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1">
             <h1 className="font-display text-2xl font-bold truncate">{user.email}</h1>
             <div className="mt-1 text-xs text-muted-foreground flex items-center gap-1.5">
               <Wallet className="h-3 w-3" />
               {address ? <span className="font-mono">{address.slice(0, 10)}…{address.slice(-6)}</span> : <span>{t("profile.wallet")}: —</span>}
             </div>
           </div>
+          <div className="text-right">
+            <div className="flex items-center gap-1.5 justify-end"><Award className={`h-4 w-4 ${tier.color}`} /><span className={`font-display font-bold ${tier.color}`}>{tier.label}</span></div>
+            <div className="text-[10px] uppercase tracking-widest text-muted-foreground mt-0.5">Reputation · {Math.floor(score)}</div>
+          </div>
+        </div>
+
+        {/* Stats */}
+        <div className="mt-6 grid grid-cols-2 md:grid-cols-4 gap-3">
+          <StatBox icon={<Rocket className="h-3.5 w-3.5" />} label="Tokens created" value={rep?.tokens_created ?? 0} />
+          <StatBox icon={<Award className="h-3.5 w-3.5" />} label="Graduated" value={rep?.tokens_graduated ?? 0} />
+          <StatBox icon={<TrendingUp className="h-3.5 w-3.5" />} label="Total volume" value={`${volBnb.toFixed(3)} BNB`} />
+          <StatBox icon={<Users className="h-3.5 w-3.5" />} label="Unique traders" value={rep?.unique_traders ?? 0} />
         </div>
 
         <div className="mt-8 grid gap-6 md:grid-cols-2">
@@ -115,5 +154,14 @@ function ProfilePage() {
         </div>
       </div>
     </AppShell>
+  );
+}
+
+function StatBox({ icon, label, value }: { icon: React.ReactNode; label: string; value: React.ReactNode }) {
+  return (
+    <div className="glass rounded-xl p-3">
+      <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-widest text-muted-foreground">{icon}{label}</div>
+      <div className="mt-1 font-display font-semibold">{value}</div>
+    </div>
   );
 }
