@@ -36,11 +36,13 @@ function AuthPage() {
   const { signMessageAsync } = useSignMessage();
   const [busy, setBusy] = useState(false);
   const navigate = useNavigate();
+  const { redirect } = Route.useSearch();
+  const target = redirect ?? "/";
 
   const challenge = useServerFn(siweChallenge);
   const verify = useServerFn(siweVerify);
 
-  useEffect(() => { if (user) navigate({ to: "/" }); }, [user, navigate]);
+  useEffect(() => { if (user) navigate({ to: target }); }, [user, navigate, target]);
 
   async function signIn() {
     if (!address) { toast.error("Connect a wallet first"); return; }
@@ -53,7 +55,7 @@ function AuthPage() {
       const { error } = await supabase.auth.verifyOtp({ email, token_hash, type: "magiclink" });
       if (error) throw error;
       toast.success("Signed in");
-      navigate({ to: "/" });
+      navigate({ to: target });
     } catch (e) {
       console.error(e);
       toast.error((e as Error).message);
