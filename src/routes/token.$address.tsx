@@ -63,7 +63,7 @@ function TokenPage() {
     queryFn: async () => {
       const { data } = await supabase
         .from("comments")
-        .select("id,body,created_at,user_id,profiles(username,avatar_url)")
+        .select("id,content,created_at,user_id")
         .eq("token_id", tokenQ.data!.id)
         .order("created_at", { ascending: false })
         .limit(50);
@@ -195,18 +195,15 @@ function TokenPage() {
                 <p className="text-xs text-muted-foreground mb-4">Sign in to comment.</p>
               )}
               <ul className="divide-y divide-white/5">
-                {(commentsQ.data ?? []).map((c) => {
-                  const p = c.profiles as unknown as { username: string | null; avatar_url: string | null } | null;
-                  return (
-                    <li key={c.id} className="py-3 flex gap-3">
-                      {p?.avatar_url ? <img src={p.avatar_url} alt="" className="h-8 w-8 rounded-full object-cover" /> : <div className="h-8 w-8 rounded-full brand-gradient" />}
-                      <div className="min-w-0 flex-1">
-                        <div className="text-xs text-muted-foreground">{p?.username ?? "anon"} · {new Date(c.created_at).toLocaleString()}</div>
-                        <div className="text-sm mt-0.5 break-words">{c.body}</div>
-                      </div>
-                    </li>
-                  );
-                })}
+                {(commentsQ.data ?? []).map((c) => (
+                  <li key={c.id} className="py-3 flex gap-3">
+                    <div className="h-8 w-8 rounded-full brand-gradient shrink-0" />
+                    <div className="min-w-0 flex-1">
+                      <div className="text-xs text-muted-foreground font-mono">{c.user_id.slice(0, 8)}… · {new Date(c.created_at).toLocaleString()}</div>
+                      <div className="text-sm mt-0.5 break-words">{c.content}</div>
+                    </div>
+                  </li>
+                ))}
                 {(commentsQ.data ?? []).length === 0 && <li className="py-6 text-center text-xs text-muted-foreground">No comments yet.</li>}
               </ul>
             </div>
@@ -293,13 +290,14 @@ function TradePanel({ tokenTicker }: { tokenTicker: string }) {
 }
 
 function CommentBox({ tokenId, onSent }: { tokenId: string; onSent: () => void }) {
+  const { user } = useAuth();
   const [body, setBody] = useState("");
   const [busy, setBusy] = useState(false);
   async function send() {
-    if (!body.trim()) return;
+    if (!body.trim() || !user) return;
     setBusy(true);
     try {
-      const { error } = await supabase.from("comments").insert({ token_id: tokenId, body: body.trim() });
+      const { error } = await supabase.from("comments").insert({ token_id: tokenId, content: body.trim(), user_id: user.id });
       if (error) throw error;
       setBody("");
       onSent();
