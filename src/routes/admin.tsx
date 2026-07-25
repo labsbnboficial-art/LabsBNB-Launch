@@ -41,7 +41,7 @@ function AdminPage() {
     queryFn: () => checkFn(),
   });
 
-  useEffect(() => { if (!loading && !user) navigate({ to: "/auth" }); }, [loading, user, navigate]);
+  useEffect(() => { if (!loading && !user) navigate({ to: "/auth", search: { redirect: "/admin" } }); }, [loading, user, navigate]);
 
   if (loading || !user) return <AppShell><div className="p-12 text-center text-muted-foreground">…</div></AppShell>;
   if (gate.isLoading) return <AppShell><div className="p-12 text-center text-muted-foreground">…</div></AppShell>;
