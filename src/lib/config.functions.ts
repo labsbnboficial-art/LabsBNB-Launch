@@ -8,6 +8,12 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
  * cannot execute — that was the 401 "permission denied for function has_role").
  */
 
+function toScalar(v: unknown): string | number | boolean | null {
+  if (v == null) return null;
+  if (typeof v === "string" || typeof v === "number" || typeof v === "boolean") return v;
+  return JSON.stringify(v);
+}
+
 export const getPublicConfig = createServerFn({ method: "GET" }).handler(async () => {
   const { adminClient } = await import("@/integrations/supabase/admin.server");
   const { data, error } = await adminClient
@@ -15,8 +21,8 @@ export const getPublicConfig = createServerFn({ method: "GET" }).handler(async (
     .select("key,value")
     .eq("is_public", true);
   if (error) throw new Error(error.message);
-  const map: Record<string, unknown> = {};
-  (data ?? []).forEach((r) => { map[r.key] = r.value; });
+  const map: Record<string, string | number | boolean | null> = {};
+  (data ?? []).forEach((r) => { map[r.key] = toScalar(r.value); });
   return map;
 });
 
@@ -36,8 +42,8 @@ export const getAdminConfig = createServerFn({ method: "GET" })
     const admin = await assertAdmin(context.userId);
     const { data, error } = await admin.from("admin_config").select("key,value").neq("key", "admin_pin_hash");
     if (error) throw new Error(error.message);
-    const map: Record<string, unknown> = {};
-    (data ?? []).forEach((r) => { map[r.key] = r.value; });
+    const map: Record<string, string | number | boolean | null> = {};
+    (data ?? []).forEach((r) => { map[r.key] = toScalar(r.value); });
     return map;
   });
 
