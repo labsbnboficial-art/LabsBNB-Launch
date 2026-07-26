@@ -13,7 +13,7 @@ import {IPancakeRouter} from "./interfaces/IPancakeRouter.sol";
 ///         y vistas ampliadas (marketCap, liquidity, holders, etc.).
 contract BondingCurve is ReentrancyGuard, Pausable {
     // ---- Configuración inmutable ----
-    IERC20 public immutable token;
+    IERC20 public token;
     address public immutable creator;
     address public immutable factory;
     IPancakeRouter public immutable router;
@@ -119,7 +119,7 @@ contract BondingCurve is ReentrancyGuard, Pausable {
     function setToken(address token_) external {
         require(msg.sender == factory, "only factory");
         require(address(token) == address(0), "token set");
-        assembly { sstore(token.slot, token_) }
+        token = IERC20(token_);
     }
 
     // ---- Admin (factory owner) ----
