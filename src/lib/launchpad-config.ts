@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { useServerFn } from "@tanstack/react-start";
+import { getPublicConfig } from "@/lib/config.functions";
 
 export type LaunchpadConfig = {
   admin_wallet: string;
@@ -90,15 +91,18 @@ function coerce(cfg: Record<string, unknown>): LaunchpadConfig {
 }
 
 export function useLaunchpadConfig() {
+  const fetchConfig = useServerFn(getPublicConfig);
   return useQuery({
     queryKey: ["launchpad-config"],
     staleTime: 30_000,
+    retry: 1,
     queryFn: async (): Promise<LaunchpadConfig> => {
-      const { data, error } = await supabase.from("admin_config").select("key,value").eq("is_public", true);
-      if (error) throw error;
-      const map: Record<string, unknown> = {};
-      (data ?? []).forEach((r) => { map[r.key] = r.value; });
-      return coerce(map);
+      try {
+        return coerce(await fetchConfig());
+      } catch {
+        // Never let a config read break the UI — fall back to defaults.
+        return DEFAULT_CONFIG;
+      }
     },
   });
 }

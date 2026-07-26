@@ -3,13 +3,13 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 async function currentAdminWallet(): Promise<string> {
-  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { adminClient: supabaseAdmin } = await import("@/integrations/supabase/admin.server");
   const { data } = await supabaseAdmin.from("admin_config").select("value").eq("key", "admin_wallet").maybeSingle();
   return String(data?.value ?? "").replace(/^"|"$/g, "").toLowerCase();
 }
 
 async function callerWallet(userId: string): Promise<string> {
-  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { adminClient: supabaseAdmin } = await import("@/integrations/supabase/admin.server");
   const { data } = await supabaseAdmin.from("profiles").select("wallet_address").eq("id", userId).maybeSingle();
   return String(data?.wallet_address ?? "").toLowerCase();
 }
@@ -27,7 +27,7 @@ export const setAdminPin = createServerFn({ method: "POST" })
     const admin = await currentAdminWallet();
     const caller = await callerWallet(context.userId);
     if (!admin || caller !== admin) throw new Error("Only the admin wallet can set the PIN");
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { adminClient: supabaseAdmin } = await import("@/integrations/supabase/admin.server");
     const hash = await hashPin(data.pin, admin);
     const { error } = await supabaseAdmin.from("admin_config").upsert(
       { key: "admin_pin_hash", value: hash as unknown as never, is_public: false },
@@ -44,7 +44,7 @@ export const verifyAdminPin = createServerFn({ method: "POST" })
     const admin = await currentAdminWallet();
     const caller = await callerWallet(context.userId);
     if (!admin || caller !== admin) throw new Error("Not admin wallet");
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { adminClient: supabaseAdmin } = await import("@/integrations/supabase/admin.server");
     const { data: row } = await supabaseAdmin.from("admin_config").select("value").eq("key", "admin_pin_hash").maybeSingle();
     const stored = row?.value ? String(row.value).replace(/^"|"$/g, "") : "";
     if (!stored) return { ok: false, notSet: true };
@@ -58,7 +58,7 @@ export const adminHasPin = createServerFn({ method: "GET" })
     const admin = await currentAdminWallet();
     const caller = await callerWallet(context.userId);
     if (!admin || caller !== admin) return { isAdminWallet: false, hasPin: false };
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { adminClient: supabaseAdmin } = await import("@/integrations/supabase/admin.server");
     const { data: row } = await supabaseAdmin.from("admin_config").select("value").eq("key", "admin_pin_hash").maybeSingle();
     const stored = row?.value ? String(row.value).replace(/^"|"$/g, "") : "";
     return { isAdminWallet: true, hasPin: stored.length > 0 };

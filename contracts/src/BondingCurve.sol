@@ -13,7 +13,7 @@ import {IPancakeRouter} from "./interfaces/IPancakeRouter.sol";
 ///         y vistas ampliadas (marketCap, liquidity, holders, etc.).
 contract BondingCurve is ReentrancyGuard, Pausable {
     // ---- Configuración inmutable ----
-    IERC20 public immutable token;
+    IERC20 public token;
     address public immutable creator;
     address public immutable factory;
     IPancakeRouter public immutable router;
@@ -103,8 +103,8 @@ contract BondingCurve is ReentrancyGuard, Pausable {
         router = IPancakeRouter(router_);
         antibot = AntiBot({
             maxBuyBnb: 2 ether,
-            maxWalletTokens: uint128(CURVE_ALLOC / 50), // 2%
-            maxTxTokens: uint128(CURVE_ALLOC / 100),   // 1%
+            maxWalletTokens: 0,                        // sin límite por defecto (configurable)
+            maxTxTokens: 0,                            // sin límite por defecto (configurable)
             cooldownSeconds: 3,
             antiSandwich: true,
             antiFlashloan: true,
@@ -119,7 +119,7 @@ contract BondingCurve is ReentrancyGuard, Pausable {
     function setToken(address token_) external {
         require(msg.sender == factory, "only factory");
         require(address(token) == address(0), "token set");
-        assembly { sstore(token.slot, token_) }
+        token = IERC20(token_);
     }
 
     // ---- Admin (factory owner) ----
@@ -227,7 +227,7 @@ contract BondingCurve is ReentrancyGuard, Pausable {
         if (a.antiSandwich) {
             if (lastActionBlock[who] == block.number) revert AntiBotViolation("sandwich");
         }
-        if (a.cooldownSeconds > 0) {
+        if (a.cooldownSeconds > 0 && lastActionTs[who] != 0) {
             if (block.timestamp < lastActionTs[who] + a.cooldownSeconds) revert AntiBotViolation("cooldown");
         }
         if (isBuy) {

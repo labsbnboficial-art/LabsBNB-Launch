@@ -48,7 +48,7 @@ contract BondingCurveTest is Test {
 
     function testBuyTransfersTokens() public {
         (BondingCurve curve, LabsBNBToken token) = _create();
-        vm.prank(alice);
+        vm.prank(alice, alice);
         curve.buy{value: 1 ether}(0, address(0));
         assertGt(token.balanceOf(alice), 0);
     }
@@ -61,7 +61,7 @@ contract BondingCurveTest is Test {
             maxBuyBnb: 0, maxWalletTokens: 0, maxTxTokens: 0,
             cooldownSeconds: 0, antiSandwich: true, antiFlashloan: false, enabled: true
         }));
-        vm.startPrank(alice);
+        vm.startPrank(alice, alice);
         curve.buy{value: 0.5 ether}(0, address(0));
         vm.expectRevert();
         curve.sell(1, 0);
@@ -75,7 +75,7 @@ contract BondingCurveTest is Test {
             maxBuyBnb: uint128(0.5 ether), maxWalletTokens: 0, maxTxTokens: 0,
             cooldownSeconds: 0, antiSandwich: false, antiFlashloan: false, enabled: true
         }));
-        vm.prank(alice);
+        vm.prank(alice, alice);
         vm.expectRevert();
         curve.buy{value: 1 ether}(0, address(0));
     }
@@ -83,14 +83,14 @@ contract BondingCurveTest is Test {
     function testReferralFeeCredited() public {
         (BondingCurve curve,) = _create();
         uint256 before = ref.balance;
-        vm.prank(alice);
+        vm.prank(alice, alice);
         curve.buy{value: 1 ether}(0, ref);
         assertGt(ref.balance, before, "referrer should receive fee");
     }
 
     function testEmergencyWithdrawOnlyFactoryOwner() public {
         (BondingCurve curve,) = _create();
-        vm.prank(alice);
+        vm.prank(alice, alice);
         curve.buy{value: 1 ether}(0, address(0));
         vm.expectRevert();
         vm.prank(alice);
