@@ -227,7 +227,7 @@ contract BondingCurve is ReentrancyGuard, Pausable {
         if (a.antiSandwich) {
             if (lastActionBlock[who] == block.number) revert AntiBotViolation("sandwich");
         }
-        if (a.cooldownSeconds > 0) {
+        if (a.cooldownSeconds > 0 && lastActionTs[who] != 0) {
             if (block.timestamp < lastActionTs[who] + a.cooldownSeconds) revert AntiBotViolation("cooldown");
         }
         if (isBuy) {
