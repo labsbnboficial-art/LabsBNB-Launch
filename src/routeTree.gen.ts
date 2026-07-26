@@ -18,7 +18,7 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as TokenAddressRouteImport } from './routes/token.$address'
-import { Route as ApiPublicDiagRouteImport } from './routes/api/public/_diag'
+import { Route as ApiPublicDiagRouteImport } from './routes/api/public/diag'
 
 const RankingRoute = RankingRouteImport.update({
   id: '/ranking',
@@ -66,8 +66,8 @@ const TokenAddressRoute = TokenAddressRouteImport.update({
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiPublicDiagRoute = ApiPublicDiagRouteImport.update({
-  id: '/api/public/_diag',
-  path: '/api/public',
+  id: '/api/public/diag',
+  path: '/api/public/diag',
   getParentRoute: () => rootRouteImport,
 } as any)
 
@@ -81,7 +81,7 @@ export interface FileRoutesByFullPath {
   '/profile': typeof ProfileRoute
   '/ranking': typeof RankingRoute
   '/token/$address': typeof TokenAddressRoute
-  '/api/public': typeof ApiPublicDiagRoute
+  '/api/public/diag': typeof ApiPublicDiagRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -93,7 +93,7 @@ export interface FileRoutesByTo {
   '/profile': typeof ProfileRoute
   '/ranking': typeof RankingRoute
   '/token/$address': typeof TokenAddressRoute
-  '/api/public': typeof ApiPublicDiagRoute
+  '/api/public/diag': typeof ApiPublicDiagRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -106,7 +106,7 @@ export interface FileRoutesById {
   '/profile': typeof ProfileRoute
   '/ranking': typeof RankingRoute
   '/token/$address': typeof TokenAddressRoute
-  '/api/public/_diag': typeof ApiPublicDiagRoute
+  '/api/public/diag': typeof ApiPublicDiagRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -120,7 +120,7 @@ export interface FileRouteTypes {
     | '/profile'
     | '/ranking'
     | '/token/$address'
-    | '/api/public'
+    | '/api/public/diag'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -132,7 +132,7 @@ export interface FileRouteTypes {
     | '/profile'
     | '/ranking'
     | '/token/$address'
-    | '/api/public'
+    | '/api/public/diag'
   id:
     | '__root__'
     | '/'
@@ -144,7 +144,7 @@ export interface FileRouteTypes {
     | '/profile'
     | '/ranking'
     | '/token/$address'
-    | '/api/public/_diag'
+    | '/api/public/diag'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -225,10 +225,10 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TokenAddressRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/public/_diag': {
-      id: '/api/public/_diag'
-      path: '/api/public'
-      fullPath: '/api/public'
+    '/api/public/diag': {
+      id: '/api/public/diag'
+      path: '/api/public/diag'
+      fullPath: '/api/public/diag'
       preLoaderRoute: typeof ApiPublicDiagRouteImport
       parentRoute: typeof rootRouteImport
     }
@@ -250,3 +250,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
