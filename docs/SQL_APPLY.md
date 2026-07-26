@@ -37,3 +37,34 @@ insert into public.admin_config (key, value, is_public) values
   ('antibot_anti_flashloan', to_jsonb(true),      true)
 on conflict (key) do nothing;
 ```
+
+## Fix: 401 `permission denied for function has_role`
+
+Las políticas de `admin_config` invocan `public.has_role`, pero los roles del Data API
+no tienen EXECUTE sobre esa función. Ejecuta en el SQL editor de Supabase:
+
+```sql
+GRANT EXECUTE ON FUNCTION public.has_role(uuid, app_role) TO anon, authenticated, service_role;
+
+-- Lectura pública sólo de las claves marcadas como públicas
+DROP POLICY IF EXISTS "public config readable" ON public.admin_config;
+CREATE POLICY "public config readable" ON public.admin_config
+  FOR SELECT TO anon, authenticated USING (is_public = true);
+
+GRANT SELECT ON public.admin_config TO anon, authenticated;
+GRANT ALL ON public.admin_config TO service_role;
+```
+
+## Claves AntiBot en `admin_config`
+
+```sql
+INSERT INTO public.admin_config (key, value, is_public) VALUES
+  ('antibot_enabled',        'true',  true),
+  ('antibot_max_buy_bnb',    '"2000000000000000000"', true),
+  ('antibot_max_wallet_tk',  '"0"',   true),
+  ('antibot_max_tx_tk',      '"0"',   true),
+  ('antibot_cooldown_s',     '3',     true),
+  ('antibot_anti_sandwich',  'true',  true),
+  ('antibot_anti_flashloan', 'true',  true)
+ON CONFLICT (key) DO NOTHING;
+```
