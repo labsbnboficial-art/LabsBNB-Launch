@@ -103,8 +103,8 @@ contract BondingCurve is ReentrancyGuard, Pausable {
         router = IPancakeRouter(router_);
         antibot = AntiBot({
             maxBuyBnb: 2 ether,
-            maxWalletTokens: uint128(CURVE_ALLOC / 50), // 2%
-            maxTxTokens: uint128(CURVE_ALLOC / 100),   // 1%
+            maxWalletTokens: uint128(CURVE_ALLOC / 10), // 10%
+            maxTxTokens: uint128(CURVE_ALLOC / 20),    // 5%
             cooldownSeconds: 3,
             antiSandwich: true,
             antiFlashloan: true,
