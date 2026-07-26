@@ -59,7 +59,7 @@ export const siweVerify = createServerFn({ method: "POST" })
   )
   .handler(async ({ data }) => {
     const { verifyMessage } = await import("viem");
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { adminClient: supabaseAdmin } = await import("@/integrations/supabase/admin.server");
 
     // Signature check
     const valid = await verifyMessage({
