@@ -2,16 +2,17 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { supabase } from "@/integrations/supabase/client";
 import { AppShell } from "@/components/labsbnb/AppShell";
 import { useAuth } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import { useI18n } from "@/lib/i18n";
 import { Shield, Lock } from "lucide-react";
 import { adminHasPin, setAdminPin, verifyAdminPin } from "@/lib/admin-pin.functions";
+import { getAdminConfig, saveAdminConfig } from "@/lib/config.functions";
 
 export const Route = createFileRoute("/admin")({
   head: () => ({
@@ -45,6 +46,20 @@ function AdminPage() {
 
   if (loading || !user) return <AppShell><div className="p-12 text-center text-muted-foreground">…</div></AppShell>;
   if (gate.isLoading) return <AppShell><div className="p-12 text-center text-muted-foreground">…</div></AppShell>;
+  if (gate.error) {
+    return (
+      <AppShell>
+        <div className="mx-auto max-w-md px-4 py-16">
+          <div className="glass-strong rounded-3xl p-8 text-center">
+            <Shield className="mx-auto h-8 w-8 text-destructive" />
+            <h1 className="mt-3 font-display text-xl font-bold">Admin backend unavailable</h1>
+            <p className="mt-2 text-sm text-muted-foreground break-words">{(gate.error as Error).message}</p>
+            <Button variant="outline" className="mt-4" onClick={() => gate.refetch()}>Retry</Button>
+          </div>
+        </div>
+      </AppShell>
+    );
+  }
   if (!gate.data?.isAdminWallet) {
     return (
       <AppShell>
@@ -117,15 +132,10 @@ function PinGate({ hasPin, onPass }: { hasPin: boolean; onPass: () => void }) {
 
 function AdminBody() {
   const { t } = useI18n();
+  const loadCfg = useServerFn(getAdminConfig);
   const cfgQ = useQuery({
     queryKey: ["admin-config"],
-    queryFn: async () => {
-      const { data, error } = await supabase.from("admin_config").select("*");
-      if (error) throw error;
-      const map: Record<string, unknown> = {};
-      (data ?? []).forEach((r) => { map[r.key] = r.value; });
-      return map;
-    },
+    queryFn: () => loadCfg(),
   });
 
   return (
@@ -141,7 +151,7 @@ function AdminBody() {
   );
 }
 
-type FieldSpec = { key: string; label: string; type?: "text" | "number"; help?: string; mono?: boolean };
+type FieldSpec = { key: string; label: string; type?: "text" | "number" | "bool"; help?: string; mono?: boolean };
 
 const CONTRACT_FIELDS: FieldSpec[] = [
   { key: "factory_address", label: "Factory address", mono: true, help: "Set once the Factory is deployed on-chain." },
@@ -175,14 +185,25 @@ const ADMIN_FIELDS: FieldSpec[] = [
   { key: "admin_wallet", label: "Admin wallet (receives commissions)", mono: true },
 ];
 
+const ANTIBOT_FIELDS: FieldSpec[] = [
+  { key: "antibot_enabled", label: "AntiBot enabled", type: "bool" },
+  { key: "antibot_max_buy_bnb", label: "Max buy (wei BNB, 0 = off)", mono: true },
+  { key: "antibot_max_wallet_tk", label: "Max wallet (token wei, 0 = off)", mono: true },
+  { key: "antibot_max_tx_tk", label: "Max TX (token wei, 0 = off)", mono: true },
+  { key: "antibot_cooldown_s", label: "Cooldown (seconds)", type: "number" },
+  { key: "antibot_anti_sandwich", label: "Anti-sandwich", type: "bool" },
+  { key: "antibot_anti_flashloan", label: "Anti-flashloan", type: "bool" },
+];
+
 function ConfigEditor({ cfg, onSaved }: { cfg: Record<string, unknown>; onSaved: () => void }) {
   const { t } = useI18n();
+  const saveFn = useServerFn(saveAdminConfig);
   const [values, setValues] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
     const v: Record<string, string> = {};
-    for (const f of [...CONTRACT_FIELDS, ...FEE_FIELDS, ...CURVE_FIELDS, ...ADVANCED_FIELDS, ...ADMIN_FIELDS]) {
+    for (const f of [...CONTRACT_FIELDS, ...FEE_FIELDS, ...CURVE_FIELDS, ...ADVANCED_FIELDS, ...ADMIN_FIELDS, ...ANTIBOT_FIELDS]) {
       const raw = cfg[f.key];
       v[f.key] = raw == null ? "" : typeof raw === "string" ? raw : String(raw);
     }
@@ -192,16 +213,14 @@ function ConfigEditor({ cfg, onSaved }: { cfg: Record<string, unknown>; onSaved:
   async function save() {
     setBusy(true);
     try {
-      const rows = [...CONTRACT_FIELDS, ...FEE_FIELDS, ...CURVE_FIELDS, ...ADVANCED_FIELDS, ...ADMIN_FIELDS].map((f) => {
-        let value: number | string | null = values[f.key];
-        if (value === "" || value == null) value = null;
+      const entries = [...CONTRACT_FIELDS, ...FEE_FIELDS, ...CURVE_FIELDS, ...ADVANCED_FIELDS, ...ADMIN_FIELDS, ...ANTIBOT_FIELDS].map((f) => {
+        let value: number | string | boolean | null = values[f.key];
+        if (f.type === "bool") value = values[f.key] === "true";
+        else if (value === "" || value == null) value = null;
         else if (f.type === "number") value = Number(value);
-        return { key: f.key, value: value as unknown as never, is_public: f.key !== "admin_pin_hash" };
+        return { key: f.key, value, is_public: true };
       });
-      for (const r of rows) {
-        const { error } = await supabase.from("admin_config").upsert(r, { onConflict: "key" });
-        if (error) throw error;
-      }
+      await saveFn({ data: { entries } });
       toast.success("Saved");
       onSaved();
     } catch (e) {
@@ -215,6 +234,7 @@ function ConfigEditor({ cfg, onSaved }: { cfg: Record<string, unknown>; onSaved:
       <Section title="Fees" fields={FEE_FIELDS} values={values} setValues={setValues} />
       <Section title="Bonding curve & tokenomics" fields={CURVE_FIELDS} values={values} setValues={setValues} />
       <Section title="Advanced tokenomics (paid unlock)" fields={ADVANCED_FIELDS} values={values} setValues={setValues} />
+      <Section title="AntiBot" fields={ANTIBOT_FIELDS} values={values} setValues={setValues} />
       <Section title="Admin" fields={ADMIN_FIELDS} values={values} setValues={setValues} />
       <div className="flex justify-end">
         <Button onClick={save} disabled={busy} className="brand-gradient text-primary-foreground glow-primary">
@@ -240,12 +260,21 @@ function Section({
         {fields.map((f) => (
           <div key={f.key} className={f.mono ? "md:col-span-2" : ""}>
             <Label className="text-xs uppercase tracking-widest text-muted-foreground">{f.label}</Label>
-            <Input
-              type={f.type === "number" ? "number" : "text"}
-              value={values[f.key] ?? ""}
-              onChange={(e) => setValues((v) => ({ ...v, [f.key]: e.target.value }))}
-              className={f.mono ? "font-mono" : ""}
-            />
+            {f.type === "bool" ? (
+              <div className="mt-2">
+                <Switch
+                  checked={values[f.key] === "true"}
+                  onCheckedChange={(c) => setValues((v) => ({ ...v, [f.key]: c ? "true" : "false" }))}
+                />
+              </div>
+            ) : (
+              <Input
+                type={f.type === "number" ? "number" : "text"}
+                value={values[f.key] ?? ""}
+                onChange={(e) => setValues((v) => ({ ...v, [f.key]: e.target.value }))}
+                className={f.mono ? "font-mono" : ""}
+              />
+            )}
             {f.help && <p className="mt-1 text-[11px] text-muted-foreground">{f.help}</p>}
           </div>
         ))}
