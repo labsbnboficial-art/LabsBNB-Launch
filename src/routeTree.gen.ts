@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as RankingRouteImport } from './routes/ranking'
 import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as NotificationsRouteImport } from './routes/notifications'
+import { Route as MissionsRouteImport } from './routes/missions'
 import { Route as ExplorerRouteImport } from './routes/explorer'
 import { Route as CreateRouteImport } from './routes/create'
 import { Route as AuthRouteImport } from './routes/auth'
@@ -32,6 +33,11 @@ const ProfileRoute = ProfileRouteImport.update({
 const NotificationsRoute = NotificationsRouteImport.update({
   id: '/notifications',
   path: '/notifications',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MissionsRoute = MissionsRouteImport.update({
+  id: '/missions',
+  path: '/missions',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ExplorerRoute = ExplorerRouteImport.update({
@@ -71,6 +77,7 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/create': typeof CreateRoute
   '/explorer': typeof ExplorerRoute
+  '/missions': typeof MissionsRoute
   '/notifications': typeof NotificationsRoute
   '/profile': typeof ProfileRoute
   '/ranking': typeof RankingRoute
@@ -82,6 +89,7 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/create': typeof CreateRoute
   '/explorer': typeof ExplorerRoute
+  '/missions': typeof MissionsRoute
   '/notifications': typeof NotificationsRoute
   '/profile': typeof ProfileRoute
   '/ranking': typeof RankingRoute
@@ -94,6 +102,7 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/create': typeof CreateRoute
   '/explorer': typeof ExplorerRoute
+  '/missions': typeof MissionsRoute
   '/notifications': typeof NotificationsRoute
   '/profile': typeof ProfileRoute
   '/ranking': typeof RankingRoute
@@ -107,6 +116,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/create'
     | '/explorer'
+    | '/missions'
     | '/notifications'
     | '/profile'
     | '/ranking'
@@ -118,6 +128,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/create'
     | '/explorer'
+    | '/missions'
     | '/notifications'
     | '/profile'
     | '/ranking'
@@ -129,6 +140,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/create'
     | '/explorer'
+    | '/missions'
     | '/notifications'
     | '/profile'
     | '/ranking'
@@ -141,6 +153,7 @@ export interface RootRouteChildren {
   AuthRoute: typeof AuthRoute
   CreateRoute: typeof CreateRoute
   ExplorerRoute: typeof ExplorerRoute
+  MissionsRoute: typeof MissionsRoute
   NotificationsRoute: typeof NotificationsRoute
   ProfileRoute: typeof ProfileRoute
   RankingRoute: typeof RankingRoute
@@ -168,6 +181,13 @@ declare module '@tanstack/react-router' {
       path: '/notifications'
       fullPath: '/notifications'
       preLoaderRoute: typeof NotificationsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/missions': {
+      id: '/missions'
+      path: '/missions'
+      fullPath: '/missions'
+      preLoaderRoute: typeof MissionsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/explorer': {
@@ -221,6 +241,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthRoute: AuthRoute,
   CreateRoute: CreateRoute,
   ExplorerRoute: ExplorerRoute,
+  MissionsRoute: MissionsRoute,
   NotificationsRoute: NotificationsRoute,
   ProfileRoute: ProfileRoute,
   RankingRoute: RankingRoute,

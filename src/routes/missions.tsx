@@ -24,6 +24,17 @@ export const Route = createFileRoute("/missions")({
   component: MissionsPage,
 });
 
+type CampaignCard = {
+  id: string; title: string; description: string | null; reward_currency: string;
+  reward_per_task: number; max_participants: number; ends_at: string | null; status: string;
+  token: { name: string; ticker: string; logo_url: string | null } | null;
+};
+
+type BoardRow = {
+  user_id: string; xp: number;
+  profile: { username: string | null; wallet_address: string | null } | null;
+};
+
 const TABS = [
   { key: "daily", label: "Diarias" },
   { key: "weekly", label: "Semanales" },
@@ -132,11 +143,7 @@ function MissionsPage() {
             {(campaignsQ.data?.campaigns ?? []).length === 0 && (
               <p className="text-sm text-muted-foreground">Aún no hay campañas activas.</p>
             )}
-            {(campaignsQ.data?.campaigns ?? []).map((c: {
-              id: string; title: string; description: string | null; reward_currency: string;
-              reward_per_task: number; max_participants: number; ends_at: string | null; status: string;
-              token: { name: string; ticker: string; logo_url: string | null } | null;
-            }) => (
+            {((campaignsQ.data?.campaigns ?? []) as unknown as CampaignCard[]).map((c) => (
               <Link key={c.id} to="/campaigns/$id" params={{ id: c.id }} className="glass-strong rounded-2xl p-5 hover:bg-white/[0.06] transition">
                 <div className="flex items-center gap-3">
                   {c.token?.logo_url ? (
@@ -179,7 +186,7 @@ function MissionsPage() {
           <h2 className="font-display text-lg font-semibold">Top XP</h2>
           <div className="mt-4 divide-y divide-white/5">
             {(boardQ.data ?? []).length === 0 && <p className="text-sm text-muted-foreground">Todavía no hay XP registrado.</p>}
-            {(boardQ.data ?? []).map((r: { user_id: string; xp: number; profile: { username: string | null; wallet_address: string | null } | null }, i: number) => {
+            {((boardQ.data ?? []) as unknown as BoardRow[]).map((r, i) => {
               const lv = levelFor(r.xp);
               return (
                 <div key={r.user_id} className="flex items-center justify-between py-2.5 text-sm">
