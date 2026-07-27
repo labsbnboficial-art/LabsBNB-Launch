@@ -11,7 +11,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Wallet, Rocket, Trophy, User, Shield, Globe, Search, Bell } from "lucide-react";
+import { Wallet, Rocket, Trophy, User, Shield, Globe, Search, Bell, Sparkles } from "lucide-react";
 
 function shortAddr(a?: string) {
   if (!a) return "";
@@ -49,6 +49,9 @@ export function Header() {
           </Link>
           <Link to="/explorer" className="px-3 py-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-white/5 transition">
             <span className="inline-flex items-center gap-1.5"><Search className="h-3.5 w-3.5" />Explorer</span>
+          </Link>
+          <Link to="/missions" className="px-3 py-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-white/5 transition">
+            <span className="inline-flex items-center gap-1.5"><Sparkles className="h-3.5 w-3.5" />Missions</span>
           </Link>
           <Link to="/ranking" className="px-3 py-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-white/5 transition">
             <span className="inline-flex items-center gap-1.5"><Trophy className="h-3.5 w-3.5" />{t("nav.ranking")}</span>
