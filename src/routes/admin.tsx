@@ -181,6 +181,24 @@ const ADVANCED_FIELDS: FieldSpec[] = [
   { key: "advanced_creation_fee_bnb", label: "Advanced tokenomics unlock fee (wei BNB)", mono: true, help: "Users pay this amount in BNB to the admin wallet to unlock custom % LP / Burn / Staking / Reward when creating a token." },
 ];
 
+const MISSIONS_FIELDS: FieldSpec[] = [
+  { key: "missions_enabled", label: "Labs Missions activado", type: "bool" },
+  { key: "campaign_fee_bnb", label: "Comisión por crear campaña (wei BNB)", mono: true, help: "Se paga en BNB a la wallet admin antes de activar la campaña." },
+  { key: "campaign_min_reward", label: "Recompensa mínima por tarea", type: "number" },
+  { key: "campaign_max_reward", label: "Recompensa máxima por tarea", type: "number" },
+  { key: "campaign_max_participants", label: "Máx. participantes por campaña", type: "number" },
+  { key: "campaign_review_mode", label: "Modo de revisión (auto | manual | manual_all)" },
+  { key: "missions_socials_allowed", label: "Redes permitidas (csv)" },
+  { key: "missions_task_types", label: "Tipos de tarea habilitados (csv)", mono: true },
+  { key: "antifraud_one_per_wallet", label: "Antifraude: 1 participación por wallet", type: "bool" },
+  { key: "antifraud_min_account_age_h", label: "Antifraude: antigüedad mínima de cuenta (h)", type: "number" },
+  { key: "xp_contributor_min", label: "XP para Contributor", type: "number" },
+  { key: "xp_ambassador_min", label: "XP para Ambassador", type: "number" },
+  { key: "xp_elite_min", label: "XP para Elite", type: "number" },
+  { key: "xp_legend_min", label: "XP para Legend", type: "number" },
+  { key: "level_fee_discount_bps", label: "Descuento de comisión por nivel (bps, csv)" },
+];
+
 const ADMIN_FIELDS: FieldSpec[] = [
   { key: "admin_wallet", label: "Admin wallet (receives commissions)", mono: true },
 ];
@@ -203,7 +221,7 @@ function ConfigEditor({ cfg, onSaved }: { cfg: Record<string, unknown>; onSaved:
 
   useEffect(() => {
     const v: Record<string, string> = {};
-    for (const f of [...CONTRACT_FIELDS, ...FEE_FIELDS, ...CURVE_FIELDS, ...ADVANCED_FIELDS, ...ADMIN_FIELDS, ...ANTIBOT_FIELDS]) {
+    for (const f of [...CONTRACT_FIELDS, ...FEE_FIELDS, ...CURVE_FIELDS, ...ADVANCED_FIELDS, ...MISSIONS_FIELDS, ...ADMIN_FIELDS, ...ANTIBOT_FIELDS]) {
       const raw = cfg[f.key];
       v[f.key] = raw == null ? "" : typeof raw === "string" ? raw : String(raw);
     }
@@ -213,7 +231,7 @@ function ConfigEditor({ cfg, onSaved }: { cfg: Record<string, unknown>; onSaved:
   async function save() {
     setBusy(true);
     try {
-      const entries = [...CONTRACT_FIELDS, ...FEE_FIELDS, ...CURVE_FIELDS, ...ADVANCED_FIELDS, ...ADMIN_FIELDS, ...ANTIBOT_FIELDS].map((f) => {
+      const entries = [...CONTRACT_FIELDS, ...FEE_FIELDS, ...CURVE_FIELDS, ...ADVANCED_FIELDS, ...MISSIONS_FIELDS, ...ADMIN_FIELDS, ...ANTIBOT_FIELDS].map((f) => {
         let value: number | string | boolean | null = values[f.key];
         if (f.type === "bool") value = values[f.key] === "true";
         else if (value === "" || value == null) value = null;
@@ -231,6 +249,7 @@ function ConfigEditor({ cfg, onSaved }: { cfg: Record<string, unknown>; onSaved:
   return (
     <div className="space-y-6">
       <Section title="Smart contract" fields={CONTRACT_FIELDS} values={values} setValues={setValues} />
+      <Section title="Labs Missions" fields={MISSIONS_FIELDS} values={values} setValues={setValues} />
       <Section title="Fees" fields={FEE_FIELDS} values={values} setValues={setValues} />
       <Section title="Bonding curve & tokenomics" fields={CURVE_FIELDS} values={values} setValues={setValues} />
       <Section title="Advanced tokenomics (paid unlock)" fields={ADVANCED_FIELDS} values={values} setValues={setValues} />
