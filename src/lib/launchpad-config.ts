@@ -20,6 +20,8 @@ export type LaunchpadConfig = {
   staking_cost_bnb: string;
   reward_pct: number;
   advanced_creation_fee_bnb: string;
+  campaign_fee_bnb: string;
+  missions_enabled: boolean;
   // AntiBot
   antibot_enabled: boolean;
   antibot_max_buy_bnb: string;      // wei
@@ -48,6 +50,8 @@ export const DEFAULT_CONFIG: LaunchpadConfig = {
   staking_cost_bnb: "0",
   reward_pct: 0,
   advanced_creation_fee_bnb: "10000000000000000",
+  campaign_fee_bnb: "10000000000000000",
+  missions_enabled: true,
   antibot_enabled: false,
   antibot_max_buy_bnb: "0",
   antibot_max_wallet_tk: "0",
@@ -80,6 +84,8 @@ function coerce(cfg: Record<string, unknown>): LaunchpadConfig {
     staking_cost_bnb: String(g("staking_cost_bnb", "0")),
     reward_pct: Number(g("reward_pct", 0)),
     advanced_creation_fee_bnb: String(g("advanced_creation_fee_bnb", DEFAULT_CONFIG.advanced_creation_fee_bnb)),
+    campaign_fee_bnb: String(g("campaign_fee_bnb", DEFAULT_CONFIG.campaign_fee_bnb)),
+    missions_enabled: Boolean(g("missions_enabled", true)),
     antibot_enabled: Boolean(g("antibot_enabled", false)),
     antibot_max_buy_bnb: String(g("antibot_max_buy_bnb", "0")),
     antibot_max_wallet_tk: String(g("antibot_max_wallet_tk", "0")),

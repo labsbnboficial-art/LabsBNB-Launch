@@ -19,6 +19,7 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as TokenAddressRouteImport } from './routes/token.$address'
+import { Route as CampaignsNewRouteImport } from './routes/campaigns.new'
 
 const RankingRoute = RankingRouteImport.update({
   id: '/ranking',
@@ -70,6 +71,11 @@ const TokenAddressRoute = TokenAddressRouteImport.update({
   path: '/token/$address',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CampaignsNewRoute = CampaignsNewRouteImport.update({
+  id: '/campaigns/new',
+  path: '/campaigns/new',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -81,6 +87,7 @@ export interface FileRoutesByFullPath {
   '/notifications': typeof NotificationsRoute
   '/profile': typeof ProfileRoute
   '/ranking': typeof RankingRoute
+  '/campaigns/new': typeof CampaignsNewRoute
   '/token/$address': typeof TokenAddressRoute
 }
 export interface FileRoutesByTo {
@@ -93,6 +100,7 @@ export interface FileRoutesByTo {
   '/notifications': typeof NotificationsRoute
   '/profile': typeof ProfileRoute
   '/ranking': typeof RankingRoute
+  '/campaigns/new': typeof CampaignsNewRoute
   '/token/$address': typeof TokenAddressRoute
 }
 export interface FileRoutesById {
@@ -106,6 +114,7 @@ export interface FileRoutesById {
   '/notifications': typeof NotificationsRoute
   '/profile': typeof ProfileRoute
   '/ranking': typeof RankingRoute
+  '/campaigns/new': typeof CampaignsNewRoute
   '/token/$address': typeof TokenAddressRoute
 }
 export interface FileRouteTypes {
@@ -120,6 +129,7 @@ export interface FileRouteTypes {
     | '/notifications'
     | '/profile'
     | '/ranking'
+    | '/campaigns/new'
     | '/token/$address'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -132,6 +142,7 @@ export interface FileRouteTypes {
     | '/notifications'
     | '/profile'
     | '/ranking'
+    | '/campaigns/new'
     | '/token/$address'
   id:
     | '__root__'
@@ -144,6 +155,7 @@ export interface FileRouteTypes {
     | '/notifications'
     | '/profile'
     | '/ranking'
+    | '/campaigns/new'
     | '/token/$address'
   fileRoutesById: FileRoutesById
 }
@@ -157,6 +169,7 @@ export interface RootRouteChildren {
   NotificationsRoute: typeof NotificationsRoute
   ProfileRoute: typeof ProfileRoute
   RankingRoute: typeof RankingRoute
+  CampaignsNewRoute: typeof CampaignsNewRoute
   TokenAddressRoute: typeof TokenAddressRoute
 }
 
@@ -232,6 +245,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TokenAddressRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/campaigns/new': {
+      id: '/campaigns/new'
+      path: '/campaigns/new'
+      fullPath: '/campaigns/new'
+      preLoaderRoute: typeof CampaignsNewRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -245,6 +265,7 @@ const rootRouteChildren: RootRouteChildren = {
   NotificationsRoute: NotificationsRoute,
   ProfileRoute: ProfileRoute,
   RankingRoute: RankingRoute,
+  CampaignsNewRoute: CampaignsNewRoute,
   TokenAddressRoute: TokenAddressRoute,
 }
 export const routeTree = rootRouteImport

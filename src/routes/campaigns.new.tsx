@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useMemo, useState } from "react";
 import { z } from "zod";
-import { formatEther, parseEther } from "viem";
+import { formatEther } from "viem";
 import { useAccount, useSendTransaction, useWaitForTransactionReceipt } from "wagmi";
 import { AppShell } from "@/components/labsbnb/AppShell";
 import { Button } from "@/components/ui/button";
@@ -266,7 +266,6 @@ function NewCampaignPage() {
         <p className="mt-2 text-center text-[11px] text-muted-foreground">
           Presupuesto estimado: {budget || 0} {currency} · {Number(perTask) || 0} por tarea · máx. {maxParticipants} participantes
         </p>
-        <span className="hidden">{parseEther("0").toString()}</span>
       </div>
     </AppShell>
   );
