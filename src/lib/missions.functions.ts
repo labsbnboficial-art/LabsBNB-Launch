@@ -84,7 +84,7 @@ export const listCampaigns = createServerFn({ method: "GET" })
     let tokens: Record<string, { name: string; ticker: string; logo_url: string | null }> = {};
     if (ids.length) {
       const { data: tk } = await client.from("tokens").select("id,name,ticker,logo_url").in("id", ids);
-      tokens = Object.fromEntries((tk ?? []).map((t: never) => [(t as { id: string }).id, t as never]));
+      tokens = Object.fromEntries((tk ?? []).map((t) => [String((t as { id: string }).id), t as unknown as { name: string; ticker: string; logo_url: string | null }]));
     }
     return { campaigns: (rows ?? []).map((r: { token_id: string | null }) => ({ ...r, token: r.token_id ? tokens[r.token_id] ?? null : null })), schemaReady: true as const };
   });
