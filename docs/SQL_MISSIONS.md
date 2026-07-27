@@ -154,6 +154,9 @@ grant select on public.xp_ledger to anon, authenticated;
 grant all on public.xp_ledger to service_role;
 alter table public.xp_ledger enable row level security;
 
+create unique index if not exists xp_ledger_user_reason_uidx
+  on public.xp_ledger (user_id, reason) where task_id is null;
+
 drop policy if exists "xp ledger readable" on public.xp_ledger;
 create policy "xp ledger readable" on public.xp_ledger
   for select to anon, authenticated using (true);
