@@ -27,14 +27,10 @@ export const getPublicConfig = createServerFn({ method: "GET" }).handler(async (
 });
 
 async function assertAdmin(userId: string) {
-  const { adminClient } = await import("@/integrations/supabase/admin.server");
-  const { data: cfg } = await adminClient.from("admin_config").select("value").eq("key", "admin_wallet").maybeSingle();
-  const admin = String(cfg?.value ?? "").replace(/^"|"$/g, "").toLowerCase();
-  const { data: prof } = await adminClient.from("profiles").select("wallet_address").eq("id", userId).maybeSingle();
-  const caller = String(prof?.wallet_address ?? "").toLowerCase();
-  if (!admin || caller !== admin) throw new Error("Forbidden: not the admin wallet");
-  return adminClient;
+  const m = await import("@/lib/admin-auth.server");
+  return m.assertAdmin(userId);
 }
+
 
 export const getAdminConfig = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
