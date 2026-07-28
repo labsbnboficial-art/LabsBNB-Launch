@@ -4,9 +4,10 @@ import LabsBNBFactoryAbi from "./LabsBNBFactory.json";
 import BondingCurveAbi from "./BondingCurve.json";
 import LabsBNBTokenAbi from "./LabsBNBToken.json";
 
-export const FACTORY_ABI = LabsBNBFactoryAbi as const;
-export const CURVE_ABI = BondingCurveAbi as const;
-export const TOKEN_ABI = LabsBNBTokenAbi as const;
+export const FACTORY_ABI = LabsBNBFactoryAbi;
+export const CURVE_ABI = BondingCurveAbi;
+export const TOKEN_ABI = LabsBNBTokenAbi;
+
 
 /** BSC Testnet (chainId 97) deployment constants. */
 export const BSC_TESTNET = {
