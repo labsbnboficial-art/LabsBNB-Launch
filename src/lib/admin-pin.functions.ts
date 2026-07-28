@@ -56,9 +56,10 @@ export const adminHasPin = createServerFn({ method: "GET" })
   .handler(async ({ context }) => {
     const admin = await currentAdminWallet();
     const caller = await callerWallet(context.userId);
-    if (!admin || caller !== admin) return { isAdminWallet: false, hasPin: false };
+    if (!admin || caller !== admin) return { isAdminWallet: false, hasPin: false, caller, admin };
     const { adminClient: supabaseAdmin } = await import("@/integrations/supabase/admin.server");
     const { data: row } = await supabaseAdmin.from("admin_config").select("value").eq("key", "admin_pin_hash").maybeSingle();
     const stored = row?.value ? String(row.value).replace(/^"|"$/g, "") : "";
-    return { isAdminWallet: true, hasPin: stored.length > 0 };
+    return { isAdminWallet: true, hasPin: stored.length > 0, caller, admin };
   });
+
