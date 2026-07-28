@@ -68,11 +68,17 @@ function AdminPage() {
             <Shield className="mx-auto h-8 w-8 text-destructive" />
             <h1 className="mt-3 font-display text-xl font-bold">{t("admin.forbidden")}</h1>
             <p className="mt-2 text-sm text-muted-foreground">Admin access is restricted to the configured admin wallet.</p>
+            <p className="mt-3 break-all font-mono text-xs text-muted-foreground">
+              Signed in as: {gate.data?.caller || "—"}<br />
+              Admin wallet: {gate.data?.admin || "—"}
+            </p>
+            <Button variant="outline" className="mt-4" onClick={() => gate.refetch()}>Retry</Button>
           </div>
         </div>
       </AppShell>
     );
   }
+
 
   if (!pinOk) {
     return (
