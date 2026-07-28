@@ -26,33 +26,33 @@ Contratos Solidity para el launchpad estilo four.meme en BNB Smart Chain.
 - PancakeSwap V2 Router Testnet: `0xD99D1c33F9fC3444f8101754aBC46c52416550D1`
 - WBNB Testnet: `0xae13d989daC2f0dEbFf460aC112a837C89BAa7cd`
 
-## Desplegar con Foundry
+## Despliegue en 1 comando (BSC Testnet, chainId 97)
 
 ```bash
-# 1. Instala Foundry
-curl -L https://foundry.paradigm.xyz | bash && foundryup
-
-# 2. Desde /contracts
-forge init --force --no-commit
-forge install OpenZeppelin/openzeppelin-contracts --no-commit
-forge install Uniswap/v2-periphery --no-commit
-
-# 3. Configura .env
-cp .env.example .env   # rellena PRIVATE_KEY (wallet con BNB testnet)
-
-# 4. Compila
-forge build
-
-# 5. Despliega factory a BSC Testnet
-forge script script/Deploy.s.sol:Deploy \
-  --rpc-url https://data-seed-prebsc-1-s1.binance.org:8545 \
-  --broadcast --verify \
-  --etherscan-api-key $BSCSCAN_API_KEY
-
-# 6. Anota la dirección impresa "Factory deployed at: 0x…" y pégamela en el chat.
-#    También necesito los ABIs generados en out/LabsBNBFactory.sol/LabsBNBFactory.json
-#    y out/BondingCurve.sol/BondingCurve.json.
+cp contracts/.env.example contracts/.env   # rellena PRIVATE_KEY (wallet con tBNB)
+bash contracts/deploy.sh
 ```
+
+`deploy.sh` hace todo por ti desde cualquier ordenador y sin tocar código:
+instala Foundry si falta, clona `forge-std` + `openzeppelin-contracts v5.1.0`,
+compila, ejecuta los tests, regenera los ABI en `contracts/abi/`, comprueba el
+saldo del deployer y despliega `LabsBNBFactory` (verificando en BscScan si hay
+`BSCSCAN_API_KEY`). Al terminar imprime la dirección del Factory.
+
+Solo ABIs: `bash contracts/deploy.sh --abi-only`.
+
+Estado verificado en este repo: `forge build` sin errores y `forge test` 6/6 OK.
+No se pudo desplegar desde Lovable porque no hay `PRIVATE_KEY` (clave privada del
+deployer) — el comando de arriba lo resuelve en local.
+
+### Después del deploy
+
+1. Copia la dirección impresa `LabsBNBFactory`.
+2. Panel **Admin → factory_address** → pégala y guarda. Es el único cambio que
+   necesita el frontend (los ABIs ya están en `src/lib/web3/abis/`).
+3. `BondingCurve` y el token se crean por cada lanzamiento; sus direcciones
+   llegan en el evento `TokenCreated(token, curve, creator, name, symbol, metadataURI)`.
+
 
 ## Obtener BNB testnet gratis
 https://testnet.bnbchain.org/faucet-smart
