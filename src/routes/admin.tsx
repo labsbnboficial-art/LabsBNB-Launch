@@ -1,17 +1,30 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { AppShell } from "@/components/labsbnb/AppShell";
-import { useAuth } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { useI18n } from "@/lib/i18n";
-import { Shield, Lock } from "lucide-react";
-import { adminHasPin, setAdminPin, verifyAdminPin } from "@/lib/admin-pin.functions";
+import { Shield, Lock, KeyRound, LogOut, ScrollText, Settings2 } from "lucide-react";
+import {
+  adminAuthStatus,
+  adminBootstrap,
+  adminLogin,
+  adminLogout,
+  adminVerifyPinStep,
+  adminVerifyTotpStep,
+  adminUpdateCredentials,
+  adminStartTotp,
+  adminSetTotpEnabled,
+  adminRequestPasswordReset,
+  adminResetPassword,
+  adminAuditLog,
+} from "@/lib/admin-account.functions";
 import { getAdminConfig, saveAdminConfig } from "@/lib/config.functions";
 
 export const Route = createFileRoute("/admin")({
@@ -27,140 +40,441 @@ export const Route = createFileRoute("/admin")({
   component: AdminPage,
 });
 
-const PIN_KEY = "labsbnb.admin.pin_ok";
-
-function AdminPage() {
-  const { t } = useI18n();
-  const { user, loading } = useAuth();
-  const navigate = useNavigate();
-  const [pinOk, setPinOk] = useState<boolean>(() => (typeof window !== "undefined" ? sessionStorage.getItem(PIN_KEY) === "1" : false));
-
-  const checkFn = useServerFn(adminHasPin);
-  const gate = useQuery({
-    queryKey: ["admin-gate", user?.id],
-    enabled: !!user,
-    queryFn: () => checkFn(),
-  });
-
-  useEffect(() => { if (!loading && !user) navigate({ to: "/auth", search: { redirect: "/admin" } }); }, [loading, user, navigate]);
-
-  if (loading || !user) return <AppShell><div className="p-12 text-center text-muted-foreground">…</div></AppShell>;
-  if (gate.isLoading) return <AppShell><div className="p-12 text-center text-muted-foreground">…</div></AppShell>;
-  if (gate.error) {
-    return (
-      <AppShell>
-        <div className="mx-auto max-w-md px-4 py-16">
-          <div className="glass-strong rounded-3xl p-8 text-center">
-            <Shield className="mx-auto h-8 w-8 text-destructive" />
-            <h1 className="mt-3 font-display text-xl font-bold">Admin backend unavailable</h1>
-            <p className="mt-2 text-sm text-muted-foreground break-words">{(gate.error as Error).message}</p>
-            <Button variant="outline" className="mt-4" onClick={() => gate.refetch()}>Retry</Button>
-          </div>
-        </div>
-      </AppShell>
-    );
-  }
-  if (!gate.data?.isAdminWallet) {
-    return (
-      <AppShell>
-        <div className="mx-auto max-w-md px-4 py-16">
-          <div className="glass-strong rounded-3xl p-8 text-center">
-            <Shield className="mx-auto h-8 w-8 text-destructive" />
-            <h1 className="mt-3 font-display text-xl font-bold">{t("admin.forbidden")}</h1>
-            <p className="mt-2 text-sm text-muted-foreground">Admin access is restricted to the configured admin wallet.</p>
-            <p className="mt-3 break-all font-mono text-xs text-muted-foreground">
-              Signed in as: {gate.data?.caller || "—"}<br />
-              Admin wallet: {gate.data?.admin || "—"}
-            </p>
-            <Button variant="outline" className="mt-4" onClick={() => gate.refetch()}>Retry</Button>
-          </div>
-        </div>
-      </AppShell>
-    );
-  }
-
-
-  if (!pinOk) {
-    return (
-      <AppShell>
-        <PinGate hasPin={gate.data.hasPin} onPass={() => { sessionStorage.setItem(PIN_KEY, "1"); setPinOk(true); }} />
-      </AppShell>
-    );
-  }
-
-  return <AppShell><AdminBody /></AppShell>;
+function Card({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="mx-auto max-w-md px-4 py-16">
+      <div className="glass-strong rounded-3xl p-8">{children}</div>
+    </div>
+  );
 }
 
-function PinGate({ hasPin, onPass }: { hasPin: boolean; onPass: () => void }) {
-  const [pin, setPin] = useState("");
-  const [busy, setBusy] = useState(false);
-  const setPinFn = useServerFn(setAdminPin);
-  const verifyFn = useServerFn(verifyAdminPin);
+function AdminPage() {
+  const status = useServerFn(adminAuthStatus);
+  const q = useQuery({ queryKey: ["admin-auth-status"], queryFn: () => status(), retry: false });
+  const resetToken = useMemo(() => {
+    if (typeof window === "undefined") return null;
+    return new URLSearchParams(window.location.search).get("reset");
+  }, []);
 
-  async function submit() {
-    if (!/^\d{6}$/.test(pin)) { toast.error("PIN must be 6 digits"); return; }
-    setBusy(true);
-    try {
-      if (!hasPin) {
-        await setPinFn({ data: { pin } });
-        toast.success("PIN set");
-      } else {
-        const r = await verifyFn({ data: { pin } });
-        if (!r.ok) { toast.error("Wrong PIN"); return; }
-      }
-      onPass();
-    } catch (e) { toast.error((e as Error).message); } finally { setBusy(false); }
+  if (q.isLoading) return <AppShell><div className="p-12 text-center text-muted-foreground">…</div></AppShell>;
+
+  if (q.error) {
+    return (
+      <AppShell>
+        <Card>
+          <div className="text-center">
+            <Shield className="mx-auto h-8 w-8 text-destructive" />
+            <h1 className="mt-3 font-display text-xl font-bold">Admin backend no disponible</h1>
+            <p className="mt-2 break-words text-sm text-muted-foreground">{(q.error as Error).message}</p>
+            <Button variant="outline" className="mt-4" onClick={() => q.refetch()}>Reintentar</Button>
+          </div>
+        </Card>
+      </AppShell>
+    );
+  }
+
+  const d = q.data!;
+  if (resetToken) return <AppShell><ResetPassword token={resetToken} onDone={() => q.refetch()} /></AppShell>;
+  if (d.setupRequired) {
+    return (
+      <AppShell>
+        <Card>
+          <div className="text-center">
+            <Shield className="mx-auto h-8 w-8 text-accent" />
+            <h1 className="mt-3 font-display text-xl font-bold">Falta aplicar el SQL de admin</h1>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Ejecuta <code className="font-mono">docs/SQL_ADMIN_AUTH.md</code> en el editor SQL de Supabase y recarga.
+            </p>
+            <Button variant="outline" className="mt-4" onClick={() => q.refetch()}>Reintentar</Button>
+          </div>
+        </Card>
+      </AppShell>
+    );
+  }
+  if (d.needsBootstrap) return <AppShell><Bootstrap onDone={() => q.refetch()} /></AppShell>;
+  if (!d.stage) return <AppShell><LoginForm emailConfigured={d.emailConfigured} onDone={() => q.refetch()} /></AppShell>;
+  if (d.stage === "totp") return <AppShell><TotpStep onDone={() => q.refetch()} /></AppShell>;
+  if (d.stage === "password") return <AppShell><PinStep onDone={() => q.refetch()} /></AppShell>;
+
+  return (
+    <AppShell>
+      <AdminBody
+        csrf={d.csrf!}
+        username={d.username!}
+        email={d.email!}
+        totpEnabled={d.totpEnabled}
+        onSignedOut={() => q.refetch()}
+      />
+    </AppShell>
+  );
+}
+
+/* --------------------------------- screens -------------------------------- */
+
+function Bootstrap({ onDone }: { onDone: () => void }) {
+  const fn = useServerFn(adminBootstrap);
+  const [v, setV] = useState({ username: "", email: "", password: "", pin: "" });
+  const [busy, setBusy] = useState(false);
+  return (
+    <Card>
+      <div className="text-center">
+        <KeyRound className="mx-auto h-8 w-8 text-accent" />
+        <h1 className="mt-3 font-display text-xl font-bold">Crear cuenta de administrador</h1>
+        <p className="mt-2 text-sm text-muted-foreground">Primera ejecución: define tus credenciales del panel.</p>
+      </div>
+      <div className="mt-6 space-y-4">
+        <Field label="Usuario" value={v.username} onChange={(x) => setV({ ...v, username: x })} />
+        <Field label="Correo" type="email" value={v.email} onChange={(x) => setV({ ...v, email: x })} />
+        <Field label="Contraseña (mín. 10 caracteres)" type="password" value={v.password} onChange={(x) => setV({ ...v, password: x })} />
+        <Field label="PIN (6 dígitos)" value={v.pin} onChange={(x) => setV({ ...v, pin: x.replace(/\D/g, "").slice(0, 6) })} mono />
+      </div>
+      <Button
+        className="mt-6 w-full brand-gradient text-primary-foreground glow-primary"
+        disabled={busy}
+        onClick={async () => {
+          setBusy(true);
+          try { await fn({ data: v }); toast.success("Cuenta creada"); onDone(); }
+          catch (e) { toast.error((e as Error).message); } finally { setBusy(false); }
+        }}
+      >{busy ? "…" : "Crear cuenta"}</Button>
+    </Card>
+  );
+}
+
+function LoginForm({ emailConfigured, onDone }: { emailConfigured: boolean; onDone: () => void }) {
+  const login = useServerFn(adminLogin);
+  const reset = useServerFn(adminRequestPasswordReset);
+  const [identifier, setIdentifier] = useState("");
+  const [password, setPassword] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [forgot, setForgot] = useState(false);
+  const [email, setEmail] = useState("");
+
+  if (forgot) {
+    return (
+      <Card>
+        <h1 className="text-center font-display text-xl font-bold">Recuperar contraseña</h1>
+        <p className="mt-2 text-center text-sm text-muted-foreground">
+          {emailConfigured ? "Te enviaremos un enlace de recuperación." : "Configura RESEND_API_KEY para el envío de correos."}
+        </p>
+        <div className="mt-6"><Field label="Correo" type="email" value={email} onChange={setEmail} /></div>
+        <Button
+          className="mt-6 w-full brand-gradient text-primary-foreground"
+          disabled={busy}
+          onClick={async () => {
+            setBusy(true);
+            try {
+              const r = await reset({ data: { email } });
+              toast[r.delivered ? "success" : "message"](
+                r.delivered ? "Enlace enviado a tu correo" : "Si el correo existe, se envió un enlace (revisa la configuración de email).",
+              );
+              setForgot(false);
+            } catch (e) { toast.error((e as Error).message); } finally { setBusy(false); }
+          }}
+        >{busy ? "…" : "Enviar enlace"}</Button>
+        <Button variant="ghost" className="mt-2 w-full" onClick={() => setForgot(false)}>Volver</Button>
+      </Card>
+    );
   }
 
   return (
-    <div className="mx-auto max-w-md px-4 py-16">
-      <div className="glass-strong rounded-3xl p-8 text-center">
+    <Card>
+      <div className="text-center">
         <Lock className="mx-auto h-8 w-8 text-accent" />
-        <h1 className="mt-3 font-display text-xl font-bold">{hasPin ? "Enter admin PIN" : "Set your admin PIN"}</h1>
-        <p className="mt-2 text-sm text-muted-foreground">6-digit second factor. Your wallet signature already authorized this session.</p>
+        <h1 className="mt-3 font-display text-xl font-bold">Acceso administrador</h1>
+        <p className="mt-2 text-sm text-muted-foreground">Usuario o correo y contraseña.</p>
+      </div>
+      <form
+        className="mt-6 space-y-4"
+        onSubmit={async (e) => {
+          e.preventDefault();
+          setBusy(true);
+          try { await login({ data: { identifier, password } }); onDone(); }
+          catch (err) { toast.error((err as Error).message); } finally { setBusy(false); }
+        }}
+      >
+        <Field label="Usuario o correo" value={identifier} onChange={setIdentifier} autoComplete="username" />
+        <Field label="Contraseña" type="password" value={password} onChange={setPassword} autoComplete="current-password" />
+        <Button type="submit" disabled={busy} className="w-full brand-gradient text-primary-foreground glow-primary">
+          {busy ? "…" : "Entrar"}
+        </Button>
+      </form>
+      <Button variant="ghost" className="mt-2 w-full text-xs" onClick={() => setForgot(true)}>¿Olvidaste tu contraseña?</Button>
+    </Card>
+  );
+}
+
+function CodeStep({ title, subtitle, label, onSubmit }: { title: string; subtitle: string; label: string; onSubmit: (code: string) => Promise<void> }) {
+  const [code, setCode] = useState("");
+  const [busy, setBusy] = useState(false);
+  return (
+    <Card>
+      <div className="text-center">
+        <Lock className="mx-auto h-8 w-8 text-accent" />
+        <h1 className="mt-3 font-display text-xl font-bold">{title}</h1>
+        <p className="mt-2 text-sm text-muted-foreground">{subtitle}</p>
         <div className="mt-6 flex justify-center">
           <Input
             inputMode="numeric"
             maxLength={6}
-            value={pin}
-            onChange={(e) => setPin(e.target.value.replace(/\D/g, ""))}
-            className="w-40 text-center font-mono text-2xl tracking-[0.5em]"
-            placeholder="••••••"
+            aria-label={label}
+            value={code}
+            onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
+            className="w-44 text-center font-mono text-2xl tracking-[0.4em]"
+            placeholder="000000"
           />
         </div>
-        <Button onClick={submit} disabled={busy} className="mt-6 brand-gradient text-primary-foreground glow-primary">
-          {busy ? "…" : hasPin ? "Unlock" : "Set PIN"}
-        </Button>
+        <Button
+          className="mt-6 brand-gradient text-primary-foreground glow-primary"
+          disabled={busy}
+          onClick={async () => {
+            if (!/^\d{6}$/.test(code)) { toast.error("Debe tener 6 dígitos"); return; }
+            setBusy(true);
+            try { await onSubmit(code); } catch (e) { toast.error((e as Error).message); } finally { setBusy(false); }
+          }}
+        >{busy ? "…" : "Continuar"}</Button>
       </div>
+    </Card>
+  );
+}
+
+function TotpStep({ onDone }: { onDone: () => void }) {
+  const fn = useServerFn(adminVerifyTotpStep);
+  return (
+    <CodeStep
+      title="Verificación en dos pasos"
+      subtitle="Introduce el código de Google Authenticator."
+      label="Código 2FA"
+      onSubmit={async (code) => { await fn({ data: { code } }); onDone(); }}
+    />
+  );
+}
+
+function PinStep({ onDone }: { onDone: () => void }) {
+  const fn = useServerFn(adminVerifyPinStep);
+  return (
+    <CodeStep
+      title="PIN de administrador"
+      subtitle="Segundo factor obligatorio de 6 dígitos."
+      label="PIN"
+      onSubmit={async (pin) => { await fn({ data: { pin } }); onDone(); }}
+    />
+  );
+}
+
+function ResetPassword({ token, onDone }: { token: string; onDone: () => void }) {
+  const fn = useServerFn(adminResetPassword);
+  const [password, setPassword] = useState("");
+  const [pin, setPin] = useState("");
+  const [busy, setBusy] = useState(false);
+  return (
+    <Card>
+      <h1 className="text-center font-display text-xl font-bold">Nueva contraseña</h1>
+      <div className="mt-6 space-y-4">
+        <Field label="Contraseña nueva (mín. 10)" type="password" value={password} onChange={setPassword} />
+        <Field label="PIN nuevo (6 dígitos)" value={pin} onChange={(x) => setPin(x.replace(/\D/g, "").slice(0, 6))} mono />
+      </div>
+      <Button
+        className="mt-6 w-full brand-gradient text-primary-foreground"
+        disabled={busy}
+        onClick={async () => {
+          setBusy(true);
+          try {
+            await fn({ data: { token, password, pin } });
+            toast.success("Contraseña actualizada");
+            window.location.replace("/admin");
+            onDone();
+          } catch (e) { toast.error((e as Error).message); } finally { setBusy(false); }
+        }}
+      >{busy ? "…" : "Guardar"}</Button>
+    </Card>
+  );
+}
+
+function Field({
+  label, value, onChange, type = "text", mono, autoComplete,
+}: { label: string; value: string; onChange: (v: string) => void; type?: string; mono?: boolean; autoComplete?: string }) {
+  return (
+    <div>
+      <Label className="text-xs uppercase tracking-widest text-muted-foreground">{label}</Label>
+      <Input
+        type={type}
+        value={value}
+        autoComplete={autoComplete}
+        onChange={(e) => onChange(e.target.value)}
+        className={mono ? "font-mono" : ""}
+      />
     </div>
   );
 }
 
-function AdminBody() {
+/* ---------------------------------- panel --------------------------------- */
+
+function AdminBody({
+  csrf, username, email, totpEnabled, onSignedOut,
+}: { csrf: string; username: string; email: string; totpEnabled: boolean; onSignedOut: () => void }) {
   const { t } = useI18n();
   const loadCfg = useServerFn(getAdminConfig);
-  const cfgQ = useQuery({
-    queryKey: ["admin-config"],
-    queryFn: () => loadCfg(),
-  });
+  const logout = useServerFn(adminLogout);
+  const cfgQ = useQuery({ queryKey: ["admin-config"], queryFn: () => loadCfg({ data: { csrf } }) });
 
   return (
     <div className="mx-auto max-w-5xl px-4 md:px-6 py-12">
-      <div className="flex items-center gap-3 mb-8">
+      <div className="mb-8 flex flex-wrap items-center gap-3">
         <div className="h-11 w-11 rounded-xl brand-gradient grid place-items-center glow-primary">
           <Shield className="h-5 w-5 text-primary-foreground" />
         </div>
         <h1 className="font-display text-3xl font-bold">{t("admin.title")}</h1>
+        <span className="ml-auto text-sm text-muted-foreground">{username}</span>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={async () => { await logout(); onSignedOut(); }}
+        >
+          <LogOut className="mr-2 h-4 w-4" /> Salir
+        </Button>
       </div>
-      <ConfigEditor cfg={cfgQ.data ?? {}} onSaved={() => cfgQ.refetch()} />
+
+      <Tabs defaultValue="config">
+        <TabsList>
+          <TabsTrigger value="config"><Settings2 className="mr-2 h-4 w-4" />Configuración</TabsTrigger>
+          <TabsTrigger value="account"><KeyRound className="mr-2 h-4 w-4" />Cuenta y seguridad</TabsTrigger>
+          <TabsTrigger value="audit"><ScrollText className="mr-2 h-4 w-4" />Auditoría</TabsTrigger>
+        </TabsList>
+        <TabsContent value="config" className="mt-6">
+          <ConfigEditor csrf={csrf} cfg={cfgQ.data ?? {}} onSaved={() => cfgQ.refetch()} />
+        </TabsContent>
+        <TabsContent value="account" className="mt-6">
+          <AccountSettings csrf={csrf} username={username} email={email} totpEnabled={totpEnabled} onChanged={onSignedOut} />
+        </TabsContent>
+        <TabsContent value="audit" className="mt-6">
+          <AuditLog csrf={csrf} />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
 
+function AccountSettings({
+  csrf, username, email, totpEnabled, onChanged,
+}: { csrf: string; username: string; email: string; totpEnabled: boolean; onChanged: () => void }) {
+  const update = useServerFn(adminUpdateCredentials);
+  const startTotp = useServerFn(adminStartTotp);
+  const setTotp = useServerFn(adminSetTotpEnabled);
+  const [v, setV] = useState({ currentPassword: "", username, email, newPassword: "", newPin: "" });
+  const [busy, setBusy] = useState(false);
+  const [secret, setSecret] = useState<{ secret: string; uri: string } | null>(null);
+  const [code, setCode] = useState("");
+
+  return (
+    <div className="space-y-6">
+      <div className="glass-strong rounded-3xl p-6">
+        <h2 className="mb-4 font-display text-lg font-semibold">Cambiar usuario, contraseña y PIN</h2>
+        <div className="grid gap-5 md:grid-cols-2">
+          <Field label="Contraseña actual" type="password" value={v.currentPassword} onChange={(x) => setV({ ...v, currentPassword: x })} />
+          <div />
+          <Field label="Usuario" value={v.username} onChange={(x) => setV({ ...v, username: x })} />
+          <Field label="Correo" type="email" value={v.email} onChange={(x) => setV({ ...v, email: x })} />
+          <Field label="Nueva contraseña (opcional)" type="password" value={v.newPassword} onChange={(x) => setV({ ...v, newPassword: x })} />
+          <Field label="Nuevo PIN (opcional)" value={v.newPin} onChange={(x) => setV({ ...v, newPin: x.replace(/\D/g, "").slice(0, 6) })} mono />
+        </div>
+        <div className="mt-5 flex justify-end">
+          <Button
+            disabled={busy}
+            className="brand-gradient text-primary-foreground"
+            onClick={async () => {
+              setBusy(true);
+              try {
+                const r = await update({
+                  data: {
+                    csrf,
+                    currentPassword: v.currentPassword,
+                    username: v.username !== username ? v.username : undefined,
+                    email: v.email !== email ? v.email : undefined,
+                    newPassword: v.newPassword || undefined,
+                    newPin: v.newPin || undefined,
+                  },
+                });
+                toast.success(r.signedOut ? "Actualizado. Vuelve a iniciar sesión." : "Actualizado");
+                onChanged();
+              } catch (e) { toast.error((e as Error).message); } finally { setBusy(false); }
+            }}
+          >{busy ? "…" : "Guardar cambios"}</Button>
+        </div>
+      </div>
+
+      <div className="glass-strong rounded-3xl p-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="font-display text-lg font-semibold">Autenticación en dos pasos (Google Authenticator)</h2>
+            <p className="text-sm text-muted-foreground">{totpEnabled ? "Activada" : "Desactivada"}</p>
+          </div>
+          <Button
+            variant="outline"
+            onClick={async () => {
+              try { setSecret(await startTotp({ data: { csrf } })); }
+              catch (e) { toast.error((e as Error).message); }
+            }}
+          >{totpEnabled ? "Regenerar secreto" : "Generar secreto"}</Button>
+        </div>
+        {secret && (
+          <div className="mt-4 space-y-3">
+            <p className="break-all font-mono text-xs text-muted-foreground">{secret.secret}</p>
+            <p className="break-all text-[11px] text-muted-foreground">{secret.uri}</p>
+          </div>
+        )}
+        <div className="mt-4 flex flex-wrap items-end gap-3">
+          <div className="w-40">
+            <Field label="Código actual" value={code} onChange={(x) => setCode(x.replace(/\D/g, "").slice(0, 6))} mono />
+          </div>
+          <Button
+            variant="outline"
+            onClick={async () => {
+              try {
+                const r = await setTotp({ data: { csrf, enabled: !totpEnabled, code } });
+                toast.success(r.enabled ? "2FA activada" : "2FA desactivada");
+                onChanged();
+              } catch (e) { toast.error((e as Error).message); }
+            }}
+          >{totpEnabled ? "Desactivar 2FA" : "Activar 2FA"}</Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function AuditLog({ csrf }: { csrf: string }) {
+  const fn = useServerFn(adminAuditLog);
+  const q = useQuery({ queryKey: ["admin-audit"], queryFn: () => fn({ data: { csrf } }) });
+  return (
+    <div className="glass-strong overflow-x-auto rounded-3xl p-6">
+      <h2 className="mb-4 font-display text-lg font-semibold">Registro de auditoría</h2>
+      <table className="w-full text-left text-sm">
+        <thead className="text-xs uppercase tracking-widest text-muted-foreground">
+          <tr><th className="py-2">Fecha</th><th>Acción</th><th>IP</th><th>Navegador</th></tr>
+        </thead>
+        <tbody>
+          {(q.data ?? []).map((r) => (
+            <tr key={r.id} className="border-t border-white/5">
+              <td className="py-2 whitespace-nowrap">{new Date(r.created_at).toLocaleString()}</td>
+              <td className="font-mono text-xs">{r.action}</td>
+              <td className="font-mono text-xs">{r.ip}</td>
+              <td className="max-w-[220px] truncate text-xs text-muted-foreground">{r.user_agent}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      {q.data && q.data.length === 0 && <p className="text-sm text-muted-foreground">Sin eventos todavía.</p>}
+    </div>
+  );
+}
+
+/* --------------------------------- config --------------------------------- */
+
 type FieldSpec = { key: string; label: string; type?: "text" | "number" | "bool"; help?: string; mono?: boolean };
 
 const CONTRACT_FIELDS: FieldSpec[] = [
-  { key: "factory_address", label: "Factory address", mono: true, help: "Set once the Factory is deployed on-chain." },
+  { key: "factory_address", label: "Factory address", mono: true, help: "LabsBNBFactory desplegado en BNB Chain." },
   { key: "chain_id", label: "Chain ID", type: "number", help: "56 = BSC Mainnet, 97 = BSC Testnet" },
   { key: "rpc_url", label: "RPC URL", mono: true },
 ];
@@ -219,7 +533,12 @@ const ANTIBOT_FIELDS: FieldSpec[] = [
   { key: "antibot_anti_flashloan", label: "Anti-flashloan", type: "bool" },
 ];
 
-function ConfigEditor({ cfg, onSaved }: { cfg: Record<string, unknown>; onSaved: () => void }) {
+const ALL_FIELDS = [
+  ...CONTRACT_FIELDS, ...FEE_FIELDS, ...CURVE_FIELDS, ...ADVANCED_FIELDS,
+  ...MISSIONS_FIELDS, ...ADMIN_FIELDS, ...ANTIBOT_FIELDS,
+];
+
+function ConfigEditor({ csrf, cfg, onSaved }: { csrf: string; cfg: Record<string, unknown>; onSaved: () => void }) {
   const { t } = useI18n();
   const saveFn = useServerFn(saveAdminConfig);
   const [values, setValues] = useState<Record<string, string>>({});
@@ -227,7 +546,7 @@ function ConfigEditor({ cfg, onSaved }: { cfg: Record<string, unknown>; onSaved:
 
   useEffect(() => {
     const v: Record<string, string> = {};
-    for (const f of [...CONTRACT_FIELDS, ...FEE_FIELDS, ...CURVE_FIELDS, ...ADVANCED_FIELDS, ...MISSIONS_FIELDS, ...ADMIN_FIELDS, ...ANTIBOT_FIELDS]) {
+    for (const f of ALL_FIELDS) {
       const raw = cfg[f.key];
       v[f.key] = raw == null ? "" : typeof raw === "string" ? raw : String(raw);
     }
@@ -237,14 +556,14 @@ function ConfigEditor({ cfg, onSaved }: { cfg: Record<string, unknown>; onSaved:
   async function save() {
     setBusy(true);
     try {
-      const entries = [...CONTRACT_FIELDS, ...FEE_FIELDS, ...CURVE_FIELDS, ...ADVANCED_FIELDS, ...MISSIONS_FIELDS, ...ADMIN_FIELDS, ...ANTIBOT_FIELDS].map((f) => {
+      const entries = ALL_FIELDS.map((f) => {
         let value: number | string | boolean | null = values[f.key];
         if (f.type === "bool") value = values[f.key] === "true";
         else if (value === "" || value == null) value = null;
         else if (f.type === "number") value = Number(value);
         return { key: f.key, value, is_public: true };
       });
-      await saveFn({ data: { entries } });
+      await saveFn({ data: { csrf, entries } });
       toast.success("Saved");
       onSaved();
     } catch (e) {
