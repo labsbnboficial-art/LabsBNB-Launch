@@ -302,12 +302,12 @@ export const adminAuditLog = createServerFn({ method: "POST" })
       .order("created_at", { ascending: false })
       .limit(100);
     if (error) throw new Error(error.message);
-    return (rows ?? []) as {
-      id: string;
-      action: string;
-      ip: string | null;
-      user_agent: string | null;
-      meta: unknown;
-      created_at: string;
-    }[];
+    return ((rows ?? []) as Record<string, unknown>[]).map((r) => ({
+      id: String(r.id),
+      action: String(r.action),
+      ip: r.ip ? String(r.ip) : "",
+      user_agent: r.user_agent ? String(r.user_agent) : "",
+      meta: r.meta ? JSON.stringify(r.meta) : "",
+      created_at: String(r.created_at),
+    }));
   });
