@@ -65,7 +65,7 @@ function AdminPage() {
           <div className="text-center">
             <Shield className="mx-auto h-8 w-8 text-destructive" />
             <h1 className="mt-3 font-display text-xl font-bold">Admin backend no disponible</h1>
-            <p className="mt-2 break-words text-sm text-muted-foreground">{(q.error as Error).message}</p>
+            <p className="mt-2 break-words text-sm text-muted-foreground">{(q.error as Error).message || "No se pudo contactar con el backend de admin. Revisa el secreto LABSBNB_SERVICE_ROLE_KEY y que el SQL de docs/SQL_ADMIN_AUTH.md esté aplicado."}</p>
             <Button variant="outline" className="mt-4" onClick={() => q.refetch()}>Reintentar</Button>
           </div>
         </Card>
