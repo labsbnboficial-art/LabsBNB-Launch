@@ -34,7 +34,7 @@ export type LaunchpadConfig = {
 
 export const DEFAULT_CONFIG: LaunchpadConfig = {
   admin_wallet: "0x60e655Fe39Bc7D17661f226bB44Dcc681cc4e05e",
-  factory_address: null,
+  factory_address: "0x0738dA5824d03fF3E8BDDFd33cdb3728b6d8abD9",
   rpc_url: "https://data-seed-prebsc-1-s1.binance.org:8545",
   chain_id: 97,
   fee_bps: 50,
