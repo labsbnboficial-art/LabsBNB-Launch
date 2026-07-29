@@ -1,11 +1,10 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 /**
- * Config reads/writes go through the server so they don't depend on the
- * `admin_config` RLS policy (which calls `has_role`, a function the anon role
- * cannot execute — that was the 401 "permission denied for function has_role").
+ * Config reads/writes go through the server so they don't depend on RLS.
+ * Admin writes are gated by the username/password + PIN admin session
+ * (see src/lib/admin-auth.server.ts) — no wallet signature involved.
  */
 
 function toScalar(v: unknown): string | number | boolean | null {
@@ -22,31 +21,32 @@ export const getPublicConfig = createServerFn({ method: "GET" }).handler(async (
     .eq("is_public", true);
   if (error) throw new Error(error.message);
   const map: Record<string, string | number | boolean | null> = {};
-  (data ?? []).forEach((r) => { map[r.key] = toScalar(r.value); });
+  (data ?? []).forEach((r: { key: string; value: unknown }) => { map[r.key] = toScalar(r.value); });
   return map;
 });
 
-async function assertAdmin(userId: string) {
+async function adminGate(csrf: string) {
   const m = await import("@/lib/admin-auth.server");
-  return m.assertAdmin(userId);
+  await m.requireAdmin(csrf);
+  const { adminClient } = await import("@/integrations/supabase/admin.server");
+  return adminClient;
 }
 
-
-export const getAdminConfig = createServerFn({ method: "GET" })
-  .middleware([requireSupabaseAuth])
-  .handler(async ({ context }) => {
-    const admin = await assertAdmin(context.userId);
-    const { data, error } = await admin.from("admin_config").select("key,value").neq("key", "admin_pin_hash");
+export const getAdminConfig = createServerFn({ method: "POST" })
+  .inputValidator((data: { csrf: string }) => z.object({ csrf: z.string().min(10) }).parse(data))
+  .handler(async ({ data }) => {
+    const admin = await adminGate(data.csrf);
+    const { data: rows, error } = await admin.from("admin_config").select("key,value");
     if (error) throw new Error(error.message);
     const map: Record<string, string | number | boolean | null> = {};
-    (data ?? []).forEach((r) => { map[r.key] = toScalar(r.value); });
+    (rows ?? []).forEach((r: { key: string; value: unknown }) => { map[r.key] = toScalar(r.value); });
     return map;
   });
 
 export const saveAdminConfig = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .inputValidator((data: { entries: { key: string; value: unknown; is_public?: boolean }[] }) =>
+  .inputValidator((data: { csrf: string; entries: { key: string; value: unknown; is_public?: boolean }[] }) =>
     z.object({
+      csrf: z.string().min(10),
       entries: z.array(
         z.object({
           key: z.string().min(1).max(64).regex(/^[a-z0-9_]+$/),
@@ -56,14 +56,15 @@ export const saveAdminConfig = createServerFn({ method: "POST" })
       ).max(100),
     }).parse(data),
   )
-  .handler(async ({ data, context }) => {
-    const admin = await assertAdmin(context.userId);
+  .handler(async ({ data }) => {
+    const admin = await adminGate(data.csrf);
     for (const e of data.entries) {
-      if (e.key === "admin_pin_hash") continue;
       const { error } = await admin
         .from("admin_config")
         .upsert({ key: e.key, value: e.value as never, is_public: e.is_public ?? true }, { onConflict: "key" });
       if (error) throw new Error(error.message);
     }
+    const m = await import("@/lib/admin-auth.server");
+    await m.audit("admin.config.saved", null, { keys: data.entries.map((e) => e.key) });
     return { ok: true, saved: data.entries.length };
   });
