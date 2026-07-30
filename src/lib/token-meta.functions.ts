@@ -43,7 +43,10 @@ export const updateTokenMeta = createServerFn({ method: "POST" })
       patch[k] = v == null || v === "" ? null : String(v);
     }
 
-    const { error } = await supabaseAdmin.from("tokens").update(patch).eq("id", tokenId);
+    const { error } = await supabaseAdmin
+      .from("tokens")
+      .update(patch as never)
+      .eq("id", tokenId);
     if (error) throw new Error(error.message);
     return { ok: true };
   });
