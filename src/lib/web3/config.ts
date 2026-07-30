@@ -18,8 +18,11 @@ const appMeta = {
   icons: ["https://labsbnb.app/favicon.ico"],
 };
 
+/** Testing phase: BNB Smart Chain Testnet (97) is the default/primary chain. */
+export const BSC_TESTNET_RPC = "https://data-seed-prebsc-1-s1.binance.org:8545";
+
 export const web3Config = createConfig({
-  chains: [bsc, bscTestnet],
+  chains: [bscTestnet, bsc],
   connectors: [
     walletConnect({
       projectId: WC_PROJECT_ID,
@@ -30,11 +33,13 @@ export const web3Config = createConfig({
     coinbaseWallet({ appName: appMeta.name }),
   ],
   transports: {
+    [bscTestnet.id]: http(BSC_TESTNET_RPC),
     [bsc.id]: http("https://bsc-dataseed.bnbchain.org"),
-    [bscTestnet.id]: http("https://data-seed-prebsc-1-s1.binance.org:8545"),
   },
   ssr: true,
 });
 
-export const BSC_CHAIN_ID = bsc.id;
 export const BSC_TESTNET_CHAIN_ID = bscTestnet.id;
+/** Active chain for the whole app during the testing phase. */
+export const ACTIVE_CHAIN_ID = bscTestnet.id;
+export const BSC_CHAIN_ID = bscTestnet.id;
