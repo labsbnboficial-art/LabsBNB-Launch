@@ -70,9 +70,11 @@ export function TradePanel({
   curveAddress?: string | null;
 }) {
   const { t } = useI18n();
+  const queryClient = useQueryClient();
   const { address: wallet, chainId } = useAccount();
   const { switchChainAsync } = useSwitchChain();
   const { writeContractAsync } = useWriteContract();
+
 
   const [side, setSide] = useState<"buy" | "sell">("buy");
   const [amount, setAmount] = useState("");
