@@ -26,9 +26,6 @@ import {
   adminAuditLog,
 } from "@/lib/admin-account.functions";
 import { getAdminConfig, saveAdminConfig } from "@/lib/config.functions";
-import { adminGoogleLogin } from "@/lib/admin-google.functions";
-import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/lib/auth";
 
 export const Route = createFileRoute("/admin")({
   head: () => ({
