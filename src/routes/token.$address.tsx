@@ -60,22 +60,6 @@ function TokenPage() {
   const dbRow = tokenQ.data?.row as any;
   const chain = tokenQ.data?.chain ?? null;
 
-  const tradesQ = useQuery({
-    queryKey: ["trades", dbRow?.id],
-    enabled: !!dbRow?.id,
-    refetchInterval: 15_000,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("trades")
-        .select("*")
-        .eq("token_id", dbRow.id)
-        .order("created_at", { ascending: false })
-        .limit(200);
-      if (error) throw error;
-      return data ?? [];
-    },
-  });
-
   const commentsQ = useQuery({
     queryKey: ["comments", dbRow?.id],
     enabled: !!dbRow?.id,
@@ -90,24 +74,6 @@ function TokenPage() {
     },
   });
 
-  const analytics = useMemo(() => {
-    const list = tradesQ.data ?? [];
-    if (!list.length) {
-      return chain
-        ? { holders: chain.holders, volume24h: Number(BigInt(chain.volume24hWei)) / 1e18, priceChange: 0, buys: 0, sells: 0 }
-        : { holders: 0, volume24h: 0, priceChange: 0, buys: 0, sells: 0 };
-    }
-    const holders = new Set(list.map((t) => t.wallet_address.toLowerCase())).size;
-    const now = Date.now();
-    const dayCut = now - 24 * 3600_000;
-    const vol24 = list.filter((t) => new Date(t.created_at).getTime() >= dayCut).reduce((s, t) => s + Number(t.amount_bnb) / 1e18, 0);
-    const buys = list.filter((t) => t.side === "buy").length;
-    const sells = list.length - buys;
-    const priceNow = Number(list[0]?.price ?? 0);
-    const priceThen = Number(list.find((t) => new Date(t.created_at).getTime() < dayCut)?.price ?? priceNow);
-    const priceChange = priceThen > 0 ? ((priceNow - priceThen) / priceThen) * 100 : 0;
-    return { holders, volume24h: vol24, priceChange, buys, sells };
-  }, [tradesQ.data, chain]);
 
   if (tokenQ.isLoading) {
     return <AppShell><div className="max-w-6xl mx-auto px-6 py-16"><div className="glass rounded-2xl p-10 animate-pulse h-64" /></div></AppShell>;
