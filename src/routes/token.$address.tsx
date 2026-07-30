@@ -16,6 +16,9 @@ import { fetchTradePage, fetchCurveStats, buildCandles, TIMEFRAMES, type Timefra
 import { BSC_TESTNET } from "@/lib/web3/abis";
 import { CandleChart } from "@/components/labsbnb/CandleChart";
 import { TradePanel } from "@/components/labsbnb/TradePanel";
+import { useServerFn } from "@tanstack/react-start";
+import { ensureTokenRow } from "@/lib/tokens.functions";
+
 
 
 
