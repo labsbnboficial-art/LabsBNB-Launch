@@ -361,6 +361,29 @@ function CreatePage() {
                       </a>
                     </div>
                   )}
+                  {deployedCurve && (
+                    <div>
+                      <span className="text-muted-foreground">Bonding curve: </span>
+                      <a
+                        className="font-mono underline break-all"
+                        href={`https://testnet.bscscan.com/address/${deployedCurve}`}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        {deployedCurve}
+                      </a>
+                    </div>
+                  )}
+                  {deployedToken && (
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      className="mt-2"
+                      onClick={() => navigate({ to: "/token/$address", params: { address: deployedToken } })}
+                    >
+                      Open token page
+                    </Button>
+                  )}
                 </div>
               )}
             </div>
