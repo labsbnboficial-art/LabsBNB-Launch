@@ -307,14 +307,49 @@ function TokenPage() {
 
 
 
+        {/* Live price */}
+        <div className="mt-6 glass-strong rounded-2xl p-5 flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-2 text-[11px] uppercase tracking-widest text-muted-foreground">
+              <span className={`h-1.5 w-1.5 rounded-full ${liveQ.isFetching ? "bg-accent" : "bg-success"} animate-pulse`} />
+              Precio en vivo
+              <span className="rounded-full bg-white/5 px-2 py-0.5 normal-case tracking-normal">
+                {live?.source === "pancake" ? "PancakeSwap" : "Bonding curve"}
+              </span>
+            </div>
+            <div className="mt-1 font-display text-3xl font-bold font-mono tabular-nums">
+              {live ? `${formatPrice(live.priceWei)} BNB` : "—"}
+            </div>
+            <div className={`mt-0.5 text-xs font-mono ${analytics.priceChange >= 0 ? "text-success" : "text-destructive"}`}>
+              {analytics.priceChange >= 0 ? "+" : ""}
+              {analytics.priceChange.toFixed(2)}% 24h
+            </div>
+          </div>
+          <div className="text-right text-xs text-muted-foreground">
+            <div>Market cap · <span className="font-mono text-foreground">{marketCapBnb != null ? `${marketCapBnb.toFixed(4)} BNB` : "—"}</span></div>
+            <div>Liquidez · <span className="font-mono text-foreground">{liquidityBnb != null ? `${liquidityBnb.toFixed(4)} BNB` : "—"}</span></div>
+            {live?.migrated && live.pair && (
+              <a
+                className="mt-1 inline-flex items-center gap-1 hover:text-foreground"
+                href={`${BSC_TESTNET.explorer}/address/${live.pair}`}
+                target="_blank"
+                rel="noreferrer"
+              >
+                Par PancakeSwap <ExternalLink className="h-3 w-3" />
+              </a>
+            )}
+          </div>
+        </div>
+
         {/* Analytics strip */}
-        <div className="mt-6 grid grid-cols-2 md:grid-cols-5 gap-3">
+        <div className="mt-4 grid grid-cols-2 md:grid-cols-5 gap-3">
           <StatCard icon={<TrendingUp className="h-3.5 w-3.5" />} label="24h Volume" value={`${analytics.volume24h.toFixed(3)} BNB`} />
           <StatCard icon={<Users className="h-3.5 w-3.5" />} label="Holders" value={analytics.holders} />
           <StatCard icon={<ArrowLeftRight className="h-3.5 w-3.5" />} label="Buys / Sells" value={`${analytics.buys}/${analytics.sells}`} />
           <StatCard icon={<Flame className="h-3.5 w-3.5" />} label="24h Change" value={`${analytics.priceChange >= 0 ? "+" : ""}${analytics.priceChange.toFixed(2)}%`} accent={analytics.priceChange >= 0 ? "text-success" : "text-destructive"} />
-          <StatCard icon={<Droplets className="h-3.5 w-3.5" />} label="Liquidity" value={curve ? `${(Number(BigInt(curve.real_bnb ?? "0")) / 1e18).toFixed(3)} BNB` : "—"} />
+          <StatCard icon={<Droplets className="h-3.5 w-3.5" />} label="Liquidity" value={liquidityBnb != null ? `${liquidityBnb.toFixed(3)} BNB` : "—"} />
         </div>
+
 
         <div className="mt-6 grid gap-6 lg:grid-cols-3">
           <div className="lg:col-span-2 space-y-6">
