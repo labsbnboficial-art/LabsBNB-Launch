@@ -234,14 +234,17 @@ export async function fetchFactoryTokens(
           ),
         ]);
         if (!name && !ticker) return null;
+        const curveOk = curve && !/^0x0{40}$/.test(curve) ? curve : null;
         return {
           address,
-          curve: curve && !/^0x0{40}$/.test(curve) ? curve : null,
+          curve: curveOk,
           creator,
           name: name || "Unknown token",
           ticker: ticker || "???",
           index,
+          metrics: curveOk ? await fetchCurveMetrics(curveOk) : null,
         } satisfies FactoryToken;
+
       }),
   );
 
