@@ -37,6 +37,13 @@ const step1Schema = z.object({
   description: z.string().trim().max(500).optional().or(z.literal("")),
   logo_url: z.string().url().max(500).optional().or(z.literal("")),
   banner_url: z.string().url().max(500).optional().or(z.literal("")),
+  metadata_uri: z
+    .string()
+    .trim()
+    .max(500)
+    .refine((v) => v === "" || /^(https?:\/\/|ipfs:\/\/)/.test(v), "Use an https:// or ipfs:// URI")
+    .optional()
+    .or(z.literal("")),
   website: z.string().url().max(200).optional().or(z.literal("")),
   telegram: z.string().max(200).optional().or(z.literal("")),
   twitter: z.string().max(200).optional().or(z.literal("")),
