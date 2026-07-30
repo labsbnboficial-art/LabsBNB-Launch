@@ -9,6 +9,8 @@ import { Input } from "@/components/ui/input";
 import { Copy, Share2, ArrowLeftRight, ExternalLink, Users, Flame, Droplets, TrendingUp, MessageSquare } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/lib/auth";
+import { fetchOnChainToken, isAddress, type OnChainToken } from "@/lib/web3/onchain-token";
+
 
 export const Route = createFileRoute("/token/$address")({
   head: ({ params }) => ({
