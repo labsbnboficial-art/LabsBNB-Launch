@@ -121,6 +121,88 @@ function CreatePage() {
     }
   }
 
+  /**
+   * Saves the deployment to the database. Never throws: an on-chain deploy is
+   * final, so a failed save only degrades to a retryable warning state.
+   */
+  async function saveDeployment(
+    tokenAddress: string,
+    curveAddress: string | null,
+    hash: string,
+    metadataURI: string,
+  ) {
+    setSaveError(null);
+    setSaving(true);
+    try {
+      setDeployState("Saving the token profile…");
+      const account = await ensureSession(); // creates the SIWE session if missing
+      const { data, error } = await supabase.from("tokens").insert({
+        creator_id: account.id,
+        name: form.name,
+        ticker: form.ticker.toUpperCase(),
+        description: form.description || null,
+        logo_url: form.logo_url || null,
+        banner_url: form.banner_url || null,
+        website: form.website || null,
+        telegram: form.telegram || null,
+        twitter: form.twitter || null,
+        discord: form.discord || null,
+        github: form.github || null,
+        category: form.category,
+        supply: form.supply,
+        decimals: form.decimals,
+        chain_id: chainId,
+        contract_address: tokenAddress,
+        deploy_tx_hash: hash,
+        status: "active",
+      }).select("id").single();
+      if (error) throw error;
+      await supabase.from("bonding_curves").insert({
+        token_id: data.id,
+        target_bnb: Math.floor(form.target_bnb * 1e18),
+      });
+      await supabase.from("activity").insert({
+        user_id: account.id,
+        token_id: data.id,
+        kind: "deploy",
+        payload: {
+          token_address: tokenAddress,
+          curve_address: curveAddress,
+          factory_address: factory,
+          tx_hash: hash,
+          chain_id: chainId,
+          metadata_uri: metadataURI,
+        },
+      });
+      if (adv.enabled) {
+        await supabase.from("activity").insert({
+          user_id: account.id,
+          token_id: data.id,
+          kind: "advanced_tokenomics",
+          payload: {
+            lp_pct: adv.lp_pct,
+            burn_pct: adv.burn_pct,
+            staking_pct: adv.staking_pct,
+            reward_pct: adv.reward_pct,
+            payment_tx: adv.paid_tx,
+            payment_wallet: cfg?.admin_wallet ?? null,
+            payment_amount_wei: cfg?.advanced_creation_fee_bnb ?? null,
+          },
+        });
+      }
+      setDeployState("Deployed and saved");
+      return true;
+    } catch (saveErr) {
+      console.error(saveErr);
+      setSaveError((saveErr as Error).message);
+      setDeployState("Deployed on-chain (the profile could not be saved)");
+      toast.warning("El token está desplegado on-chain, pero no se pudo guardar el perfil.");
+      return false;
+    } finally {
+      setSaving(false);
+    }
+  }
+
   async function deploy() {
     // SIWE/session only authenticates + enables saving metadata. It never replaces the tx.
     if (!isConnected || !address) { toast.error("Connect your wallet first"); return; }
