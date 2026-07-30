@@ -127,6 +127,7 @@ function RootComponent() {
         <AuthProvider>
           <I18nProvider>
             <Outlet />
+            <Toaster position="top-right" richColors closeButton />
           </I18nProvider>
         </AuthProvider>
       </Web3Provider>
