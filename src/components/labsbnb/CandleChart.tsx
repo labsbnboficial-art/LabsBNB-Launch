@@ -46,13 +46,14 @@ export function CandleChart({ candles }: { candles: Candle[] }) {
     () => candles.map((c) => ({ ...c, hl: [c.low, c.high] as [number, number] })),
     [candles],
   );
-  const domain = useMemo(() => {
-    if (!candles.length) return ["auto", "auto"] as const;
+  const domain = useMemo<[number | "auto", number | "auto"]>(() => {
+    if (!candles.length) return ["auto", "auto"];
     const lo = Math.min(...candles.map((c) => c.low));
     const hi = Math.max(...candles.map((c) => c.high));
     const pad = (hi - lo) * 0.12 || hi * 0.05 || 1;
-    return [Math.max(0, lo - pad), hi + pad] as [number, number];
+    return [Math.max(0, lo - pad), hi + pad];
   }, [candles]);
+
 
   return (
     <div className="space-y-2">
