@@ -4,6 +4,8 @@ import { useI18n } from "@/lib/i18n";
 import { AppShell } from "@/components/labsbnb/AppShell";
 import { useBnbPrice } from "@/lib/web3/useLabsBnbPrice";
 import { supabase } from "@/integrations/supabase/client";
+import { fetchFactoryTokens, type FactoryToken } from "@/lib/web3/onchain-token";
+
 import { Button } from "@/components/ui/button";
 import { ArrowRight, Rocket, Search, Sparkles, TrendingUp, Clock, Flame } from "lucide-react";
 import { useState } from "react";
@@ -43,20 +45,57 @@ function LandingPage() {
   const price = useBnbPrice();
   const [q, setQ] = useState("");
 
-  const tokensQuery = useQuery({
-    queryKey: ["tokens", "latest", q],
+  // 1) Database rows (rich metadata) — 2) Factory `allTokens()` as source of truth.
+  const dbTokens = useQuery({
+    queryKey: ["tokens", "latest"],
+    refetchInterval: 30_000,
     queryFn: async () => {
-      let query = supabase
+      const { data, error } = await supabase
         .from("tokens")
         .select("id,name,ticker,logo_url,contract_address,status,created_at,category")
         .order("created_at", { ascending: false })
-        .limit(12);
-      if (q.trim()) query = query.or(`name.ilike.%${q}%,ticker.ilike.%${q}%,contract_address.ilike.%${q}%`);
-      const { data, error } = await query;
+        .limit(24);
       if (error) throw error;
       return data ?? [];
     },
   });
+
+  const chainTokens = useQuery({
+    queryKey: ["tokens", "onchain"],
+    refetchInterval: 60_000,
+    staleTime: 30_000,
+    queryFn: () => fetchFactoryTokens(24),
+  });
+
+  const merged: TokenRow[] = (() => {
+    const rows = (dbTokens.data ?? []) as TokenRow[];
+    const known = new Set(rows.map((r) => (r.contract_address ?? "").toLowerCase()));
+    const extra: TokenRow[] = ((chainTokens.data ?? []) as FactoryToken[])
+      .filter((c: FactoryToken) => !known.has(c.address.toLowerCase()))
+      .map((c: FactoryToken) => ({
+
+        id: c.address,
+        name: c.name,
+        ticker: c.ticker,
+        logo_url: null,
+        contract_address: c.address,
+        status: "on-chain",
+        created_at: new Date(0).toISOString(),
+        category: null,
+      }));
+    return [...rows, ...extra];
+  })();
+
+  const tokens = merged.filter((tk) => {
+    const needle = q.trim().toLowerCase();
+    if (!needle) return true;
+    return (
+      tk.name.toLowerCase().includes(needle) ||
+      tk.ticker.toLowerCase().includes(needle) ||
+      (tk.contract_address ?? "").toLowerCase().includes(needle)
+    );
+  }).slice(0, 12);
+
 
   const statsQuery = useQuery({
     queryKey: ["landing-stats"],
@@ -122,7 +161,7 @@ function LandingPage() {
             <StatCard label={t("stats.tokensToday")} value={String(s?.todayTokens ?? 0)} />
             <StatCard label={t("stats.tokensLaunched")} value={String(s?.launched ?? 0)} />
             <StatCard label={t("stats.users")} value={String(s?.users ?? 0)} />
-            <StatCard label="Tokens" value={String(s?.totalTokens ?? 0)} />
+            <StatCard label="Tokens" value={String(Math.max(s?.totalTokens ?? 0, merged.length))} />
             <StatCard label={t("stats.liquidity")} value="—" sub="on-chain indexer" />
             <StatCard label={t("stats.marketCap")} value="—" sub="pending index" />
           </div>
@@ -147,8 +186,9 @@ function LandingPage() {
         <TokenGrid
           title={t("section.latest")}
           icon={<Clock className="h-4 w-4" />}
-          tokens={tokensQuery.data ?? []}
-          loading={tokensQuery.isLoading}
+          tokens={tokens}
+          loading={dbTokens.isLoading && chainTokens.isLoading}
+
           emptyLabel={t("empty.noTokens")}
         />
 
