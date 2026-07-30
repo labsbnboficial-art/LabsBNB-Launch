@@ -70,9 +70,10 @@ function LandingPage() {
   const merged: TokenRow[] = (() => {
     const rows = (dbTokens.data ?? []) as TokenRow[];
     const known = new Set(rows.map((r) => (r.contract_address ?? "").toLowerCase()));
-    const extra: TokenRow[] = (chainTokens.data ?? [])
-      .filter((c) => !known.has(c.address.toLowerCase()))
-      .map((c) => ({
+    const extra: TokenRow[] = ((chainTokens.data ?? []) as FactoryToken[])
+      .filter((c: FactoryToken) => !known.has(c.address.toLowerCase()))
+      .map((c: FactoryToken) => ({
+
         id: c.address,
         name: c.name,
         ticker: c.ticker,
