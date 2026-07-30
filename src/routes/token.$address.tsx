@@ -1,5 +1,5 @@
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
-import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
+import { useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { AppShell } from "@/components/labsbnb/AppShell";
@@ -13,6 +13,7 @@ import { useAccount } from "wagmi";
 import { useSiweSignIn } from "@/lib/use-siwe";
 import { fetchOnChainToken, isAddress, type OnChainToken } from "@/lib/web3/onchain-token";
 import { fetchTradePage, fetchCurveStats, buildCandles, TIMEFRAMES, type TimeframeId } from "@/lib/web3/curve-events";
+import { fetchLivePrice, formatPrice } from "@/lib/web3/live-price";
 import { BSC_TESTNET } from "@/lib/web3/abis";
 import { CandleChart } from "@/components/labsbnb/CandleChart";
 import { TradePanel } from "@/components/labsbnb/TradePanel";
@@ -96,6 +97,19 @@ function TokenPage() {
     queryFn: () => fetchCurveStats(curveOk!),
   });
 
+  // Live market price: currentPrice() while the curve is active, PancakeSwap
+  // pair reserves once it graduated. Refreshed every 3s and on tab focus.
+  const liveQ = useQuery({
+    queryKey: ["curveLive", curveOk],
+    enabled: !!curveOk,
+    refetchInterval: 3_000,
+    refetchIntervalInBackground: false,
+    refetchOnWindowFocus: true,
+    staleTime: 0,
+    queryFn: () => fetchLivePrice(curveOk!, (isAddress(address) ? address : (chain?.address ?? null)) as `0x${string}` | null),
+  });
+  const live = liveQ.data ?? null;
+
   const events = useMemo(() => {
     const all = (eventsQ.data?.pages ?? []).flatMap((p) => p.events);
     const seen = new Set<string>();
@@ -109,16 +123,32 @@ function TokenPage() {
     if (eventsError) console.error("[token] Trade events could not be read:", eventsError);
   }, [eventsError]);
 
+  // Every time the chain head moves, refresh the trades feed so the chart and
+  // the table follow the live price without a page reload.
+  const queryClient = useQueryClient();
+  const lastBlock = useRef<bigint>(0n);
+  useEffect(() => {
+    if (!live?.blockNumber || !curveOk) return;
+    if (lastBlock.current === 0n) {
+      lastBlock.current = live.blockNumber;
+      return;
+    }
+    if (live.blockNumber > lastBlock.current) {
+      lastBlock.current = live.blockNumber;
+      queryClient.invalidateQueries({ queryKey: ["curveTrades", curveOk] });
+    }
+  }, [live?.blockNumber, curveOk, queryClient]);
+
   const analytics = useMemo(() => {
     const buys = events.filter((e) => e.isBuy).length;
     return {
       buys,
       sells: events.length - buys,
-      holders: statsQ.data?.holders ?? chain?.holders ?? 0,
-      volume24h: Number(statsQ.data?.volume24hWei ?? 0n) / 1e18,
-      priceChange: Number(statsQ.data?.priceChangeBps ?? 0n) / 100,
+      holders: live?.holders ?? statsQ.data?.holders ?? chain?.holders ?? 0,
+      volume24h: Number(live?.volume24hWei ?? statsQ.data?.volume24hWei ?? 0n) / 1e18,
+      priceChange: (live?.priceChangeBps ?? Number(statsQ.data?.priceChangeBps ?? 0)) / 100,
     };
-  }, [events, statsQ.data, chain]);
+  }, [events, statsQ.data, chain, live]);
 
   const [timeframe, setTimeframe] = useState<TimeframeId>("15m");
   const tfSeconds = TIMEFRAMES.find((t) => t.id === timeframe)!.seconds;
@@ -209,7 +239,18 @@ function TokenPage() {
     : chain!.curve
       ? { progress_bps: chain!.progressBps, target_bnb: chain!.targetBnbWei, real_bnb: chain!.realLiquidityWei }
       : null;
-  const progress = curve ? Math.min(100, curve.progress_bps / 100) : 0;
+  // Live values win over anything cached in the database.
+  const progress = live
+    ? Math.min(100, live.progressBps / 100)
+    : curve
+      ? Math.min(100, curve.progress_bps / 100)
+      : 0;
+  const liquidityBnb = live
+    ? Number(live.liquidityWei) / 1e18
+    : curve
+      ? Number(BigInt(curve.real_bnb ?? "0")) / 1e18
+      : null;
+  const marketCapBnb = live ? Number(live.marketCapWei) / 1e18 : null;
   const curveAddress: string | null = curveAddr;
 
 
@@ -266,14 +307,49 @@ function TokenPage() {
 
 
 
+        {/* Live price */}
+        <div className="mt-6 glass-strong rounded-2xl p-5 flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-2 text-[11px] uppercase tracking-widest text-muted-foreground">
+              <span className={`h-1.5 w-1.5 rounded-full ${liveQ.isFetching ? "bg-accent" : "bg-success"} animate-pulse`} />
+              Precio en vivo
+              <span className="rounded-full bg-white/5 px-2 py-0.5 normal-case tracking-normal">
+                {live?.source === "pancake" ? "PancakeSwap" : "Bonding curve"}
+              </span>
+            </div>
+            <div className="mt-1 font-display text-3xl font-bold font-mono tabular-nums">
+              {live ? `${formatPrice(live.priceWei)} BNB` : "—"}
+            </div>
+            <div className={`mt-0.5 text-xs font-mono ${analytics.priceChange >= 0 ? "text-success" : "text-destructive"}`}>
+              {analytics.priceChange >= 0 ? "+" : ""}
+              {analytics.priceChange.toFixed(2)}% 24h
+            </div>
+          </div>
+          <div className="text-right text-xs text-muted-foreground">
+            <div>Market cap · <span className="font-mono text-foreground">{marketCapBnb != null ? `${marketCapBnb.toFixed(4)} BNB` : "—"}</span></div>
+            <div>Liquidez · <span className="font-mono text-foreground">{liquidityBnb != null ? `${liquidityBnb.toFixed(4)} BNB` : "—"}</span></div>
+            {live?.migrated && live.pair && (
+              <a
+                className="mt-1 inline-flex items-center gap-1 hover:text-foreground"
+                href={`${BSC_TESTNET.explorer}/address/${live.pair}`}
+                target="_blank"
+                rel="noreferrer"
+              >
+                Par PancakeSwap <ExternalLink className="h-3 w-3" />
+              </a>
+            )}
+          </div>
+        </div>
+
         {/* Analytics strip */}
-        <div className="mt-6 grid grid-cols-2 md:grid-cols-5 gap-3">
+        <div className="mt-4 grid grid-cols-2 md:grid-cols-5 gap-3">
           <StatCard icon={<TrendingUp className="h-3.5 w-3.5" />} label="24h Volume" value={`${analytics.volume24h.toFixed(3)} BNB`} />
           <StatCard icon={<Users className="h-3.5 w-3.5" />} label="Holders" value={analytics.holders} />
           <StatCard icon={<ArrowLeftRight className="h-3.5 w-3.5" />} label="Buys / Sells" value={`${analytics.buys}/${analytics.sells}`} />
           <StatCard icon={<Flame className="h-3.5 w-3.5" />} label="24h Change" value={`${analytics.priceChange >= 0 ? "+" : ""}${analytics.priceChange.toFixed(2)}%`} accent={analytics.priceChange >= 0 ? "text-success" : "text-destructive"} />
-          <StatCard icon={<Droplets className="h-3.5 w-3.5" />} label="Liquidity" value={curve ? `${(Number(BigInt(curve.real_bnb ?? "0")) / 1e18).toFixed(3)} BNB` : "—"} />
+          <StatCard icon={<Droplets className="h-3.5 w-3.5" />} label="Liquidity" value={liquidityBnb != null ? `${liquidityBnb.toFixed(3)} BNB` : "—"} />
         </div>
+
 
         <div className="mt-6 grid gap-6 lg:grid-cols-3">
           <div className="lg:col-span-2 space-y-6">
