@@ -112,3 +112,94 @@ export async function fetchOnChainToken(
     onchain: true,
   };
 }
+
+export type FactoryToken = {
+  address: `0x${string}`;
+  curve: `0x${string}` | null;
+  creator: string | null;
+  name: string;
+  ticker: string;
+  index: number;
+};
+
+/**
+ * Reads the token list straight from the Factory (`allTokensLength` + `allTokens`).
+ * Guarantees the launchpad listing never depends solely on the database.
+ */
+export async function fetchFactoryTokens(
+  limit = 24,
+  factoryAddress?: string | null,
+): Promise<FactoryToken[]> {
+  const factory = (factoryAddress ?? DEFAULT_CONFIG.factory_address) as `0x${string}` | null;
+  if (!factory || !isAddress(factory)) return [];
+  const client = readClient();
+
+  let total = 0;
+  try {
+    total = Number(
+      (await client.readContract({
+        address: factory,
+        abi: FACTORY_ABI as Abi,
+        functionName: "allTokensLength",
+      })) as bigint,
+    );
+  } catch {
+    return [];
+  }
+  if (!total) return [];
+
+  const start = Math.max(0, total - limit);
+  const indexes: number[] = [];
+  for (let i = total - 1; i >= start; i--) indexes.push(i);
+
+  const addresses = await Promise.all(
+    indexes.map(async (i) => {
+      try {
+        return {
+          index: i,
+          address: (await client.readContract({
+            address: factory,
+            abi: FACTORY_ABI as Abi,
+            functionName: "allTokens",
+            args: [BigInt(i)],
+          })) as `0x${string}`,
+        };
+      } catch {
+        return null;
+      }
+    }),
+  );
+
+  const rows = await Promise.all(
+    addresses
+      .filter((a): a is { index: number; address: `0x${string}` } => !!a && isAddress(a.address))
+      .map(async ({ index, address }) => {
+        const safe = async <T>(p: Promise<unknown>, fallback: T): Promise<T> => {
+          try { return (await p) as T; } catch { return fallback; }
+        };
+        const [name, ticker, curve, creator] = await Promise.all([
+          safe<string>(client.readContract({ address, abi: TOKEN_ABI as Abi, functionName: "name" }), ""),
+          safe<string>(client.readContract({ address, abi: TOKEN_ABI as Abi, functionName: "symbol" }), ""),
+          safe<`0x${string}` | null>(
+            client.readContract({ address: factory, abi: FACTORY_ABI as Abi, functionName: "curveOf", args: [address] }),
+            null,
+          ),
+          safe<string | null>(
+            client.readContract({ address: factory, abi: FACTORY_ABI as Abi, functionName: "creatorOf", args: [address] }),
+            null,
+          ),
+        ]);
+        if (!name && !ticker) return null;
+        return {
+          address,
+          curve: curve && !/^0x0{40}$/.test(curve) ? curve : null,
+          creator,
+          name: name || "Unknown token",
+          ticker: ticker || "???",
+          index,
+        } satisfies FactoryToken;
+      }),
+  );
+
+  return rows.filter((r): r is FactoryToken => !!r);
+}
