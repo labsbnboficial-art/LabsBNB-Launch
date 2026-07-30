@@ -280,6 +280,9 @@ function CreatePage() {
       setDeployedCurve(curveAddress);
       setDeployState("Deployed on-chain");
       toast.success("Token deployed on BNB Testnet");
+      // The Factory list is the source of truth: refresh it even if the DB save fails.
+      queryClient.invalidateQueries({ queryKey: ["tokens", "onchain"] });
+
 
       // 4) Persist the on-chain result (best effort — never hides a successful deploy).
       setDeployMeta({ hash, metadataURI });
