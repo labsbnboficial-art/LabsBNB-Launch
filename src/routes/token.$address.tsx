@@ -417,27 +417,82 @@ function StatCard({ icon, label, value, accent }: { icon: React.ReactNode; label
   );
 }
 
-function CommentBox({ tokenId, onSent }: { tokenId: string; onSent: () => void }) {
-  const { user } = useAuth();
-  const [body, setBody] = useState("");
-  const [busy, setBusy] = useState(false);
-  async function send() {
-    if (!body.trim() || !user) return;
-    setBusy(true);
-    try {
-      const { error } = await supabase.from("comments").insert({ token_id: tokenId, content: body.trim(), user_id: user.id });
-      if (error) throw error;
-      setBody("");
-      onSent();
-    } catch (e) { toast.error((e as Error).message); } finally { setBusy(false); }
-  }
+function ChainError({ error, onRetry }: { error: Error; onRetry: () => void }) {
   return (
-    <div className="mb-4 flex gap-2">
-      <Input value={body} onChange={(e) => setBody(e.target.value)} placeholder="Say something…" />
-      <Button onClick={send} disabled={busy} className="brand-gradient text-primary-foreground">Post</Button>
+    <div className="rounded-xl border border-destructive/40 bg-destructive/10 p-4 text-xs">
+      <div className="flex items-center gap-2 font-semibold text-destructive">
+        <AlertTriangle className="h-4 w-4" /> No se pudieron leer los eventos Trade
+      </div>
+      <p className="mt-2 break-words font-mono text-[11px] text-muted-foreground">{error.message}</p>
+      <Button variant="outline" size="sm" className="mt-3 border-white/10 bg-white/5" onClick={onRetry}>
+        Reintentar
+      </Button>
     </div>
   );
 }
+
+/**
+ * Comments accept an existing Supabase session OR a connected wallet:
+ * in the second case we complete SIWE silently before inserting.
+ */
+function CommentBox({ tokenId, onSent }: { tokenId: string | null; onSent: () => void }) {
+  const { user } = useAuth();
+  const { address, isConnected } = useAccount();
+  const signIn = useSiweSignIn();
+  const [body, setBody] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  if (!tokenId) {
+    return (
+      <p className="mb-4 text-xs text-muted-foreground">
+        Este token todavía no tiene ficha en la base de datos: los comentarios se activan al guardarla.
+      </p>
+    );
+  }
+
+  const canPost = !!user || isConnected;
+
+  async function send() {
+    if (!body.trim() || !tokenId) return;
+    setBusy(true);
+    try {
+      const me = user ?? (await signIn());
+      const { error } = await supabase
+        .from("comments")
+        .insert({ token_id: tokenId, content: body.trim(), user_id: me.id });
+      if (error) throw error;
+      setBody("");
+      onSent();
+    } catch (e) {
+      console.error("[comments] insert failed", e);
+      toast.error((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="mb-4">
+      <div className="flex gap-2">
+        <Input
+          value={body}
+          onChange={(e) => setBody(e.target.value)}
+          placeholder={canPost ? "Say something…" : "Conecta tu wallet para comentar"}
+          disabled={!canPost}
+        />
+        <Button onClick={send} disabled={busy || !canPost} className="brand-gradient text-primary-foreground">
+          {busy ? "…" : "Post"}
+        </Button>
+      </div>
+      {!user && isConnected && (
+        <p className="mt-2 text-[11px] text-muted-foreground font-mono">
+          Se firmará el mensaje SIWE con {address?.slice(0, 6)}…{address?.slice(-4)} al publicar.
+        </p>
+      )}
+    </div>
+  );
+}
+
 
 function SocialLink({ href, label }: { href: string; label: string }) {
   return (
