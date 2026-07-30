@@ -21,7 +21,6 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as TokenAddressRouteImport } from './routes/token.$address'
 import { Route as CampaignsNewRouteImport } from './routes/campaigns.new'
 import { Route as CampaignsIdRouteImport } from './routes/campaigns.$id'
-import { Route as ApiPublicAdminDiagRouteImport } from './routes/api/public/admin-diag'
 
 const RankingRoute = RankingRouteImport.update({
   id: '/ranking',
@@ -83,11 +82,6 @@ const CampaignsIdRoute = CampaignsIdRouteImport.update({
   path: '/campaigns/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiPublicAdminDiagRoute = ApiPublicAdminDiagRouteImport.update({
-  id: '/api/public/admin-diag',
-  path: '/api/public/admin-diag',
-  getParentRoute: () => rootRouteImport,
-} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -102,7 +96,6 @@ export interface FileRoutesByFullPath {
   '/campaigns/$id': typeof CampaignsIdRoute
   '/campaigns/new': typeof CampaignsNewRoute
   '/token/$address': typeof TokenAddressRoute
-  '/api/public/admin-diag': typeof ApiPublicAdminDiagRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -117,7 +110,6 @@ export interface FileRoutesByTo {
   '/campaigns/$id': typeof CampaignsIdRoute
   '/campaigns/new': typeof CampaignsNewRoute
   '/token/$address': typeof TokenAddressRoute
-  '/api/public/admin-diag': typeof ApiPublicAdminDiagRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -133,7 +125,6 @@ export interface FileRoutesById {
   '/campaigns/$id': typeof CampaignsIdRoute
   '/campaigns/new': typeof CampaignsNewRoute
   '/token/$address': typeof TokenAddressRoute
-  '/api/public/admin-diag': typeof ApiPublicAdminDiagRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -150,7 +141,6 @@ export interface FileRouteTypes {
     | '/campaigns/$id'
     | '/campaigns/new'
     | '/token/$address'
-    | '/api/public/admin-diag'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -165,7 +155,6 @@ export interface FileRouteTypes {
     | '/campaigns/$id'
     | '/campaigns/new'
     | '/token/$address'
-    | '/api/public/admin-diag'
   id:
     | '__root__'
     | '/'
@@ -180,7 +169,6 @@ export interface FileRouteTypes {
     | '/campaigns/$id'
     | '/campaigns/new'
     | '/token/$address'
-    | '/api/public/admin-diag'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -196,7 +184,6 @@ export interface RootRouteChildren {
   CampaignsIdRoute: typeof CampaignsIdRoute
   CampaignsNewRoute: typeof CampaignsNewRoute
   TokenAddressRoute: typeof TokenAddressRoute
-  ApiPublicAdminDiagRoute: typeof ApiPublicAdminDiagRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -285,13 +272,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CampaignsIdRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/public/admin-diag': {
-      id: '/api/public/admin-diag'
-      path: '/api/public/admin-diag'
-      fullPath: '/api/public/admin-diag'
-      preLoaderRoute: typeof ApiPublicAdminDiagRouteImport
-      parentRoute: typeof rootRouteImport
-    }
   }
 }
 
@@ -308,7 +288,6 @@ const rootRouteChildren: RootRouteChildren = {
   CampaignsIdRoute: CampaignsIdRoute,
   CampaignsNewRoute: CampaignsNewRoute,
   TokenAddressRoute: TokenAddressRoute,
-  ApiPublicAdminDiagRoute: ApiPublicAdminDiagRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
