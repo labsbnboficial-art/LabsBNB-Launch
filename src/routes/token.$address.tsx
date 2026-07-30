@@ -250,46 +250,44 @@ function TokenPage() {
         <div className="mt-6 grid gap-6 lg:grid-cols-3">
           <div className="lg:col-span-2 space-y-6">
             <div className="glass rounded-2xl p-6">
-              <div className="text-xs uppercase tracking-widest text-muted-foreground mb-4">Price chart</div>
-              {chartData.length > 1 ? (
-                <div className="h-64">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={chartData}>
-                      <defs>
-                        <linearGradient id="priceFill" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity={0.5} />
-                          <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity={0} />
-                        </linearGradient>
-                      </defs>
-                      <XAxis dataKey="label" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" minTickGap={24} />
-                      <YAxis
-                        tick={{ fontSize: 10 }}
-                        stroke="hsl(var(--muted-foreground))"
-                        width={70}
-                        domain={["auto", "auto"]}
-                        tickFormatter={(v: number) => v.toPrecision(3)}
-                      />
-                      <Tooltip
-                        contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 12, fontSize: 12 }}
-                        formatter={(v: number) => [`${v.toPrecision(6)} BNB`, "Price"]}
-                      />
-                      <Area type="monotone" dataKey="price" stroke="hsl(var(--primary))" fill="url(#priceFill)" strokeWidth={2} />
-                    </AreaChart>
-                  </ResponsiveContainer>
+              <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
+                <div className="text-xs uppercase tracking-widest text-muted-foreground">Price chart · candles</div>
+                <div className="flex gap-1 rounded-full border border-white/10 bg-white/5 p-1">
+                  {TIMEFRAMES.map((tf) => (
+                    <button
+                      key={tf.id}
+                      onClick={() => setTimeframe(tf.id)}
+                      className={`rounded-full px-2.5 py-1 text-[11px] font-mono transition ${
+                        timeframe === tf.id ? "brand-gradient text-primary-foreground" : "text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      {tf.label}
+                    </button>
+                  ))}
                 </div>
+              </div>
+              {eventsError ? (
+                <ChainError error={eventsError} onRetry={() => eventsQ.refetch()} />
+              ) : candles.length > 0 ? (
+                <CandleChart candles={candles} />
               ) : (
                 <div className="h-64 rounded-xl border border-dashed border-white/10 grid place-items-center text-sm text-muted-foreground">
-                  {eventsQ.isLoading ? "Loading on-chain trades…" : "Waiting for on-chain trades to populate the chart."}
+                  {eventsQ.isLoading ? "Leyendo eventos Trade on-chain…" : "Sin eventos Trade en el rango consultado."}
                 </div>
               )}
             </div>
 
             <div className="glass rounded-2xl p-6">
-              <div className="flex items-center gap-2 mb-4">
-                <ArrowLeftRight className="h-4 w-4 text-accent" />
-                <h3 className="font-display text-lg font-semibold">Recent trades</h3>
+              <div className="flex items-center justify-between gap-2 mb-4">
+                <div className="flex items-center gap-2">
+                  <ArrowLeftRight className="h-4 w-4 text-accent" />
+                  <h3 className="font-display text-lg font-semibold">Recent trades</h3>
+                </div>
+                <span className="text-[11px] font-mono text-muted-foreground">{events.length} eventos</span>
               </div>
-              {events.length > 0 ? (
+              {eventsError ? (
+                <ChainError error={eventsError} onRetry={() => eventsQ.refetch()} />
+              ) : events.length > 0 ? (
                 <div className="overflow-x-auto">
                   <table className="w-full text-xs">
                     <thead className="text-[10px] uppercase tracking-widest text-muted-foreground">
@@ -303,7 +301,7 @@ function TokenPage() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-white/5">
-                      {[...events].reverse().slice(0, 30).map((tr) => (
+                      {[...events].reverse().map((tr) => (
                         <tr key={tr.key}>
                           <td className="py-2 font-mono">
                             <a
@@ -330,13 +328,26 @@ function TokenPage() {
                       ))}
                     </tbody>
                   </table>
+                  <div ref={sentinel} className="h-8" />
+                  <div className="pt-2 text-center">
+                    {eventsQ.isFetchingNextPage ? (
+                      <span className="text-xs text-muted-foreground">Cargando más bloques…</span>
+                    ) : eventsQ.hasNextPage ? (
+                      <Button variant="outline" size="sm" className="border-white/10 bg-white/5" onClick={() => eventsQ.fetchNextPage()}>
+                        Cargar histórico anterior
+                      </Button>
+                    ) : (
+                      <span className="text-xs text-muted-foreground">Fin del histórico disponible.</span>
+                    )}
+                  </div>
                 </div>
               ) : (
                 <div className="rounded-xl border border-dashed border-white/10 py-10 text-center text-sm text-muted-foreground">
-                  {eventsQ.isLoading ? "Loading on-chain trades…" : t("empty.noTrades")}
+                  {eventsQ.isLoading ? "Leyendo eventos Trade on-chain…" : t("empty.noTrades")}
                 </div>
               )}
             </div>
+
 
 
             <div className="glass rounded-2xl p-6">
