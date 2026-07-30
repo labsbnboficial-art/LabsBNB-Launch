@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+
 import { useAccount, useSwitchChain, useWriteContract } from "wagmi";
 import { parseEther, formatEther, type Abi } from "viem";
 import { toast } from "sonner";
@@ -69,9 +70,11 @@ export function TradePanel({
   curveAddress?: string | null;
 }) {
   const { t } = useI18n();
+  const queryClient = useQueryClient();
   const { address: wallet, chainId } = useAccount();
   const { switchChainAsync } = useSwitchChain();
   const { writeContractAsync } = useWriteContract();
+
 
   const [side, setSide] = useState<"buy" | "sell">("buy");
   const [amount, setAmount] = useState("");
@@ -190,8 +193,12 @@ export function TradePanel({
         action: { label: "Ver", onClick: () => window.open(`${BSC_TESTNET.explorer}/tx/${hash}`, "_blank") },
       });
       setAmount("");
+      // Refresh events, chart, volume, buys/sells and priceChange without a reload.
       curveQ.refetch();
       balanceQ.refetch();
+      queryClient.invalidateQueries({ queryKey: ["curveTrades", curve.curve] });
+      queryClient.invalidateQueries({ queryKey: ["curveStats", curve.curve] });
+
     } catch (e) {
       const raw = e as { shortMessage?: string; message?: string };
       toast.error(raw.shortMessage || raw.message || "Error desconocido");

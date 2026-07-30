@@ -10,7 +10,11 @@ import { Copy, Share2, ArrowLeftRight, ExternalLink, Users, Flame, Droplets, Tre
 import { toast } from "sonner";
 import { useAuth } from "@/lib/auth";
 import { fetchOnChainToken, isAddress, type OnChainToken } from "@/lib/web3/onchain-token";
+import { fetchTradeEvents, fetchCurveStats } from "@/lib/web3/curve-events";
+import { BSC_TESTNET } from "@/lib/web3/abis";
+import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
 import { TradePanel } from "@/components/labsbnb/TradePanel";
+
 
 
 export const Route = createFileRoute("/token/$address")({
@@ -60,21 +64,50 @@ function TokenPage() {
   const dbRow = tokenQ.data?.row as any;
   const chain = tokenQ.data?.chain ?? null;
 
-  const tradesQ = useQuery({
-    queryKey: ["trades", dbRow?.id],
-    enabled: !!dbRow?.id,
+  // Bonding curve address (on-chain read first, database row as backup).
+  const curveAddr = ((chain?.curve as string | null) ??
+    ((dbRow?.bonding_curves as { contract_address?: string } | null)?.contract_address ?? null)) as
+    | `0x${string}`
+    | null;
+  const curveOk = curveAddr && isAddress(curveAddr) ? (curveAddr as `0x${string}`) : null;
+
+  // Recent trades — decoded straight from Trade(...) events.
+  const eventsQ = useQuery({
+    queryKey: ["curveTrades", curveOk],
+    enabled: !!curveOk,
     refetchInterval: 15_000,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("trades")
-        .select("*")
-        .eq("token_id", dbRow.id)
-        .order("created_at", { ascending: false })
-        .limit(200);
-      if (error) throw error;
-      return data ?? [];
-    },
+    queryFn: () => fetchTradeEvents(curveOk!),
   });
+
+  // volume24h() / priceChange() / holders() — the contract's own views.
+  const statsQ = useQuery({
+    queryKey: ["curveStats", curveOk],
+    enabled: !!curveOk,
+    refetchInterval: 15_000,
+    queryFn: () => fetchCurveStats(curveOk!),
+  });
+
+  const events = eventsQ.data ?? [];
+  const analytics = useMemo(() => {
+    const buys = events.filter((e) => e.isBuy).length;
+    return {
+      buys,
+      sells: events.length - buys,
+      holders: statsQ.data?.holders ?? chain?.holders ?? 0,
+      volume24h: Number(statsQ.data?.volume24hWei ?? 0n) / 1e18,
+      priceChange: Number(statsQ.data?.priceChangeBps ?? 0n) / 100,
+    };
+  }, [events, statsQ.data, chain]);
+
+  const chartData = useMemo(
+    () =>
+      events.map((e) => ({
+        t: e.timestamp * 1000,
+        price: Number(e.price) / 1e18,
+        label: new Date(e.timestamp * 1000).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+      })),
+    [events],
+  );
 
   const commentsQ = useQuery({
     queryKey: ["comments", dbRow?.id],
@@ -90,24 +123,7 @@ function TokenPage() {
     },
   });
 
-  const analytics = useMemo(() => {
-    const list = tradesQ.data ?? [];
-    if (!list.length) {
-      return chain
-        ? { holders: chain.holders, volume24h: Number(BigInt(chain.volume24hWei)) / 1e18, priceChange: 0, buys: 0, sells: 0 }
-        : { holders: 0, volume24h: 0, priceChange: 0, buys: 0, sells: 0 };
-    }
-    const holders = new Set(list.map((t) => t.wallet_address.toLowerCase())).size;
-    const now = Date.now();
-    const dayCut = now - 24 * 3600_000;
-    const vol24 = list.filter((t) => new Date(t.created_at).getTime() >= dayCut).reduce((s, t) => s + Number(t.amount_bnb) / 1e18, 0);
-    const buys = list.filter((t) => t.side === "buy").length;
-    const sells = list.length - buys;
-    const priceNow = Number(list[0]?.price ?? 0);
-    const priceThen = Number(list.find((t) => new Date(t.created_at).getTime() < dayCut)?.price ?? priceNow);
-    const priceChange = priceThen > 0 ? ((priceNow - priceThen) / priceThen) * 100 : 0;
-    return { holders, volume24h: vol24, priceChange, buys, sells };
-  }, [tradesQ.data, chain]);
+
 
   if (tokenQ.isLoading) {
     return <AppShell><div className="max-w-6xl mx-auto px-6 py-16"><div className="glass rounded-2xl p-10 animate-pulse h-64" /></div></AppShell>;
@@ -139,9 +155,8 @@ function TokenPage() {
       ? { progress_bps: chain!.progressBps, target_bnb: chain!.targetBnbWei, real_bnb: chain!.realLiquidityWei }
       : null;
   const progress = curve ? Math.min(100, curve.progress_bps / 100) : 0;
-  const curveAddress: string | null =
-    (chain?.curve as string | null) ??
-    ((dbRow?.bonding_curves as { contract_address?: string } | null)?.contract_address ?? null);
+  const curveAddress: string | null = curveAddr;
+
 
 
   return (
@@ -208,10 +223,38 @@ function TokenPage() {
         <div className="mt-6 grid gap-6 lg:grid-cols-3">
           <div className="lg:col-span-2 space-y-6">
             <div className="glass rounded-2xl p-6">
-              <div className="text-xs uppercase tracking-widest text-muted-foreground mb-4">Chart</div>
-              <div className="h-64 rounded-xl border border-dashed border-white/10 grid place-items-center text-sm text-muted-foreground">
-                Waiting for on-chain trades to populate the chart.
-              </div>
+              <div className="text-xs uppercase tracking-widest text-muted-foreground mb-4">Price chart</div>
+              {chartData.length > 1 ? (
+                <div className="h-64">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={chartData}>
+                      <defs>
+                        <linearGradient id="priceFill" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity={0.5} />
+                          <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity={0} />
+                        </linearGradient>
+                      </defs>
+                      <XAxis dataKey="label" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" minTickGap={24} />
+                      <YAxis
+                        tick={{ fontSize: 10 }}
+                        stroke="hsl(var(--muted-foreground))"
+                        width={70}
+                        domain={["auto", "auto"]}
+                        tickFormatter={(v: number) => v.toPrecision(3)}
+                      />
+                      <Tooltip
+                        contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 12, fontSize: 12 }}
+                        formatter={(v: number) => [`${v.toPrecision(6)} BNB`, "Price"]}
+                      />
+                      <Area type="monotone" dataKey="price" stroke="hsl(var(--primary))" fill="url(#priceFill)" strokeWidth={2} />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
+              ) : (
+                <div className="h-64 rounded-xl border border-dashed border-white/10 grid place-items-center text-sm text-muted-foreground">
+                  {eventsQ.isLoading ? "Loading on-chain trades…" : "Waiting for on-chain trades to populate the chart."}
+                </div>
+              )}
             </div>
 
             <div className="glass rounded-2xl p-6">
@@ -219,21 +262,55 @@ function TokenPage() {
                 <ArrowLeftRight className="h-4 w-4 text-accent" />
                 <h3 className="font-display text-lg font-semibold">Recent trades</h3>
               </div>
-              {tradesQ.data && tradesQ.data.length > 0 ? (
-                <div className="text-sm divide-y divide-white/5">
-                  {tradesQ.data.slice(0, 30).map((tr) => (
-                    <div key={tr.id} className="flex items-center justify-between py-2">
-                      <span className={tr.side === "buy" ? "text-success uppercase text-xs" : "text-destructive uppercase text-xs"}>{tr.side}</span>
-                      <span className="font-mono text-xs">{tr.wallet_address.slice(0, 8)}…</span>
-                      <span className="font-mono text-xs">{(Number(tr.amount_bnb) / 1e18).toFixed(4)} BNB</span>
-                      <span className="text-[10px] text-muted-foreground">{new Date(tr.created_at).toLocaleTimeString()}</span>
-                    </div>
-                  ))}
+              {events.length > 0 ? (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs">
+                    <thead className="text-[10px] uppercase tracking-widest text-muted-foreground">
+                      <tr className="text-left">
+                        <th className="py-2 font-normal">Wallet</th>
+                        <th className="py-2 font-normal">Type</th>
+                        <th className="py-2 font-normal text-right">BNB</th>
+                        <th className="py-2 font-normal text-right">Tokens</th>
+                        <th className="py-2 font-normal text-right">Price</th>
+                        <th className="py-2 font-normal text-right">Time</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-white/5">
+                      {[...events].reverse().slice(0, 30).map((tr) => (
+                        <tr key={tr.key}>
+                          <td className="py-2 font-mono">
+                            <a
+                              href={`${BSC_TESTNET.explorer}/tx/${tr.txHash}`}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="hover:text-foreground text-muted-foreground"
+                            >
+                              {tr.trader.slice(0, 6)}…{tr.trader.slice(-4)}
+                            </a>
+                          </td>
+                          <td className={tr.isBuy ? "py-2 uppercase text-success" : "py-2 uppercase text-destructive"}>
+                            {tr.isBuy ? "Buy" : "Sell"}
+                          </td>
+                          <td className="py-2 text-right font-mono">{(Number(tr.amountBnb) / 1e18).toFixed(4)}</td>
+                          <td className="py-2 text-right font-mono">
+                            {(Number(tr.amountTokens) / 1e18).toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                          </td>
+                          <td className="py-2 text-right font-mono">{(Number(tr.price) / 1e18).toPrecision(4)}</td>
+                          <td className="py-2 text-right text-muted-foreground">
+                            {new Date(tr.timestamp * 1000).toLocaleTimeString()}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
               ) : (
-                <div className="rounded-xl border border-dashed border-white/10 py-10 text-center text-sm text-muted-foreground">{t("empty.noTrades")}</div>
+                <div className="rounded-xl border border-dashed border-white/10 py-10 text-center text-sm text-muted-foreground">
+                  {eventsQ.isLoading ? "Loading on-chain trades…" : t("empty.noTrades")}
+                </div>
               )}
             </div>
+
 
             <div className="glass rounded-2xl p-6">
               <div className="flex items-center gap-2 mb-4">
