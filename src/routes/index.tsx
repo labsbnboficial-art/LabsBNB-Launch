@@ -43,20 +43,56 @@ function LandingPage() {
   const price = useBnbPrice();
   const [q, setQ] = useState("");
 
-  const tokensQuery = useQuery({
-    queryKey: ["tokens", "latest", q],
+  // 1) Database rows (rich metadata) — 2) Factory `allTokens()` as source of truth.
+  const dbTokens = useQuery({
+    queryKey: ["tokens", "latest"],
+    refetchInterval: 30_000,
     queryFn: async () => {
-      let query = supabase
+      const { data, error } = await supabase
         .from("tokens")
         .select("id,name,ticker,logo_url,contract_address,status,created_at,category")
         .order("created_at", { ascending: false })
-        .limit(12);
-      if (q.trim()) query = query.or(`name.ilike.%${q}%,ticker.ilike.%${q}%,contract_address.ilike.%${q}%`);
-      const { data, error } = await query;
+        .limit(24);
       if (error) throw error;
       return data ?? [];
     },
   });
+
+  const chainTokens = useQuery({
+    queryKey: ["tokens", "onchain"],
+    refetchInterval: 60_000,
+    staleTime: 30_000,
+    queryFn: () => fetchFactoryTokens(24),
+  });
+
+  const merged: TokenRow[] = (() => {
+    const rows = (dbTokens.data ?? []) as TokenRow[];
+    const known = new Set(rows.map((r) => (r.contract_address ?? "").toLowerCase()));
+    const extra: TokenRow[] = (chainTokens.data ?? [])
+      .filter((c) => !known.has(c.address.toLowerCase()))
+      .map((c) => ({
+        id: c.address,
+        name: c.name,
+        ticker: c.ticker,
+        logo_url: null,
+        contract_address: c.address,
+        status: "on-chain",
+        created_at: new Date(0).toISOString(),
+        category: null,
+      }));
+    return [...rows, ...extra];
+  })();
+
+  const tokens = merged.filter((tk) => {
+    const needle = q.trim().toLowerCase();
+    if (!needle) return true;
+    return (
+      tk.name.toLowerCase().includes(needle) ||
+      tk.ticker.toLowerCase().includes(needle) ||
+      (tk.contract_address ?? "").toLowerCase().includes(needle)
+    );
+  }).slice(0, 12);
+
 
   const statsQuery = useQuery({
     queryKey: ["landing-stats"],
