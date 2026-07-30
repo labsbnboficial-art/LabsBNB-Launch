@@ -155,9 +155,8 @@ function TokenPage() {
       ? { progress_bps: chain!.progressBps, target_bnb: chain!.targetBnbWei, real_bnb: chain!.realLiquidityWei }
       : null;
   const progress = curve ? Math.min(100, curve.progress_bps / 100) : 0;
-  const curveAddress: string | null =
-    (chain?.curve as string | null) ??
-    ((dbRow?.bonding_curves as { contract_address?: string } | null)?.contract_address ?? null);
+  const curveAddress: string | null = curveAddr;
+
 
 
   return (
