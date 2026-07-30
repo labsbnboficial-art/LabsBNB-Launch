@@ -1,5 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { z } from "zod";
 import { useAccount, useSendTransaction, useWaitForTransactionReceipt, useWriteContract, useSwitchChain, usePublicClient, useChainId } from "wagmi";
 import { parseUnits, decodeEventLog, type Abi } from "viem";
@@ -97,6 +98,7 @@ function CreatePage() {
   const { address, isConnected } = useAccount();
   const navigate = useNavigate();
   const { data: cfg } = useLaunchpadConfig();
+  const queryClient = useQueryClient();
   const { writeContractAsync } = useWriteContract();
   const { switchChainAsync } = useSwitchChain();
   const chainId = cfg?.chain_id ?? 97;
@@ -196,6 +198,9 @@ function CreatePage() {
         });
       }
       setDeployState("Deployed and saved");
+      // Refresh the launchpad listings so the new token shows up immediately.
+      queryClient.invalidateQueries({ queryKey: ["tokens"] });
+      queryClient.invalidateQueries({ queryKey: ["landing-stats"] });
       return true;
     } catch (saveErr) {
       console.error(saveErr);
