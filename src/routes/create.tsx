@@ -13,6 +13,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
+import { useSiweSignIn } from "@/lib/use-siwe";
 import { useLaunchpadConfig } from "@/lib/launchpad-config";
 import { toast } from "sonner";
 import { Rocket, Check, ArrowLeft, ArrowRight, Sparkles, Lock } from "lucide-react";
@@ -106,6 +107,10 @@ function CreatePage() {
   const [deployedToken, setDeployedToken] = useState<string | null>(null);
   const [deployedCurve, setDeployedCurve] = useState<string | null>(null);
   const [deployState, setDeployState] = useState<string>("");
+  const [deployMeta, setDeployMeta] = useState<{ hash: string; metadataURI: string } | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const ensureSession = useSiweSignIn();
 
   const set = <K extends keyof FormState>(k: K, v: FormState[K]) => setForm((f) => ({ ...f, [k]: v }));
 
@@ -118,6 +123,88 @@ function CreatePage() {
       const r = step2Schema.safeParse(form);
       if (!r.success) { toast.error(r.error.issues[0].message); return; }
       setStep(2);
+    }
+  }
+
+  /**
+   * Saves the deployment to the database. Never throws: an on-chain deploy is
+   * final, so a failed save only degrades to a retryable warning state.
+   */
+  async function saveDeployment(
+    tokenAddress: string,
+    curveAddress: string | null,
+    hash: string,
+    metadataURI: string,
+  ) {
+    setSaveError(null);
+    setSaving(true);
+    try {
+      setDeployState("Saving the token profile…");
+      const account = await ensureSession(); // creates the SIWE session if missing
+      const { data, error } = await supabase.from("tokens").insert({
+        creator_id: account.id,
+        name: form.name,
+        ticker: form.ticker.toUpperCase(),
+        description: form.description || null,
+        logo_url: form.logo_url || null,
+        banner_url: form.banner_url || null,
+        website: form.website || null,
+        telegram: form.telegram || null,
+        twitter: form.twitter || null,
+        discord: form.discord || null,
+        github: form.github || null,
+        category: form.category,
+        supply: form.supply,
+        decimals: form.decimals,
+        chain_id: chainId,
+        contract_address: tokenAddress,
+        deploy_tx_hash: hash,
+        status: "active",
+      }).select("id").single();
+      if (error) throw error;
+      await supabase.from("bonding_curves").insert({
+        token_id: data.id,
+        target_bnb: Math.floor(form.target_bnb * 1e18),
+      });
+      await supabase.from("activity").insert({
+        user_id: account.id,
+        token_id: data.id,
+        kind: "deploy",
+        payload: {
+          token_address: tokenAddress,
+          curve_address: curveAddress,
+          factory_address: factory,
+          tx_hash: hash,
+          chain_id: chainId,
+          metadata_uri: metadataURI,
+        },
+      });
+      if (adv.enabled) {
+        await supabase.from("activity").insert({
+          user_id: account.id,
+          token_id: data.id,
+          kind: "advanced_tokenomics",
+          payload: {
+            lp_pct: adv.lp_pct,
+            burn_pct: adv.burn_pct,
+            staking_pct: adv.staking_pct,
+            reward_pct: adv.reward_pct,
+            payment_tx: adv.paid_tx,
+            payment_wallet: cfg?.admin_wallet ?? null,
+            payment_amount_wei: cfg?.advanced_creation_fee_bnb ?? null,
+          },
+        });
+      }
+      setDeployState("Deployed and saved");
+      return true;
+    } catch (saveErr) {
+      console.error(saveErr);
+      setSaveError((saveErr as Error).message);
+      setDeployState("Deployed on-chain (the profile could not be saved)");
+      toast.warning("El token está desplegado on-chain, pero no se pudo guardar el perfil.");
+      return false;
+    } finally {
+      setSaving(false);
     }
   }
 
@@ -190,71 +277,9 @@ function CreatePage() {
       toast.success("Token deployed on BNB Testnet");
 
       // 4) Persist the on-chain result (best effort — never hides a successful deploy).
-      if (!user) {
-        setDeployState("Deployed on-chain (sign in to save the token profile)");
-        return;
-      }
-      try {
-        const { data, error } = await supabase.from("tokens").insert({
-          creator_id: user.id,
-          name: form.name,
-          ticker: form.ticker.toUpperCase(),
-          description: form.description || null,
-          logo_url: form.logo_url || null,
-          banner_url: form.banner_url || null,
-          website: form.website || null,
-          telegram: form.telegram || null,
-          twitter: form.twitter || null,
-          discord: form.discord || null,
-          github: form.github || null,
-          category: form.category,
-          supply: form.supply,
-          decimals: form.decimals,
-          chain_id: chainId,
-          contract_address: tokenAddress,
-          deploy_tx_hash: hash,
-          status: "active",
-        }).select("id").single();
-        if (error) throw error;
-        await supabase.from("bonding_curves").insert({
-          token_id: data.id,
-          target_bnb: Math.floor(form.target_bnb * 1e18),
-        });
-        await supabase.from("activity").insert({
-          user_id: user.id,
-          token_id: data.id,
-          kind: "deploy",
-          payload: {
-            token_address: tokenAddress,
-            curve_address: curveAddress,
-            factory_address: factory,
-            tx_hash: hash,
-            chain_id: chainId,
-            metadata_uri: metadataURI,
-          },
-        });
-        if (adv.enabled) {
-          await supabase.from("activity").insert({
-            user_id: user.id,
-            token_id: data.id,
-            kind: "advanced_tokenomics",
-            payload: {
-              lp_pct: adv.lp_pct,
-              burn_pct: adv.burn_pct,
-              staking_pct: adv.staking_pct,
-              reward_pct: adv.reward_pct,
-              payment_tx: adv.paid_tx,
-              payment_wallet: cfg?.admin_wallet ?? null,
-              payment_amount_wei: cfg?.advanced_creation_fee_bnb ?? null,
-            },
-          });
-        }
-        setDeployState("Deployed and saved");
-      } catch (saveErr) {
-        console.error(saveErr);
-        setDeployState("Deployed on-chain (could not save the token profile)");
-        toast.warning("Token is live on-chain, but saving its profile failed.");
-      }
+      setDeployMeta({ hash, metadataURI });
+      await saveDeployment(tokenAddress, curveAddress, hash, metadataURI);
+
     } catch (e) {
       console.error(e);
       setDeployState("Failed");
@@ -382,6 +407,24 @@ function CreatePage() {
                       </a>
                     </div>
                   )}
+                  {saveError && deployedToken && (
+                    <div className="mt-2 rounded-lg border border-destructive/40 bg-destructive/10 p-3 space-y-2">
+                      <div className="text-destructive">
+                        El despliegue on-chain fue correcto, pero no se pudo guardar el perfil: {saveError}
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={saving}
+                        onClick={() =>
+                          deployMeta &&
+                          saveDeployment(deployedToken, deployedCurve, deployMeta.hash, deployMeta.metadataURI)
+                        }
+                      >
+                        {saving ? "Guardando…" : "Reintentar guardado"}
+                      </Button>
+                    </div>
+                  )}
                   {deployedToken && (
                     <Button
                       size="sm"
@@ -392,6 +435,7 @@ function CreatePage() {
                       Open token page
                     </Button>
                   )}
+
                 </div>
               )}
             </div>
