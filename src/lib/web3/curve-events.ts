@@ -30,6 +30,7 @@ export type TradeEvent = {
 const CHUNK = 9_000n; // largest range every working public RPC accepts
 const MAX_LOOKBACK = 600_000n; // ~21 days on BSC (3s blocks)
 const MAX_CHUNKS_PER_PAGE = 12; // bounds latency of a single page request
+const HEAD_MARGIN = 6n; // blocks near the head are not cached (may still reorg)
 
 let preferredRpc: string | null = null;
 
@@ -91,18 +92,58 @@ function decode(logs: Awaited<ReturnType<typeof getLogsRange>>): TradeEvent[] {
   return out;
 }
 
+/* ---------------------------- block-range cache ---------------------------- */
+// Block ranges are aligned to a fixed CHUNK grid so the very same range is
+// requested every time (any timeframe, any page). Finalised chunks are cached
+// in memory, which makes switching timeframes instant and consistent: the
+// chart and the trades table always read the exact same event set.
+
+const chunkCache = new Map<string, TradeEvent[]>();
+const inflight = new Map<string, Promise<TradeEvent[]>>();
+
+/** Reads (and caches) one grid-aligned chunk of Trade events. */
+async function getChunk(curve: `0x${string}`, index: number, head: bigint): Promise<TradeEvent[]> {
+  const from = BigInt(index) * CHUNK;
+  const to = from + CHUNK - 1n;
+  const key = `${curve.toLowerCase()}:${index}`;
+  const finalised = to < head - HEAD_MARGIN;
+
+  const cached = chunkCache.get(key);
+  if (finalised && cached) return cached;
+
+  const pending = inflight.get(key);
+  if (pending) return pending;
+
+  const task = (async () => {
+    const logs = await getLogsRange(curve, from, to > head ? head : to);
+    const events = decode(logs);
+    if (finalised) chunkCache.set(key, events);
+    return events;
+  })().finally(() => inflight.delete(key));
+
+  inflight.set(key, task);
+  return task;
+}
+
+/** Drops cached ranges for a curve (used after a trade to force a fresh read). */
+export function invalidateTradeCache(curve?: `0x${string}`) {
+  if (!curve) return chunkCache.clear();
+  const prefix = `${curve.toLowerCase()}:`;
+  for (const k of [...chunkCache.keys()]) if (k.startsWith(prefix)) chunkCache.delete(k);
+}
+
 export type TradePage = {
   events: TradeEvent[]; // oldest → newest inside the page
-  /** Block to continue from (scanning backwards); null when the history ends. */
+  /** Chunk index to continue from (scanning backwards); null when history ends. */
   nextCursor: string | null;
   scannedFrom: string;
   scannedTo: string;
 };
 
 /**
- * Paginated history: scans backwards from `cursor` (or the chain head) in
- * CHUNK-sized ranges until it collects `pageSize` trades, exhausts the
- * lookback window, or hits the per-page chunk budget.
+ * Paginated history: scans backwards from `cursor` (a grid chunk index) or the
+ * chain head, collecting `pageSize` trades at most, bounded by the lookback
+ * window and the per-page chunk budget. Cached chunks resolve instantly.
  */
 export async function fetchTradePage(
   curve: `0x${string}`,
@@ -110,34 +151,33 @@ export async function fetchTradePage(
   pageSize = 25,
 ): Promise<TradePage> {
   const head = await readClient().getBlockNumber();
-  const to = cursor ? BigInt(cursor) : head;
-  const floor = head > MAX_LOOKBACK ? head - MAX_LOOKBACK : 0n;
+  const headIndex = Number(head / CHUNK);
+  const floorBlock = head > MAX_LOOKBACK ? head - MAX_LOOKBACK : 0n;
+  const floorIndex = Number(floorBlock / CHUNK);
+
+  let index = cursor != null ? Number(cursor) : headIndex;
+  if (!Number.isFinite(index) || index > headIndex) index = headIndex;
 
   const collected: TradeEvent[] = [];
-  let upper = to;
   let chunks = 0;
 
-  while (upper >= floor && collected.length < pageSize && chunks < MAX_CHUNKS_PER_PAGE) {
-    const lower = upper > floor + CHUNK ? upper - CHUNK + 1n : floor;
-    const logs = await getLogsRange(curve, lower, upper);
-    collected.unshift(...decode(logs));
+  while (index >= floorIndex && collected.length < pageSize && chunks < MAX_CHUNKS_PER_PAGE) {
+    const events = await getChunk(curve, index, head);
+    collected.unshift(...events);
     chunks += 1;
-    if (lower === floor) {
-      upper = floor - 1n;
-      break;
-    }
-    upper = lower - 1n;
+    index -= 1;
   }
 
   collected.sort((x, y) => (x.blockNumber === y.blockNumber ? 0 : x.blockNumber < y.blockNumber ? -1 : 1));
 
   return {
     events: collected,
-    nextCursor: upper >= floor ? upper.toString() : null,
-    scannedFrom: (upper + 1n).toString(),
-    scannedTo: to.toString(),
+    nextCursor: index >= floorIndex ? String(index) : null,
+    scannedFrom: (BigInt(index + 1) * CHUNK).toString(),
+    scannedTo: head.toString(),
   };
 }
+
 
 /** Convenience wrapper: first page only (used by charts / counters). */
 export async function fetchTradeEvents(curve: `0x${string}`): Promise<TradeEvent[]> {

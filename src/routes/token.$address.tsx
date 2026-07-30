@@ -156,19 +156,27 @@ function TokenPage() {
 
 
 
+  // A token that only lives on-chain gets its row created on first comment;
+  // keep that id so the thread loads right away (before it existed, the list
+  // stayed disabled and the new comment looked lost).
+  const [resolvedTokenId, setResolvedTokenId] = useState<string | null>(null);
+  const commentTokenId = (dbRow?.id ? String(dbRow.id) : null) ?? resolvedTokenId;
+
   const commentsQ = useQuery({
-    queryKey: ["comments", dbRow?.id],
-    enabled: !!dbRow?.id,
+    queryKey: ["comments", commentTokenId],
+    enabled: !!commentTokenId,
     queryFn: async () => {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("comments")
         .select("id,content,created_at,user_id")
-        .eq("token_id", dbRow.id)
+        .eq("token_id", commentTokenId!)
         .order("created_at", { ascending: false })
         .limit(50);
+      if (error) throw error;
       return data ?? [];
     },
   });
+
 
 
 
@@ -376,14 +384,18 @@ function TokenPage() {
                 <h3 className="font-display text-lg font-semibold">Comments</h3>
               </div>
               <CommentBox
-                tokenId={dbRow?.id ? String(dbRow.id) : null}
+                tokenId={commentTokenId}
                 fallback={{
                   address: (tk.contract_address as string | null) ?? (isAddress(address) ? address : null),
                   name: String(tk.name),
                   ticker: String(tk.ticker),
                 }}
-                onSent={() => commentsQ.refetch()}
+                onSent={(id) => {
+                  setResolvedTokenId(id);
+                  commentsQ.refetch();
+                }}
               />
+
 
 
               <ul className="divide-y divide-white/5">
@@ -470,7 +482,7 @@ function CommentBox({
 }: {
   tokenId: string | null;
   fallback: { address: string | null; name: string; ticker: string };
-  onSent: () => void;
+  onSent: (tokenId: string) => void;
 }) {
   const { user } = useAuth();
   const { address, isConnected } = useAccount();
@@ -496,10 +508,11 @@ function CommentBox({
       }
       const { error } = await supabase
         .from("comments")
-        .insert({ token_id: id!, content: body.trim(), user_id: me.id });
+        .insert({ token_id: id, content: body.trim(), user_id: me.id });
       if (error) throw error;
       setBody("");
-      onSent();
+      onSent(id);
+
     } catch (e) {
       console.error("[comments] insert failed", e);
       toast.error((e as Error).message);

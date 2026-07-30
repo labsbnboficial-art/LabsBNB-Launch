@@ -113,6 +113,48 @@ export async function fetchOnChainToken(
   };
 }
 
+export type CurveMetrics = {
+  priceWei: string;
+  marketCapWei: string;
+  liquidityWei: string;
+  volume24hWei: string;
+  priceChangeBps: number;
+  progressBps: number;
+  holders: number;
+  targetBnbWei: string;
+};
+
+const safeRead = async <T>(p: Promise<unknown>, fallback: T): Promise<T> => {
+  try { return (await p) as T; } catch { return fallback; }
+};
+
+/** Live analytics of a bonding curve (price, mcap, liquidity, volume, progress). */
+export async function fetchCurveMetrics(curve: `0x${string}`): Promise<CurveMetrics> {
+  const client = readClient();
+  const read = (functionName: string) =>
+    safeRead<bigint>(client.readContract({ address: curve, abi: CURVE_ABI as Abi, functionName }), 0n);
+  const [price, mcap, liq, vol, change, progress, holders, target] = await Promise.all([
+    read("currentPrice"),
+    read("marketCap"),
+    read("realLiquidity"),
+    read("volume24h"),
+    read("priceChange"),
+    read("progress"),
+    read("holders"),
+    read("MIGRATION_THRESHOLD"),
+  ]);
+  return {
+    priceWei: price.toString(),
+    marketCapWei: mcap.toString(),
+    liquidityWei: liq.toString(),
+    volume24hWei: vol.toString(),
+    priceChangeBps: Number(change),
+    progressBps: Number(progress),
+    holders: Number(holders),
+    targetBnbWei: target.toString(),
+  };
+}
+
 export type FactoryToken = {
   address: `0x${string}`;
   curve: `0x${string}` | null;
@@ -120,7 +162,9 @@ export type FactoryToken = {
   name: string;
   ticker: string;
   index: number;
+  metrics: CurveMetrics | null;
 };
+
 
 /**
  * Reads the token list straight from the Factory (`allTokensLength` + `allTokens`).
@@ -190,14 +234,17 @@ export async function fetchFactoryTokens(
           ),
         ]);
         if (!name && !ticker) return null;
+        const curveOk = curve && !/^0x0{40}$/.test(curve) ? curve : null;
         return {
           address,
-          curve: curve && !/^0x0{40}$/.test(curve) ? curve : null,
+          curve: curveOk,
           creator,
           name: name || "Unknown token",
           ticker: ticker || "???",
           index,
+          metrics: curveOk ? await fetchCurveMetrics(curveOk) : null,
         } satisfies FactoryToken;
+
       }),
   );
 

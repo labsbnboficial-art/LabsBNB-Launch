@@ -9,6 +9,8 @@ import { CURVE_ABI, TOKEN_ABI, FACTORY_ABI, BSC_TESTNET } from "@/lib/web3/abis"
 import { readClient, isAddress } from "@/lib/web3/onchain-token";
 import { DEFAULT_CONFIG } from "@/lib/launchpad-config";
 import { ACTIVE_CHAIN_ID } from "@/lib/web3/config";
+import { invalidateTradeCache } from "@/lib/web3/curve-events";
+
 
 const SLIPPAGE_BPS = 100n; // 1%
 
@@ -196,8 +198,11 @@ export function TradePanel({
       // Refresh events, chart, volume, buys/sells and priceChange without a reload.
       curveQ.refetch();
       balanceQ.refetch();
+      invalidateTradeCache(curve.curve as `0x${string}`);
       queryClient.invalidateQueries({ queryKey: ["curveTrades", curve.curve] });
       queryClient.invalidateQueries({ queryKey: ["curveStats", curve.curve] });
+      queryClient.invalidateQueries({ queryKey: ["tokens", "onchain"] });
+
 
     } catch (e) {
       const raw = e as { shortMessage?: string; message?: string };
