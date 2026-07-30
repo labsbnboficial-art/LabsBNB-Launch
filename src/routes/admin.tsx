@@ -205,6 +205,7 @@ function LoginForm({ emailConfigured, onDone }: { emailConfigured: boolean; onDo
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [forgot, setForgot] = useState(false);
   const [email, setEmail] = useState("");
 
