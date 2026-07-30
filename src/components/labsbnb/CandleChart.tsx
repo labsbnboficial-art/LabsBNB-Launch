@@ -68,19 +68,19 @@ export function CandleChart({ candles }: { candles: Candle[] }) {
       <div className="h-64">
         <ResponsiveContainer width="100%" height="100%">
           <ComposedChart data={data} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
-            <XAxis dataKey="label" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" minTickGap={24} />
+            <XAxis dataKey="label" tick={{ fontSize: 10 }} stroke="var(--muted-foreground)" minTickGap={24} />
             <YAxis
               tick={{ fontSize: 10 }}
-              stroke="hsl(var(--muted-foreground))"
+              stroke="var(--muted-foreground)"
               width={78}
               domain={domain}
               tickFormatter={(v: number) => v.toPrecision(3)}
             />
             <Tooltip
-              cursor={{ fill: "hsl(var(--muted) / 0.15)" }}
+              cursor={{ fill: "color-mix(in oklch, var(--muted) 20%, transparent)" }}
               contentStyle={{
-                background: "hsl(var(--card))",
-                border: "1px solid hsl(var(--border))",
+                background: "var(--card)",
+                border: "1px solid var(--border)",
                 borderRadius: 12,
                 fontSize: 12,
               }}
