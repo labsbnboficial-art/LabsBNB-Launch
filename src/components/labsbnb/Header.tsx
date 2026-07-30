@@ -67,6 +67,7 @@ export function Header() {
         </nav>
 
         <div className="flex items-center gap-2">
+          <RiskDisclaimer />
           {user && <NotifBell userId={user.id} />}
           <button
             onClick={() => setLocale(locale === "es" ? "en" : "es")}
