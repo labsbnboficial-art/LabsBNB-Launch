@@ -29,27 +29,43 @@ function TokenPage() {
 
   const tokenQ = useQuery({
     queryKey: ["token", address],
+    retry: 1,
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("tokens")
-        .select("*, bonding_curves(*)")
-        .or(`id.eq.${address},contract_address.eq.${address}`)
-        .maybeSingle();
-      if (error) throw error;
-      if (!data) throw notFound();
-      return data;
+      // 1) Try the database first.
+      let row: Record<string, unknown> | null = null;
+      try {
+        const { data, error } = await supabase
+          .from("tokens")
+          .select("*, bonding_curves(*)")
+          .or(`id.eq.${address},contract_address.eq.${address}`)
+          .maybeSingle();
+        if (error) throw error;
+        row = data as Record<string, unknown> | null;
+      } catch (e) {
+        console.error("[token] database lookup failed, falling back on-chain", e);
+      }
+      // 2) Fall back to the blockchain so a deployed token is never "lost".
+      let chain: OnChainToken | null = null;
+      if (!row && isAddress(address)) {
+        chain = await fetchOnChainToken(address);
+      }
+      if (!row && !chain) throw notFound();
+      return { row, chain };
     },
   });
 
+  const dbRow = tokenQ.data?.row as any;
+  const chain = tokenQ.data?.chain ?? null;
+
   const tradesQ = useQuery({
-    queryKey: ["trades", tokenQ.data?.id],
-    enabled: !!tokenQ.data?.id,
+    queryKey: ["trades", dbRow?.id],
+    enabled: !!dbRow?.id,
     refetchInterval: 15_000,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("trades")
         .select("*")
-        .eq("token_id", tokenQ.data!.id)
+        .eq("token_id", dbRow.id)
         .order("created_at", { ascending: false })
         .limit(200);
       if (error) throw error;
@@ -58,13 +74,13 @@ function TokenPage() {
   });
 
   const commentsQ = useQuery({
-    queryKey: ["comments", tokenQ.data?.id],
-    enabled: !!tokenQ.data?.id,
+    queryKey: ["comments", dbRow?.id],
+    enabled: !!dbRow?.id,
     queryFn: async () => {
       const { data } = await supabase
         .from("comments")
         .select("id,content,created_at,user_id")
-        .eq("token_id", tokenQ.data!.id)
+        .eq("token_id", dbRow.id)
         .order("created_at", { ascending: false })
         .limit(50);
       return data ?? [];
@@ -73,7 +89,11 @@ function TokenPage() {
 
   const analytics = useMemo(() => {
     const list = tradesQ.data ?? [];
-    if (!list.length) return { holders: 0, volume24h: 0, priceChange: 0, buys: 0, sells: 0 };
+    if (!list.length) {
+      return chain
+        ? { holders: chain.holders, volume24h: Number(BigInt(chain.volume24hWei)) / 1e18, priceChange: 0, buys: 0, sells: 0 }
+        : { holders: 0, volume24h: 0, priceChange: 0, buys: 0, sells: 0 };
+    }
     const holders = new Set(list.map((t) => t.wallet_address.toLowerCase())).size;
     const now = Date.now();
     const dayCut = now - 24 * 3600_000;
@@ -84,17 +104,38 @@ function TokenPage() {
     const priceThen = Number(list.find((t) => new Date(t.created_at).getTime() < dayCut)?.price ?? priceNow);
     const priceChange = priceThen > 0 ? ((priceNow - priceThen) / priceThen) * 100 : 0;
     return { holders, volume24h: vol24, priceChange, buys, sells };
-  }, [tradesQ.data]);
+  }, [tradesQ.data, chain]);
 
   if (tokenQ.isLoading) {
     return <AppShell><div className="max-w-6xl mx-auto px-6 py-16"><div className="glass rounded-2xl p-10 animate-pulse h-64" /></div></AppShell>;
   }
-  if (!tokenQ.data) {
+  if (!dbRow && !chain) {
     return <AppShell><div className="max-w-6xl mx-auto px-6 py-16 text-center text-muted-foreground">{t("token.notFound")}</div></AppShell>;
   }
-  const tk = tokenQ.data;
-  const curve = (tk.bonding_curves as unknown as { progress_bps: number; target_bnb: string; virtual_bnb?: string; real_bnb?: string } | null) ?? null;
+
+  // Unified view model — database row when available, on-chain data otherwise.
+  const tk = dbRow ?? {
+    id: chain!.address,
+    name: chain!.name,
+    ticker: chain!.ticker,
+    description: null,
+    logo_url: null,
+    banner_url: null,
+    website: chain!.metadataURI && /^https?:\/\//.test(chain!.metadataURI) ? chain!.metadataURI : null,
+    twitter: null,
+    telegram: null,
+    discord: null,
+    status: "on-chain",
+    creator_id: chain!.creator ?? "unknown",
+    contract_address: chain!.address,
+  };
+  const curve = dbRow
+    ? ((dbRow.bonding_curves as unknown as { progress_bps: number; target_bnb: string; virtual_bnb?: string; real_bnb?: string } | null) ?? null)
+    : chain!.curve
+      ? { progress_bps: chain!.progressBps, target_bnb: chain!.targetBnbWei, real_bnb: chain!.realLiquidityWei }
+      : null;
   const progress = curve ? Math.min(100, curve.progress_bps / 100) : 0;
+
 
   return (
     <AppShell>
