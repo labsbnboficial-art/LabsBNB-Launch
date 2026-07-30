@@ -109,7 +109,10 @@ function AdminPage() {
     );
   }
 
-  if (d.stage !== "full") return <AppShell><GoogleGate onDone={() => q.refetch()} /></AppShell>;
+  if (d.needsBootstrap) return <AppShell><Bootstrap onDone={() => q.refetch()} /></AppShell>;
+  if (!d.stage) return <AppShell><LoginForm emailConfigured={d.emailConfigured} onDone={() => q.refetch()} /></AppShell>;
+  if (d.stage === "totp") return <AppShell><TotpStep onDone={() => q.refetch()} /></AppShell>;
+  if (d.stage !== "full") return <AppShell><PinStep onDone={() => q.refetch()} /></AppShell>;
 
 
   return (
