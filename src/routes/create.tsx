@@ -1,8 +1,9 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { z } from "zod";
-import { useAccount, useSendTransaction, useWaitForTransactionReceipt } from "wagmi";
-import { parseUnits } from "viem";
+import { useAccount, useSendTransaction, useWaitForTransactionReceipt, useWriteContract, useSwitchChain, usePublicClient } from "wagmi";
+import { parseUnits, decodeEventLog, type Abi } from "viem";
+import { FACTORY_ABI } from "@/lib/web3/abis";
 import { useI18n } from "@/lib/i18n";
 import { AppShell } from "@/components/labsbnb/AppShell";
 import { Button } from "@/components/ui/button";
@@ -88,6 +89,13 @@ function CreatePage() {
   const { address, isConnected } = useAccount();
   const navigate = useNavigate();
   const { data: cfg } = useLaunchpadConfig();
+  const { writeContractAsync } = useWriteContract();
+  const { switchChainAsync } = useSwitchChain();
+  const chainId = cfg?.chain_id ?? 97;
+  const publicClient = usePublicClient({ chainId });
+  const factory = (cfg?.factory_address ?? null) as `0x${string}` | null;
+  const [deployTx, setDeployTx] = useState<`0x${string}` | null>(null);
+  const [deployState, setDeployState] = useState<string>("");
 
   const set = <K extends keyof FormState>(k: K, v: FormState[K]) => setForm((f) => ({ ...f, [k]: v }));
 
@@ -104,15 +112,52 @@ function CreatePage() {
   }
 
   async function deploy() {
-    if (!user) { toast.error("Sign in first"); navigate({ to: "/auth" }); return; }
+    if (!user) { toast.error("Sign in first"); navigate({ to: "/auth", search: { redirect: "/create" } }); return; }
     if (!isConnected || !address) { toast.error("Connect your wallet first"); return; }
     if (adv.enabled && !adv.paid_tx) { toast.error("Pay the advanced tokenomics unlock first"); return; }
     if (adv.enabled) {
       const total = adv.lp_pct + adv.burn_pct + adv.staking_pct + adv.reward_pct;
       if (total !== 100) { toast.error(`Advanced % must sum to 100 (current: ${total})`); return; }
     }
+    if (!factory) { toast.error("Factory address not configured"); return; }
     setSubmitting(true);
+    setDeployTx(null);
     try {
+      // 1) Make sure the wallet is on the configured BNB chain.
+      try { await switchChainAsync({ chainId }); } catch { /* already on chain / user rejected switch */ }
+
+      // 2) Ask the wallet to sign createToken() on the real factory.
+      setDeployState("Confirm the transaction in your wallet…");
+      const metadataURI = form.logo_url || form.website || "";
+      const hash = await writeContractAsync({
+        address: factory,
+        abi: FACTORY_ABI as Abi,
+        functionName: "createToken",
+        args: [form.name, form.ticker.toUpperCase(), metadataURI],
+        chainId,
+      });
+      setDeployTx(hash);
+      setDeployState("Waiting for confirmation on BNB Chain…");
+
+      // 3) Wait for the receipt and read the TokenCreated event.
+      const receipt = await publicClient!.waitForTransactionReceipt({ hash });
+      let tokenAddress: string | null = null;
+      let curveAddress: string | null = null;
+      for (const log of receipt.logs) {
+        try {
+          const ev = decodeEventLog({ abi: FACTORY_ABI as Abi, data: log.data, topics: log.topics });
+          if (ev.eventName === "TokenCreated") {
+            const a = ev.args as unknown as { token: string; curve: string };
+            tokenAddress = a.token;
+            curveAddress = a.curve;
+            break;
+          }
+        } catch { /* not a factory event */ }
+      }
+      if (!tokenAddress) throw new Error("TokenCreated event not found in the transaction receipt");
+      setDeployState("Deployed — saving…");
+
+      // 4) Persist the on-chain result.
       const { data, error } = await supabase.from("tokens").insert({
         creator_id: user.id,
         name: form.name,
@@ -128,13 +173,27 @@ function CreatePage() {
         category: form.category,
         supply: form.supply,
         decimals: form.decimals,
-        chain_id: 56,
-        status: "pending",
+        chain_id: chainId,
+        contract_address: tokenAddress,
+        deploy_tx_hash: hash,
+        status: "active",
       }).select("id").single();
       if (error) throw error;
       await supabase.from("bonding_curves").insert({
         token_id: data.id,
         target_bnb: Math.floor(form.target_bnb * 1e18),
+      });
+      await supabase.from("activity").insert({
+        user_id: user.id,
+        token_id: data.id,
+        kind: "deploy",
+        payload: {
+          token_address: tokenAddress,
+          curve_address: curveAddress,
+          factory_address: factory,
+          tx_hash: hash,
+          chain_id: chainId,
+        },
       });
       if (adv.enabled) {
         await supabase.from("activity").insert({
@@ -152,10 +211,12 @@ function CreatePage() {
           },
         });
       }
-      toast.success("Token created (pending on-chain deploy)");
-      navigate({ to: "/token/$address", params: { address: data.id } });
+      setDeployState("Deployed");
+      toast.success("Token deployed on-chain");
+      navigate({ to: "/token/$address", params: { address: tokenAddress } });
     } catch (e) {
       console.error(e);
+      setDeployState("Failed");
       toast.error((e as Error).message);
     } finally {
       setSubmitting(false);
@@ -221,11 +282,29 @@ function CreatePage() {
           {step === 2 && (
             <div className="space-y-5">
               <Summary form={form} adv={adv} />
-              <div className="rounded-xl border border-white/10 bg-white/5 p-4 text-xs text-muted-foreground">
-                By deploying you agree to sign the transaction with your connected wallet ({address ?? "not connected"}).
-                On-chain factory: <span className="text-accent">pending Phase 2 deployment</span> — the token record
-                is stored now and finalized when the factory address is wired.
+              <div className="rounded-xl border border-white/10 bg-white/5 p-4 text-xs text-muted-foreground space-y-1">
+                <div>
+                  Your wallet ({address ?? "not connected"}) will sign <span className="font-mono text-accent">createToken()</span> on the LabsBNB factory.
+                </div>
+                <div>
+                  Factory: <span className="font-mono text-accent">{factory ?? "not configured"}</span> · Chain ID <span className="font-mono">{chainId}</span>
+                </div>
               </div>
+              {(deployTx || deployState) && (
+                <div className="rounded-xl border border-accent/30 bg-accent/5 p-4 text-xs space-y-1">
+                  <div className="text-accent">{deployState || "…"}</div>
+                  {deployTx && (
+                    <a
+                      className="font-mono underline break-all"
+                      href={`https://testnet.bscscan.com/tx/${deployTx}`}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      {deployTx}
+                    </a>
+                  )}
+                </div>
+              )}
             </div>
           )}
 
