@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { z } from "zod";
-import { useAccount, useSendTransaction, useWaitForTransactionReceipt, useWriteContract, useSwitchChain, usePublicClient } from "wagmi";
+import { useAccount, useSendTransaction, useWaitForTransactionReceipt, useWriteContract, useSwitchChain, usePublicClient, useChainId } from "wagmi";
 import { parseUnits, decodeEventLog, type Abi } from "viem";
 import { FACTORY_ABI } from "@/lib/web3/abis";
 import { useI18n } from "@/lib/i18n";
