@@ -37,11 +37,11 @@ function TokenPage() {
       // 1) Try the database first.
       let row: Record<string, unknown> | null = null;
       try {
-        const { data, error } = await supabase
-          .from("tokens")
-          .select("*, bonding_curves(*)")
-          .or(`id.eq.${address},contract_address.eq.${address}`)
+        const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(address);
+        const q = supabase.from("tokens").select("*, bonding_curves(*)");
+        const { data, error } = await (isUuid ? q.eq("id", address) : q.ilike("contract_address", address))
           .maybeSingle();
+
         if (error) throw error;
         row = data as Record<string, unknown> | null;
       } catch (e) {
