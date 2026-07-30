@@ -60,6 +60,51 @@ function TokenPage() {
   const dbRow = tokenQ.data?.row as any;
   const chain = tokenQ.data?.chain ?? null;
 
+  // Bonding curve address (on-chain read first, database row as backup).
+  const curveAddr = ((chain?.curve as string | null) ??
+    ((dbRow?.bonding_curves as { contract_address?: string } | null)?.contract_address ?? null)) as
+    | `0x${string}`
+    | null;
+  const curveOk = curveAddr && isAddress(curveAddr) ? (curveAddr as `0x${string}`) : null;
+
+  // Recent trades — decoded straight from Trade(...) events.
+  const eventsQ = useQuery({
+    queryKey: ["curveTrades", curveOk],
+    enabled: !!curveOk,
+    refetchInterval: 15_000,
+    queryFn: () => fetchTradeEvents(curveOk!),
+  });
+
+  // volume24h() / priceChange() / holders() — the contract's own views.
+  const statsQ = useQuery({
+    queryKey: ["curveStats", curveOk],
+    enabled: !!curveOk,
+    refetchInterval: 15_000,
+    queryFn: () => fetchCurveStats(curveOk!),
+  });
+
+  const events = eventsQ.data ?? [];
+  const analytics = useMemo(() => {
+    const buys = events.filter((e) => e.isBuy).length;
+    return {
+      buys,
+      sells: events.length - buys,
+      holders: statsQ.data?.holders ?? chain?.holders ?? 0,
+      volume24h: Number(statsQ.data?.volume24hWei ?? 0n) / 1e18,
+      priceChange: Number(statsQ.data?.priceChangeBps ?? 0n) / 100,
+    };
+  }, [events, statsQ.data, chain]);
+
+  const chartData = useMemo(
+    () =>
+      events.map((e) => ({
+        t: e.timestamp * 1000,
+        price: Number(e.price) / 1e18,
+        label: new Date(e.timestamp * 1000).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+      })),
+    [events],
+  );
+
   const commentsQ = useQuery({
     queryKey: ["comments", dbRow?.id],
     enabled: !!dbRow?.id,
@@ -73,6 +118,7 @@ function TokenPage() {
       return data ?? [];
     },
   });
+
 
 
   if (tokenQ.isLoading) {
