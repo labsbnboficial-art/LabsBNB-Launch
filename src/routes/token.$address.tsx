@@ -384,14 +384,18 @@ function TokenPage() {
                 <h3 className="font-display text-lg font-semibold">Comments</h3>
               </div>
               <CommentBox
-                tokenId={dbRow?.id ? String(dbRow.id) : null}
+                tokenId={commentTokenId}
                 fallback={{
                   address: (tk.contract_address as string | null) ?? (isAddress(address) ? address : null),
                   name: String(tk.name),
                   ticker: String(tk.ticker),
                 }}
-                onSent={() => commentsQ.refetch()}
+                onSent={(id) => {
+                  setResolvedTokenId(id);
+                  commentsQ.refetch();
+                }}
               />
+
 
 
               <ul className="divide-y divide-white/5">
