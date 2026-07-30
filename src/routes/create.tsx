@@ -441,7 +441,7 @@ function AdvancedTokenomics({
   async function pay() {
     try {
       const value = parseUnits(String(feeBnb || 0), 18);
-      const hash = await sendTransactionAsync({ to: adminWallet, value });
+      const hash = await sendTransactionAsync({ to: adminWallet, value, chainId: 97 });
       setTxHash(hash);
       setAdv((a) => ({ ...a, paid_tx: hash }));
       toast.success("Payment sent, waiting for confirmation…");
