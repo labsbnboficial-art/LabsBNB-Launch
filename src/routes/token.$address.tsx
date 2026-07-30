@@ -457,32 +457,43 @@ function ChainError({ error, onRetry }: { error: Error; onRetry: () => void }) {
 /**
  * Comments accept an existing Supabase session OR a connected wallet:
  * in the second case we complete SIWE silently before inserting.
+ * If the token only exists on-chain we register its row first, so a wallet
+ * user can always comment.
  */
-function CommentBox({ tokenId, onSent }: { tokenId: string | null; onSent: () => void }) {
+function CommentBox({
+  tokenId,
+  fallback,
+  onSent,
+}: {
+  tokenId: string | null;
+  fallback: { address: string | null; name: string; ticker: string };
+  onSent: () => void;
+}) {
   const { user } = useAuth();
   const { address, isConnected } = useAccount();
   const signIn = useSiweSignIn();
+  const ensureRow = useServerFn(ensureTokenRow);
   const [body, setBody] = useState("");
   const [busy, setBusy] = useState(false);
 
-  if (!tokenId) {
-    return (
-      <p className="mb-4 text-xs text-muted-foreground">
-        Este token todavía no tiene ficha en la base de datos: los comentarios se activan al guardarla.
-      </p>
-    );
-  }
-
-  const canPost = !!user || isConnected;
+  const canPost = (!!user || isConnected) && (!!tokenId || !!fallback.address);
 
   async function send() {
-    if (!body.trim() || !tokenId) return;
+    if (!body.trim()) return;
     setBusy(true);
     try {
       const me = user ?? (await signIn());
+      let id = tokenId;
+      if (!id) {
+        if (!fallback.address) throw new Error("Este token no tiene dirección on-chain válida.");
+        const r = await ensureRow({
+          data: { address: fallback.address, name: fallback.name, ticker: fallback.ticker },
+        });
+        id = r.id;
+      }
       const { error } = await supabase
         .from("comments")
-        .insert({ token_id: tokenId, content: body.trim(), user_id: me.id });
+        .insert({ token_id: id, content: body.trim(), user_id: me.id });
       if (error) throw error;
       setBody("");
       onSent();
@@ -493,6 +504,7 @@ function CommentBox({ tokenId, onSent }: { tokenId: string | null; onSent: () =>
       setBusy(false);
     }
   }
+
 
   return (
     <div className="mb-4">
