@@ -5,6 +5,7 @@ import { AppShell } from "@/components/labsbnb/AppShell";
 import { useBnbPrice } from "@/lib/web3/useLabsBnbPrice";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchFactoryTokens, type CurveMetrics, type FactoryToken } from "@/lib/web3/onchain-token";
+import { formatPrice } from "@/lib/web3/live-price";
 
 import { Button } from "@/components/ui/button";
 import { ArrowRight, Rocket, Search, Sparkles, TrendingUp, Clock, Flame, LineChart } from "lucide-react";
@@ -76,8 +77,12 @@ function LandingPage() {
 
   const chainTokens = useQuery({
     queryKey: ["tokens", "onchain"],
-    refetchInterval: 30_000,
-    staleTime: 15_000,
+    // Live cards: refresh price / 24h volume / 24h change periodically and
+    // whenever the user comes back to the tab (never while it is hidden).
+    refetchInterval: 15_000,
+    refetchIntervalInBackground: false,
+    refetchOnWindowFocus: true,
+    staleTime: 5_000,
     queryFn: () => fetchFactoryTokens(24),
   });
 
@@ -423,7 +428,7 @@ function TokenGrid({
                 <div className="mt-3 grid grid-cols-2 gap-2 text-[11px]">
                   <div>
                     <div className="uppercase tracking-wider text-muted-foreground">Price</div>
-                    <div className="font-mono">{m ? `${wei(m.priceWei).toPrecision(3)} BNB` : "—"}</div>
+                    <div className="font-mono tabular-nums">{m ? `${formatPrice(m.priceWei)} BNB` : "—"}</div>
                   </div>
                   <div>
                     <div className="uppercase tracking-wider text-muted-foreground">Market cap</div>
