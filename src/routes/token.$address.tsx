@@ -19,6 +19,9 @@ import { CandleChart } from "@/components/labsbnb/CandleChart";
 import { TradePanel } from "@/components/labsbnb/TradePanel";
 import { useServerFn } from "@tanstack/react-start";
 import { ensureTokenRow } from "@/lib/tokens.functions";
+import { updateTokenMeta } from "@/lib/token-meta.functions";
+import { fetchTopHolders } from "@/lib/web3/holders";
+import { Textarea } from "@/components/ui/textarea";
 
 
 
