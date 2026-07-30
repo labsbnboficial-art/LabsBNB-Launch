@@ -130,68 +130,8 @@ function AdminPage() {
 
 /* --------------------------------- screens -------------------------------- */
 
-/** Temporary testing gate: Google sign-in only (password/PIN/TOTP flows stay in place). */
-function GoogleGate({ onDone }: { onDone: () => void }) {
-  const { user, loading } = useAuth();
-  const login = useServerFn(adminGoogleLogin);
-  const [busy, setBusy] = useState(false);
-
-  async function signInWithGoogle() {
-    setBusy(true);
-    try {
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: "google",
-        options: { redirectTo: `${window.location.origin}/admin` },
-      });
-      if (error) throw error;
-    } catch (e) {
-      toast.error((e as Error).message);
-      setBusy(false);
-    }
-  }
-
-  async function enter() {
-    setBusy(true);
-    try {
-      await login();
-      toast.success("Sesión de admin iniciada");
-      onDone();
-    } catch (e) {
-      toast.error((e as Error).message);
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  return (
-    <Card>
-      <div className="text-center">
-        <Shield className="mx-auto h-8 w-8 text-accent" />
-        <h1 className="mt-3 font-display text-xl font-bold">Panel de administración</h1>
-        <p className="mt-2 text-sm text-muted-foreground">
-          Acceso con tu cuenta de Google (modo pruebas).
-        </p>
-      </div>
-      <Button
-        className="mt-6 w-full brand-gradient text-primary-foreground glow-primary"
-        disabled={busy || loading}
-        onClick={user ? enter : signInWithGoogle}
-      >
-        {busy ? "…" : user ? `Entrar como ${user.email ?? "usuario"}` : "Continuar con Google"}
-      </Button>
-      {user && (
-        <button
-          className="mt-3 w-full text-xs text-muted-foreground underline"
-          onClick={async () => { await supabase.auth.signOut(); }}
-        >
-          Usar otra cuenta
-        </button>
-      )}
-    </Card>
-  );
-}
-
 function Bootstrap({ onDone }: { onDone: () => void }) {
+
   const fn = useServerFn(adminBootstrap);
   const [v, setV] = useState({ username: "", email: "", password: "", pin: "" });
   const [busy, setBusy] = useState(false);
