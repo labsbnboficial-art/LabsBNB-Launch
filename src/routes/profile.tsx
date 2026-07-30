@@ -43,7 +43,7 @@ function ProfilePage() {
   const { address } = useAccount();
   const navigate = useNavigate();
 
-  useEffect(() => { if (!loading && !user) navigate({ to: "/auth" }); }, [loading, user, navigate]);
+  useEffect(() => { if (!loading && !user) navigate({ to: "/auth", search: { redirect: "/profile" } }); }, [loading, user, navigate]);
 
   const tokensQ = useQuery({
     queryKey: ["my-tokens", user?.id],
