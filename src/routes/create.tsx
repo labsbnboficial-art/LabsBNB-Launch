@@ -80,7 +80,7 @@ const initialAdvanced: AdvancedState = {
 };
 
 const initial: FormState = {
-  name: "", ticker: "", description: "", logo_url: "", banner_url: "",
+  name: "", ticker: "", description: "", logo_url: "", banner_url: "", metadata_uri: "",
   website: "", telegram: "", twitter: "", discord: "", github: "",
   category: "Meme",
   supply: 1_000_000_000, decimals: 18, initial_buy_bnb: 0, target_bnb: 24,
