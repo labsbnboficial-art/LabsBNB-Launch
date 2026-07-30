@@ -224,10 +224,38 @@ function TokenPage() {
         <div className="mt-6 grid gap-6 lg:grid-cols-3">
           <div className="lg:col-span-2 space-y-6">
             <div className="glass rounded-2xl p-6">
-              <div className="text-xs uppercase tracking-widest text-muted-foreground mb-4">Chart</div>
-              <div className="h-64 rounded-xl border border-dashed border-white/10 grid place-items-center text-sm text-muted-foreground">
-                Waiting for on-chain trades to populate the chart.
-              </div>
+              <div className="text-xs uppercase tracking-widest text-muted-foreground mb-4">Price chart</div>
+              {chartData.length > 1 ? (
+                <div className="h-64">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={chartData}>
+                      <defs>
+                        <linearGradient id="priceFill" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity={0.5} />
+                          <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity={0} />
+                        </linearGradient>
+                      </defs>
+                      <XAxis dataKey="label" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" minTickGap={24} />
+                      <YAxis
+                        tick={{ fontSize: 10 }}
+                        stroke="hsl(var(--muted-foreground))"
+                        width={70}
+                        domain={["auto", "auto"]}
+                        tickFormatter={(v: number) => v.toPrecision(3)}
+                      />
+                      <Tooltip
+                        contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 12, fontSize: 12 }}
+                        formatter={(v: number) => [`${v.toPrecision(6)} BNB`, "Price"]}
+                      />
+                      <Area type="monotone" dataKey="price" stroke="hsl(var(--primary))" fill="url(#priceFill)" strokeWidth={2} />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
+              ) : (
+                <div className="h-64 rounded-xl border border-dashed border-white/10 grid place-items-center text-sm text-muted-foreground">
+                  {eventsQ.isLoading ? "Loading on-chain trades…" : "Waiting for on-chain trades to populate the chart."}
+                </div>
+              )}
             </div>
 
             <div className="glass rounded-2xl p-6">
@@ -235,21 +263,55 @@ function TokenPage() {
                 <ArrowLeftRight className="h-4 w-4 text-accent" />
                 <h3 className="font-display text-lg font-semibold">Recent trades</h3>
               </div>
-              {tradesQ.data && tradesQ.data.length > 0 ? (
-                <div className="text-sm divide-y divide-white/5">
-                  {tradesQ.data.slice(0, 30).map((tr) => (
-                    <div key={tr.id} className="flex items-center justify-between py-2">
-                      <span className={tr.side === "buy" ? "text-success uppercase text-xs" : "text-destructive uppercase text-xs"}>{tr.side}</span>
-                      <span className="font-mono text-xs">{tr.wallet_address.slice(0, 8)}…</span>
-                      <span className="font-mono text-xs">{(Number(tr.amount_bnb) / 1e18).toFixed(4)} BNB</span>
-                      <span className="text-[10px] text-muted-foreground">{new Date(tr.created_at).toLocaleTimeString()}</span>
-                    </div>
-                  ))}
+              {events.length > 0 ? (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs">
+                    <thead className="text-[10px] uppercase tracking-widest text-muted-foreground">
+                      <tr className="text-left">
+                        <th className="py-2 font-normal">Wallet</th>
+                        <th className="py-2 font-normal">Type</th>
+                        <th className="py-2 font-normal text-right">BNB</th>
+                        <th className="py-2 font-normal text-right">Tokens</th>
+                        <th className="py-2 font-normal text-right">Price</th>
+                        <th className="py-2 font-normal text-right">Time</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-white/5">
+                      {[...events].reverse().slice(0, 30).map((tr) => (
+                        <tr key={tr.key}>
+                          <td className="py-2 font-mono">
+                            <a
+                              href={`${BSC_TESTNET.explorer}/tx/${tr.txHash}`}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="hover:text-foreground text-muted-foreground"
+                            >
+                              {tr.trader.slice(0, 6)}…{tr.trader.slice(-4)}
+                            </a>
+                          </td>
+                          <td className={tr.isBuy ? "py-2 uppercase text-success" : "py-2 uppercase text-destructive"}>
+                            {tr.isBuy ? "Buy" : "Sell"}
+                          </td>
+                          <td className="py-2 text-right font-mono">{(Number(tr.amountBnb) / 1e18).toFixed(4)}</td>
+                          <td className="py-2 text-right font-mono">
+                            {(Number(tr.amountTokens) / 1e18).toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                          </td>
+                          <td className="py-2 text-right font-mono">{(Number(tr.price) / 1e18).toPrecision(4)}</td>
+                          <td className="py-2 text-right text-muted-foreground">
+                            {new Date(tr.timestamp * 1000).toLocaleTimeString()}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
               ) : (
-                <div className="rounded-xl border border-dashed border-white/10 py-10 text-center text-sm text-muted-foreground">{t("empty.noTrades")}</div>
+                <div className="rounded-xl border border-dashed border-white/10 py-10 text-center text-sm text-muted-foreground">
+                  {eventsQ.isLoading ? "Loading on-chain trades…" : t("empty.noTrades")}
+                </div>
               )}
             </div>
+
 
             <div className="glass rounded-2xl p-6">
               <div className="flex items-center gap-2 mb-4">
