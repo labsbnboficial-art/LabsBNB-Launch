@@ -374,8 +374,14 @@ function TokenPage() {
               </div>
               <CommentBox
                 tokenId={dbRow?.id ? String(dbRow.id) : null}
+                fallback={{
+                  address: (tk.contract_address as string | null) ?? (isAddress(address) ? address : null),
+                  name: String(tk.name),
+                  ticker: String(tk.ticker),
+                }}
                 onSent={() => commentsQ.refetch()}
               />
+
 
               <ul className="divide-y divide-white/5">
                 {(commentsQ.data ?? []).map((c) => (
