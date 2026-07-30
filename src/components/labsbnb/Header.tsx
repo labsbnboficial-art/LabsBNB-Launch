@@ -12,6 +12,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Wallet, Rocket, Trophy, User, Shield, Globe, Search, Bell, Sparkles } from "lucide-react";
+import { RiskDisclaimer } from "@/components/labsbnb/RiskDisclaimer";
 
 function shortAddr(a?: string) {
   if (!a) return "";
