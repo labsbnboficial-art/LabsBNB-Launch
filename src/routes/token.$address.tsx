@@ -239,7 +239,18 @@ function TokenPage() {
     : chain!.curve
       ? { progress_bps: chain!.progressBps, target_bnb: chain!.targetBnbWei, real_bnb: chain!.realLiquidityWei }
       : null;
-  const progress = curve ? Math.min(100, curve.progress_bps / 100) : 0;
+  // Live values win over anything cached in the database.
+  const progress = live
+    ? Math.min(100, live.progressBps / 100)
+    : curve
+      ? Math.min(100, curve.progress_bps / 100)
+      : 0;
+  const liquidityBnb = live
+    ? Number(live.liquidityWei) / 1e18
+    : curve
+      ? Number(BigInt(curve.real_bnb ?? "0")) / 1e18
+      : null;
+  const marketCapBnb = live ? Number(live.marketCapWei) / 1e18 : null;
   const curveAddress: string | null = curveAddr;
 
 
