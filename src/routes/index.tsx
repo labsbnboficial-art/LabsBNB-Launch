@@ -147,6 +147,32 @@ function LandingPage() {
     [merged],
   );
 
+  const topGainers = useMemo(
+    () =>
+      [...merged]
+        .filter((tk) => tk.metrics && tk.metrics.priceChangeBps !== 0)
+        .sort((a, b) => (b.metrics!.priceChangeBps ?? 0) - (a.metrics!.priceChangeBps ?? 0))
+        .slice(0, 5),
+    [merged],
+  );
+
+  const topMarketCap = useMemo(
+    () =>
+      [...merged]
+        .filter((tk) => wei(tk.metrics?.marketCapWei) > 0)
+        .sort((a, b) => wei(b.metrics?.marketCapWei) - wei(a.metrics?.marketCapWei))
+        .slice(0, 5),
+    [merged],
+  );
+
+  const recentlyCreated = useMemo(
+    () =>
+      [...merged]
+        .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+        .slice(0, 8),
+    [merged],
+  );
+
   const chainAggregates = useMemo(() => {
     const rows = merged.filter((tk) => tk.metrics);
     return {
