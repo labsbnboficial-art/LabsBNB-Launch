@@ -80,7 +80,7 @@ function NewCampaignPage() {
   async function payFee() {
     if (!address) { toast.error("Conecta tu wallet"); return; }
     try {
-      const hash = await sendTransactionAsync({ to: cfg!.admin_wallet as `0x${string}`, value: feeWei });
+      const hash = await sendTransactionAsync({ to: cfg!.admin_wallet as `0x${string}`, value: feeWei, chainId: 97 });
       setFeeTx(hash);
       toast.success("Pago enviado, esperando confirmación…");
     } catch (e) { toast.error((e as Error).message); }

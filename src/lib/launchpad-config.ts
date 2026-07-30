@@ -61,16 +61,24 @@ export const DEFAULT_CONFIG: LaunchpadConfig = {
   antibot_anti_flashloan: true,
 };
 
+/** Testing phase: the launchpad is locked to BNB Smart Chain Testnet (97). */
+export const TESTNET_CHAIN_ID = 97;
+export const TESTNET_FACTORY = "0x0738dA5824d03fF3E8BDDFd33cdb3728b6d8abD9" as `0x${string}`;
+
 function coerce(cfg: Record<string, unknown>): LaunchpadConfig {
   const g = <T,>(k: keyof LaunchpadConfig, fallback: T): T => {
     const v = cfg[k as string];
     return (v ?? fallback) as T;
   };
+  const rawFactory = String(g("factory_address", "") ?? "").trim();
+  const factory = /^0x[a-fA-F0-9]{40}$/.test(rawFactory)
+    ? (rawFactory as `0x${string}`)
+    : TESTNET_FACTORY;
   return {
     admin_wallet: String(g("admin_wallet", DEFAULT_CONFIG.admin_wallet)),
-    factory_address: (g("factory_address", null) as `0x${string}` | null) || null,
-    rpc_url: String(g("rpc_url", DEFAULT_CONFIG.rpc_url)),
-    chain_id: Number(g("chain_id", DEFAULT_CONFIG.chain_id)),
+    factory_address: factory,
+    rpc_url: DEFAULT_CONFIG.rpc_url,
+    chain_id: TESTNET_CHAIN_ID,
     fee_bps: Number(g("fee_bps", DEFAULT_CONFIG.fee_bps)),
     fee_wallet: String(g("fee_wallet", DEFAULT_CONFIG.fee_wallet)),
     curve_target_bnb: String(g("curve_target_bnb", DEFAULT_CONFIG.curve_target_bnb)),

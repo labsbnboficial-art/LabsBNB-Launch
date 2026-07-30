@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useAccount, useChainId, useConnect, useDisconnect, useSignMessage, useSwitchChain } from "wagmi";
-import { bsc } from "wagmi/chains";
+import { bscTestnet } from "wagmi/chains";
 import { useServerFn } from "@tanstack/react-start";
 import { AppShell } from "@/components/labsbnb/AppShell";
 import { supabase } from "@/integrations/supabase/client";
@@ -37,7 +37,7 @@ function AuthPage() {
   const { signMessageAsync } = useSignMessage();
   const chainId = useChainId();
   const { switchChainAsync } = useSwitchChain();
-  const onBsc = chainId === bsc.id;
+  const onBsc = chainId === bscTestnet.id;
   const [busy, setBusy] = useState(false);
   const navigate = useNavigate();
   const { redirect } = Route.useSearch();
@@ -53,16 +53,16 @@ function AuthPage() {
     setBusy(true);
     try {
       // Force BNB Smart Chain before signing (wallets often default to Ethereum).
-      if (chainId !== bsc.id) {
+      if (chainId !== bscTestnet.id) {
         try {
-          await switchChainAsync({ chainId: bsc.id });
+          await switchChainAsync({ chainId: bscTestnet.id });
         } catch {
-          toast.error("Switch your wallet to BNB Smart Chain (BSC, chain 56) to continue");
+          toast.error("Switch your wallet to BNB Smart Chain Testnet (chain 97) to continue");
           return;
         }
       }
       const domain = typeof window !== "undefined" ? window.location.host : "labsbnb.app";
-      const { message } = await challenge({ data: { address, domain, chainId: bsc.id } });
+      const { message } = await challenge({ data: { address, domain, chainId: bscTestnet.id } });
       const signature = await signMessageAsync({ message });
       const { email, token_hash } = await verify({ data: { address, message, signature } });
       const { error } = await supabase.auth.verifyOtp({ email, token_hash, type: "magiclink" });
@@ -114,13 +114,13 @@ function AuthPage() {
                 <div className="font-mono text-sm mt-1 break-all">{address}</div>
                 <div className="mt-2 text-[11px]">
                   {onBsc ? (
-                    <span className="text-accent">Network: BNB Smart Chain (56)</span>
+                    <span className="text-accent">Network: BNB Smart Chain Testnet (97)</span>
                   ) : (
                     <button
-                      onClick={() => switchChainAsync({ chainId: bsc.id }).catch(() => toast.error("Could not switch network"))}
+                      onClick={() => switchChainAsync({ chainId: bscTestnet.id }).catch(() => toast.error("Could not switch network"))}
                       className="text-destructive underline underline-offset-2"
                     >
-                      Wrong network (chain {chainId}) — switch to BNB Smart Chain
+                      Wrong network (chain {chainId}) — switch to BNB Testnet
                     </button>
                   )}
                 </div>

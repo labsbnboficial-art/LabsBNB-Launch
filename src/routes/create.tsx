@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { z } from "zod";
-import { useAccount, useSendTransaction, useWaitForTransactionReceipt, useWriteContract, useSwitchChain, usePublicClient } from "wagmi";
+import { useAccount, useSendTransaction, useWaitForTransactionReceipt, useWriteContract, useSwitchChain, usePublicClient, useChainId } from "wagmi";
 import { parseUnits, decodeEventLog, type Abi } from "viem";
 import { FACTORY_ABI } from "@/lib/web3/abis";
 import { useI18n } from "@/lib/i18n";
@@ -94,7 +94,9 @@ function CreatePage() {
   const chainId = cfg?.chain_id ?? 97;
   const publicClient = usePublicClient({ chainId });
   const factory = (cfg?.factory_address ?? null) as `0x${string}` | null;
+  const walletChainId = useChainId();
   const [deployTx, setDeployTx] = useState<`0x${string}` | null>(null);
+  const [deployedToken, setDeployedToken] = useState<string | null>(null);
   const [deployState, setDeployState] = useState<string>("");
 
   const set = <K extends keyof FormState>(k: K, v: FormState[K]) => setForm((f) => ({ ...f, [k]: v }));
@@ -122,25 +124,43 @@ function CreatePage() {
     if (!factory) { toast.error("Factory address not configured"); return; }
     setSubmitting(true);
     setDeployTx(null);
+    setDeployedToken(null);
     try {
-      // 1) Make sure the wallet is on the configured BNB chain.
-      try { await switchChainAsync({ chainId }); } catch { /* already on chain / user rejected switch */ }
+      // 1) Make sure the wallet is on BNB Smart Chain Testnet (97) before signing.
+      if (walletChainId !== chainId) {
+        try {
+          await switchChainAsync({ chainId });
+        } catch {
+          throw new Error("Switch your wallet to BNB Smart Chain Testnet (chain 97) and try again");
+        }
+      }
 
-      // 2) Ask the wallet to sign createToken() on the real factory.
-      setDeployState("Confirm the transaction in your wallet…");
+      // 2) Simulate then send the real createToken() transaction.
       const metadataURI = form.logo_url || form.website || "";
+      const args = [form.name, form.ticker.toUpperCase(), metadataURI] as const;
+      setDeployState("Checking the transaction with the factory…");
+      await publicClient!.simulateContract({
+        account: address,
+        address: factory,
+        abi: FACTORY_ABI as Abi,
+        functionName: "createToken",
+        args: args as unknown as unknown[],
+      });
+
+      setDeployState("Confirm the transaction in your wallet (gas in tBNB)…");
       const hash = await writeContractAsync({
         address: factory,
         abi: FACTORY_ABI as Abi,
         functionName: "createToken",
-        args: [form.name, form.ticker.toUpperCase(), metadataURI],
+        args: args as unknown as unknown[],
         chainId,
       });
       setDeployTx(hash);
-      setDeployState("Waiting for confirmation on BNB Chain…");
+      setDeployState("Waiting for confirmation on BNB Testnet…");
 
       // 3) Wait for the receipt and read the TokenCreated event.
       const receipt = await publicClient!.waitForTransactionReceipt({ hash });
+      if (receipt.status === "reverted") throw new Error("Transaction reverted on-chain");
       let tokenAddress: string | null = null;
       let curveAddress: string | null = null;
       for (const log of receipt.logs) {
@@ -155,6 +175,7 @@ function CreatePage() {
         } catch { /* not a factory event */ }
       }
       if (!tokenAddress) throw new Error("TokenCreated event not found in the transaction receipt");
+      setDeployedToken(tokenAddress);
       setDeployState("Deployed — saving…");
 
       // 4) Persist the on-chain result.
@@ -287,21 +308,38 @@ function CreatePage() {
                   Your wallet ({address ?? "not connected"}) will sign <span className="font-mono text-accent">createToken()</span> on the LabsBNB factory.
                 </div>
                 <div>
-                  Factory: <span className="font-mono text-accent">{factory ?? "not configured"}</span> · Chain ID <span className="font-mono">{chainId}</span>
+                  Factory: <span className="font-mono text-accent">{factory ?? "not configured"}</span> · BNB Testnet · Chain ID <span className="font-mono">{chainId}</span>
                 </div>
+                <div>Gas is paid in <span className="text-accent">tBNB</span>.</div>
               </div>
               {(deployTx || deployState) && (
                 <div className="rounded-xl border border-accent/30 bg-accent/5 p-4 text-xs space-y-1">
                   <div className="text-accent">{deployState || "…"}</div>
                   {deployTx && (
-                    <a
-                      className="font-mono underline break-all"
-                      href={`https://testnet.bscscan.com/tx/${deployTx}`}
-                      target="_blank"
-                      rel="noreferrer"
-                    >
-                      {deployTx}
-                    </a>
+                    <div>
+                      <span className="text-muted-foreground">Tx: </span>
+                      <a
+                        className="font-mono underline break-all"
+                        href={`https://testnet.bscscan.com/tx/${deployTx}`}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        {deployTx}
+                      </a>
+                    </div>
+                  )}
+                  {deployedToken && (
+                    <div>
+                      <span className="text-muted-foreground">Token: </span>
+                      <a
+                        className="font-mono underline break-all"
+                        href={`https://testnet.bscscan.com/address/${deployedToken}`}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        {deployedToken}
+                      </a>
+                    </div>
                   )}
                 </div>
               )}
@@ -403,7 +441,7 @@ function AdvancedTokenomics({
   async function pay() {
     try {
       const value = parseUnits(String(feeBnb || 0), 18);
-      const hash = await sendTransactionAsync({ to: adminWallet, value });
+      const hash = await sendTransactionAsync({ to: adminWallet, value, chainId: 97 });
       setTxHash(hash);
       setAdv((a) => ({ ...a, paid_tx: hash }));
       toast.success("Payment sent, waiting for confirmation…");
