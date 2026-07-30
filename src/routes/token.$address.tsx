@@ -189,6 +189,17 @@ function TokenPage() {
           </div>
         </div>
 
+        {!dbRow && chain && (
+          <div className="mt-6 rounded-2xl border border-accent/30 bg-accent/5 p-4 text-xs text-muted-foreground">
+            Este token se está leyendo <span className="text-accent">directamente de la blockchain</span> (no hay perfil
+            guardado en la base de datos). El despliegue on-chain es válido: token{" "}
+            <a className="font-mono underline" href={`${EXPLORER}/address/${chain.address}`} target="_blank" rel="noreferrer">{chain.address}</a>
+            {chain.curve && (
+              <> · curve <a className="font-mono underline" href={`${EXPLORER}/address/${chain.curve}`} target="_blank" rel="noreferrer">{chain.curve}</a></>
+            )}
+          </div>
+        )}
+
         {/* Analytics strip */}
         <div className="mt-6 grid grid-cols-2 md:grid-cols-5 gap-3">
           <StatCard icon={<TrendingUp className="h-3.5 w-3.5" />} label="24h Volume" value={`${analytics.volume24h.toFixed(3)} BNB`} />
