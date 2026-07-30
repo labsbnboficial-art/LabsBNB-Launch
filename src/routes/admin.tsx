@@ -78,6 +78,20 @@ function AdminPage() {
 
   const d = q.data!;
   if (resetToken) return <AppShell><ResetPassword token={resetToken} onDone={() => q.refetch()} /></AppShell>;
+  if (d.backendError) {
+    return (
+      <AppShell>
+        <Card>
+          <div className="text-center">
+            <Shield className="mx-auto h-8 w-8 text-destructive" />
+            <h1 className="mt-3 font-display text-xl font-bold">Admin backend no disponible</h1>
+            <p className="mt-2 break-words text-sm text-muted-foreground">{d.backendError}</p>
+            <Button variant="outline" className="mt-4" onClick={() => q.refetch()}>Reintentar</Button>
+          </div>
+        </Card>
+      </AppShell>
+    );
+  }
   if (d.setupRequired) {
     return (
       <AppShell>
@@ -94,6 +108,7 @@ function AdminPage() {
       </AppShell>
     );
   }
+
   if (d.stage !== "full") return <AppShell><GoogleGate onDone={() => q.refetch()} /></AppShell>;
 
 
