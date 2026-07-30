@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+
 import { useAccount, useSwitchChain, useWriteContract } from "wagmi";
 import { parseEther, formatEther, type Abi } from "viem";
 import { toast } from "sonner";
