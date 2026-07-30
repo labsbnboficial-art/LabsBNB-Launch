@@ -107,7 +107,9 @@ export function CandleChart({ candles }: { candles: Candle[] }) {
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={data} margin={{ top: 0, right: 8, left: 0, bottom: 0 }}>
             <XAxis dataKey="label" hide />
-            <YAxis hide />
+            {/* Same axis width as the price chart so bars line up with candles. */}
+            <YAxis width={78} tick={false} axisLine={false} tickLine={false} />
+
             <Bar dataKey="volume" isAnimationActive={false}>
               {data.map((c) => (
                 <Cell
