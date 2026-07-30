@@ -193,8 +193,12 @@ export function TradePanel({
         action: { label: "Ver", onClick: () => window.open(`${BSC_TESTNET.explorer}/tx/${hash}`, "_blank") },
       });
       setAmount("");
+      // Refresh events, chart, volume, buys/sells and priceChange without a reload.
       curveQ.refetch();
       balanceQ.refetch();
+      queryClient.invalidateQueries({ queryKey: ["curveTrades", curve.curve] });
+      queryClient.invalidateQueries({ queryKey: ["curveStats", curve.curve] });
+
     } catch (e) {
       const raw = e as { shortMessage?: string; message?: string };
       toast.error(raw.shortMessage || raw.message || "Error desconocido");
