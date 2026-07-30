@@ -355,11 +355,11 @@ function TokenPage() {
                 <MessageSquare className="h-4 w-4 text-primary" />
                 <h3 className="font-display text-lg font-semibold">Comments</h3>
               </div>
-              {user ? (
-                <CommentBox tokenId={tk.id} onSent={() => commentsQ.refetch()} />
-              ) : (
-                <p className="text-xs text-muted-foreground mb-4">Sign in to comment.</p>
-              )}
+              <CommentBox
+                tokenId={dbRow?.id ? String(dbRow.id) : null}
+                onSent={() => commentsQ.refetch()}
+              />
+
               <ul className="divide-y divide-white/5">
                 {(commentsQ.data ?? []).map((c) => (
                   <li key={c.id} className="py-3 flex gap-3">
