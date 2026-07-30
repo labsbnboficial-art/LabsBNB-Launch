@@ -183,8 +183,9 @@ function LandingPage() {
         <TokenGrid
           title={t("section.latest")}
           icon={<Clock className="h-4 w-4" />}
-          tokens={tokensQuery.data ?? []}
-          loading={tokensQuery.isLoading}
+          tokens={tokens}
+          loading={dbTokens.isLoading && chainTokens.isLoading}
+
           emptyLabel={t("empty.noTokens")}
         />
 
