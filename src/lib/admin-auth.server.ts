@@ -224,7 +224,7 @@ export async function currentSession(): Promise<{ session: SessionRow; account: 
   const now = Date.now();
   if (new Date(s.expires_at).getTime() < now || now - new Date(s.last_seen_at).getTime() > IDLE_TTL_MS) {
     await c.from("admin_sessions").update({ revoked_at: new Date().toISOString() }).eq("id", s.id);
-    deleteCookie(SESSION_COOKIE, { path: "/" });
+    deleteCookie(SESSION_COOKIE, { path: "/", secure: true, sameSite: "none" });
     return null;
   }
   const account = await getAccount(s.admin_id);
@@ -240,7 +240,7 @@ export async function advanceStage(sessionId: string, stage: Stage) {
 
 export async function revokeCurrentSession() {
   const token = getCookie(SESSION_COOKIE);
-  deleteCookie(SESSION_COOKIE, { path: "/" });
+  deleteCookie(SESSION_COOKIE, { path: "/", secure: true, sameSite: "none" });
   if (!token) return;
   const c = await db();
   await c.from("admin_sessions").update({ revoked_at: new Date().toISOString() }).eq("token_hash", hashToken(token));
@@ -253,7 +253,7 @@ export async function revokeAllSessions(adminId: string) {
     .update({ revoked_at: new Date().toISOString() })
     .eq("admin_id", adminId)
     .is("revoked_at", null);
-  deleteCookie(SESSION_COOKIE, { path: "/" });
+  deleteCookie(SESSION_COOKIE, { path: "/", secure: true, sameSite: "none" });
 }
 
 /** Full authentication gate used by every privileged admin server function. */
