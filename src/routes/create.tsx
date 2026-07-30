@@ -308,21 +308,38 @@ function CreatePage() {
                   Your wallet ({address ?? "not connected"}) will sign <span className="font-mono text-accent">createToken()</span> on the LabsBNB factory.
                 </div>
                 <div>
-                  Factory: <span className="font-mono text-accent">{factory ?? "not configured"}</span> · Chain ID <span className="font-mono">{chainId}</span>
+                  Factory: <span className="font-mono text-accent">{factory ?? "not configured"}</span> · BNB Testnet · Chain ID <span className="font-mono">{chainId}</span>
                 </div>
+                <div>Gas is paid in <span className="text-accent">tBNB</span>.</div>
               </div>
               {(deployTx || deployState) && (
                 <div className="rounded-xl border border-accent/30 bg-accent/5 p-4 text-xs space-y-1">
                   <div className="text-accent">{deployState || "…"}</div>
                   {deployTx && (
-                    <a
-                      className="font-mono underline break-all"
-                      href={`https://testnet.bscscan.com/tx/${deployTx}`}
-                      target="_blank"
-                      rel="noreferrer"
-                    >
-                      {deployTx}
-                    </a>
+                    <div>
+                      <span className="text-muted-foreground">Tx: </span>
+                      <a
+                        className="font-mono underline break-all"
+                        href={`https://testnet.bscscan.com/tx/${deployTx}`}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        {deployTx}
+                      </a>
+                    </div>
+                  )}
+                  {deployedToken && (
+                    <div>
+                      <span className="text-muted-foreground">Token: </span>
+                      <a
+                        className="font-mono underline break-all"
+                        href={`https://testnet.bscscan.com/address/${deployedToken}`}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        {deployedToken}
+                      </a>
+                    </div>
                   )}
                 </div>
               )}
