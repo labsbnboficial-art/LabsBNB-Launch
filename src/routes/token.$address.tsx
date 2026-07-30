@@ -482,7 +482,7 @@ function CommentBox({
 }: {
   tokenId: string | null;
   fallback: { address: string | null; name: string; ticker: string };
-  onSent: () => void;
+  onSent: (tokenId: string) => void;
 }) {
   const { user } = useAuth();
   const { address, isConnected } = useAccount();
@@ -508,10 +508,11 @@ function CommentBox({
       }
       const { error } = await supabase
         .from("comments")
-        .insert({ token_id: id!, content: body.trim(), user_id: me.id });
+        .insert({ token_id: id, content: body.trim(), user_id: me.id });
       if (error) throw error;
       setBody("");
-      onSent();
+      onSent(id);
+
     } catch (e) {
       console.error("[comments] insert failed", e);
       toast.error((e as Error).message);
