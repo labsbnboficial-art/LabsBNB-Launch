@@ -104,6 +104,7 @@ function CreatePage() {
   const walletChainId = useChainId();
   const [deployTx, setDeployTx] = useState<`0x${string}` | null>(null);
   const [deployedToken, setDeployedToken] = useState<string | null>(null);
+  const [deployedCurve, setDeployedCurve] = useState<string | null>(null);
   const [deployState, setDeployState] = useState<string>("");
 
   const set = <K extends keyof FormState>(k: K, v: FormState[K]) => setForm((f) => ({ ...f, [k]: v }));
