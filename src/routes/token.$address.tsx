@@ -1,5 +1,5 @@
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
-import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
+import { useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { AppShell } from "@/components/labsbnb/AppShell";
@@ -106,7 +106,7 @@ function TokenPage() {
     refetchIntervalInBackground: false,
     refetchOnWindowFocus: true,
     staleTime: 0,
-    queryFn: () => fetchLivePrice(curveOk!, (tk0Address ?? null) as `0x${string}` | null),
+    queryFn: () => fetchLivePrice(curveOk!, (isAddress(address) ? address : (chain?.address ?? null)) as `0x${string}` | null),
   });
   const live = liveQ.data ?? null;
 
