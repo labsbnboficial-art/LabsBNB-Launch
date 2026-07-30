@@ -407,6 +407,24 @@ function CreatePage() {
                       </a>
                     </div>
                   )}
+                  {saveError && deployedToken && (
+                    <div className="mt-2 rounded-lg border border-destructive/40 bg-destructive/10 p-3 space-y-2">
+                      <div className="text-destructive">
+                        El despliegue on-chain fue correcto, pero no se pudo guardar el perfil: {saveError}
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={saving}
+                        onClick={() =>
+                          deployMeta &&
+                          saveDeployment(deployedToken, deployedCurve, deployMeta.hash, deployMeta.metadataURI)
+                        }
+                      >
+                        {saving ? "Guardando…" : "Reintentar guardado"}
+                      </Button>
+                    </div>
+                  )}
                   {deployedToken && (
                     <Button
                       size="sm"
@@ -417,6 +435,7 @@ function CreatePage() {
                       Open token page
                     </Button>
                   )}
+
                 </div>
               )}
             </div>
