@@ -196,8 +196,11 @@ export function TradePanel({
       // Refresh events, chart, volume, buys/sells and priceChange without a reload.
       curveQ.refetch();
       balanceQ.refetch();
+      invalidateTradeCache(curve.curve as `0x${string}`);
       queryClient.invalidateQueries({ queryKey: ["curveTrades", curve.curve] });
       queryClient.invalidateQueries({ queryKey: ["curveStats", curve.curve] });
+      queryClient.invalidateQueries({ queryKey: ["tokens", "onchain"] });
+
 
     } catch (e) {
       const raw = e as { shortMessage?: string; message?: string };
