@@ -286,6 +286,14 @@ function CreatePage() {
               <Field label={t("create.logo")}><FileUploader value={form.logo_url} onChange={(url) => set("logo_url", url)} kind="logo" userId={user?.id} /></Field>
               <Field label={t("create.banner")}><FileUploader value={form.banner_url} onChange={(url) => set("banner_url", url)} kind="banner" userId={user?.id} /></Field>
               <Field label={t("create.website")}><Input value={form.website} onChange={(e) => set("website", e.target.value)} placeholder="https://…" /></Field>
+              <Field label="Metadata URI" full>
+                <Input
+                  value={form.metadata_uri}
+                  onChange={(e) => set("metadata_uri", e.target.value)}
+                  placeholder="ipfs://… or https://… (optional — defaults to your logo URL)"
+                  className="font-mono text-xs"
+                />
+              </Field>
               <Field label="Telegram"><Input value={form.telegram} onChange={(e) => set("telegram", e.target.value)} /></Field>
               <Field label="X / Twitter"><Input value={form.twitter} onChange={(e) => set("twitter", e.target.value)} /></Field>
               <Field label="Discord"><Input value={form.discord} onChange={(e) => set("discord", e.target.value)} /></Field>
