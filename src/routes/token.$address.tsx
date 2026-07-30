@@ -156,19 +156,27 @@ function TokenPage() {
 
 
 
+  // A token that only lives on-chain gets its row created on first comment;
+  // keep that id so the thread loads right away (before it existed, the list
+  // stayed disabled and the new comment looked lost).
+  const [resolvedTokenId, setResolvedTokenId] = useState<string | null>(null);
+  const commentTokenId = (dbRow?.id ? String(dbRow.id) : null) ?? resolvedTokenId;
+
   const commentsQ = useQuery({
-    queryKey: ["comments", dbRow?.id],
-    enabled: !!dbRow?.id,
+    queryKey: ["comments", commentTokenId],
+    enabled: !!commentTokenId,
     queryFn: async () => {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("comments")
         .select("id,content,created_at,user_id")
-        .eq("token_id", dbRow.id)
+        .eq("token_id", commentTokenId!)
         .order("created_at", { ascending: false })
         .limit(50);
+      if (error) throw error;
       return data ?? [];
     },
   });
+
 
 
 
