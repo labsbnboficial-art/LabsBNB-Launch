@@ -122,7 +122,7 @@ function CreatePage() {
   }
 
   async function deploy() {
-    if (!user) { toast.error("Sign in first"); navigate({ to: "/auth", search: { redirect: "/create" } }); return; }
+    // SIWE/session only authenticates + enables saving metadata. It never replaces the tx.
     if (!isConnected || !address) { toast.error("Connect your wallet first"); return; }
     if (adv.enabled && !adv.paid_tx) { toast.error("Pay the advanced tokenomics unlock first"); return; }
     if (adv.enabled) {
@@ -133,6 +133,7 @@ function CreatePage() {
     setSubmitting(true);
     setDeployTx(null);
     setDeployedToken(null);
+    setDeployedCurve(null);
     try {
       // 1) Make sure the wallet is on BNB Smart Chain Testnet (97) before signing.
       if (walletChainId !== chainId) {
@@ -144,7 +145,7 @@ function CreatePage() {
       }
 
       // 2) Simulate then send the real createToken() transaction.
-      const metadataURI = form.logo_url || form.website || "";
+      const metadataURI = (form.metadata_uri || form.logo_url || form.website || "").trim();
       const args = [form.name, form.ticker.toUpperCase(), metadataURI] as const;
       setDeployState("Checking the transaction with the factory…");
       await publicClient!.simulateContract({
