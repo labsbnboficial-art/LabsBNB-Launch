@@ -131,8 +131,9 @@ function TokenPage() {
     creator_id: chain!.creator ?? "unknown",
     contract_address: chain!.address,
   };
-  const curve = dbRow
-    ? ((dbRow.bonding_curves as unknown as { progress_bps: number; target_bnb: string; virtual_bnb?: string; real_bnb?: string } | null) ?? null)
+  type CurveView = { progress_bps: number; target_bnb: string; virtual_bnb?: string; real_bnb?: string };
+  const curve: CurveView | null = dbRow
+    ? ((dbRow.bonding_curves as unknown as CurveView | null) ?? null)
     : chain!.curve
       ? { progress_bps: chain!.progressBps, target_bnb: chain!.targetBnbWei, real_bnb: chain!.realLiquidityWei }
       : null;
