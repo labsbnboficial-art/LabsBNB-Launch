@@ -11,7 +11,8 @@ export const adminGoogleLogin = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     const m = await import("@/lib/admin-auth.server");
-    const { adminClient } = await import("@/integrations/supabase/admin.server");
+    const { adminClient: typedClient } = await import("@/integrations/supabase/admin.server");
+    const adminClient = typedClient as unknown as import("@supabase/supabase-js").SupabaseClient;
 
     const email = String(
       (context.claims as Record<string, unknown> | undefined)?.email ?? "",
