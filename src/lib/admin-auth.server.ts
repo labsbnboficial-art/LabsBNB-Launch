@@ -200,13 +200,17 @@ export async function createSession(adminId: string, stage: Stage) {
     last_seen_at: new Date(now).toISOString(),
   });
   if (error) throw new Error(error.message);
+  // The panel is often opened inside the Lovable preview iframe (cross-site),
+  // where a `strict`/`lax` cookie is never sent back → the login looked stuck.
   setCookie(SESSION_COOKIE, token, {
     httpOnly: true,
     secure: true,
-    sameSite: "strict",
+    sameSite: "none",
+    partitioned: true,
     path: "/",
     maxAge: Math.floor(SESSION_TTL_MS / 1000),
   });
+
   return { csrf };
 }
 
