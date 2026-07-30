@@ -496,7 +496,7 @@ function CommentBox({
       }
       const { error } = await supabase
         .from("comments")
-        .insert({ token_id: id, content: body.trim(), user_id: me.id });
+        .insert({ token_id: id!, content: body.trim(), user_id: me.id });
       if (error) throw error;
       setBody("");
       onSent();
