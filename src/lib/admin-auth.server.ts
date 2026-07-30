@@ -214,8 +214,14 @@ export async function createSession(adminId: string, stage: Stage) {
   return { csrf };
 }
 
+/** True when the browser sent the admin session cookie back with this request. */
+export function hasSessionCookie(): boolean {
+  return !!getCookie(SESSION_COOKIE);
+}
+
 export async function currentSession(): Promise<{ session: SessionRow; account: AdminAccount } | null> {
   const token = getCookie(SESSION_COOKIE);
+
   if (!token) return null;
   const c = await db();
   const { data } = await c.from("admin_sessions").select("*").eq("token_hash", hashToken(token)).maybeSingle();
