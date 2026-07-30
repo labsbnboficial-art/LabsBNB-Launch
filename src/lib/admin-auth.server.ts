@@ -200,18 +200,28 @@ export async function createSession(adminId: string, stage: Stage) {
     last_seen_at: new Date(now).toISOString(),
   });
   if (error) throw new Error(error.message);
+  // The panel is often opened inside the Lovable preview iframe (cross-site),
+  // where a `strict`/`lax` cookie is never sent back → the login looked stuck.
   setCookie(SESSION_COOKIE, token, {
     httpOnly: true,
     secure: true,
-    sameSite: "strict",
+    sameSite: "none",
+    partitioned: true,
     path: "/",
     maxAge: Math.floor(SESSION_TTL_MS / 1000),
   });
+
   return { csrf };
+}
+
+/** True when the browser sent the admin session cookie back with this request. */
+export function hasSessionCookie(): boolean {
+  return !!getCookie(SESSION_COOKIE);
 }
 
 export async function currentSession(): Promise<{ session: SessionRow; account: AdminAccount } | null> {
   const token = getCookie(SESSION_COOKIE);
+
   if (!token) return null;
   const c = await db();
   const { data } = await c.from("admin_sessions").select("*").eq("token_hash", hashToken(token)).maybeSingle();
@@ -220,7 +230,7 @@ export async function currentSession(): Promise<{ session: SessionRow; account: 
   const now = Date.now();
   if (new Date(s.expires_at).getTime() < now || now - new Date(s.last_seen_at).getTime() > IDLE_TTL_MS) {
     await c.from("admin_sessions").update({ revoked_at: new Date().toISOString() }).eq("id", s.id);
-    deleteCookie(SESSION_COOKIE, { path: "/" });
+    deleteCookie(SESSION_COOKIE, { path: "/", secure: true, sameSite: "none" });
     return null;
   }
   const account = await getAccount(s.admin_id);
@@ -236,7 +246,7 @@ export async function advanceStage(sessionId: string, stage: Stage) {
 
 export async function revokeCurrentSession() {
   const token = getCookie(SESSION_COOKIE);
-  deleteCookie(SESSION_COOKIE, { path: "/" });
+  deleteCookie(SESSION_COOKIE, { path: "/", secure: true, sameSite: "none" });
   if (!token) return;
   const c = await db();
   await c.from("admin_sessions").update({ revoked_at: new Date().toISOString() }).eq("token_hash", hashToken(token));
@@ -249,7 +259,7 @@ export async function revokeAllSessions(adminId: string) {
     .update({ revoked_at: new Date().toISOString() })
     .eq("admin_id", adminId)
     .is("revoked_at", null);
-  deleteCookie(SESSION_COOKIE, { path: "/" });
+  deleteCookie(SESSION_COOKIE, { path: "/", secure: true, sameSite: "none" });
 }
 
 /** Full authentication gate used by every privileged admin server function. */

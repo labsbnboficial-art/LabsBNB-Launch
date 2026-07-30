@@ -16,6 +16,9 @@ import { fetchTradePage, fetchCurveStats, buildCandles, TIMEFRAMES, type Timefra
 import { BSC_TESTNET } from "@/lib/web3/abis";
 import { CandleChart } from "@/components/labsbnb/CandleChart";
 import { TradePanel } from "@/components/labsbnb/TradePanel";
+import { useServerFn } from "@tanstack/react-start";
+import { ensureTokenRow } from "@/lib/tokens.functions";
+
 
 
 
@@ -121,6 +124,22 @@ function TokenPage() {
   const tfSeconds = TIMEFRAMES.find((t) => t.id === timeframe)!.seconds;
   const candles = useMemo(() => buildCandles(events, tfSeconds), [events, tfSeconds]);
 
+  // Keep the chart and the trades list on the same temporal range: when the
+  // selected timeframe needs more history than the loaded pages cover, pull
+  // older pages (bounded) so candles and rows always describe the same window.
+  const targetWindow = tfSeconds * 40; // ~40 candles worth of history
+  const [autoPages, setAutoPages] = useState(0);
+  useEffect(() => setAutoPages(0), [timeframe, curveOk]);
+  useEffect(() => {
+    if (!events.length || eventsQ.isFetchingNextPage || !eventsQ.hasNextPage) return;
+    if (autoPages >= 6) return;
+    const oldest = events[0].timestamp;
+    const newest = events[events.length - 1].timestamp;
+    if (newest - oldest >= targetWindow) return;
+    setAutoPages((n) => n + 1);
+    eventsQ.fetchNextPage();
+  }, [events, targetWindow, autoPages, eventsQ.hasNextPage, eventsQ.isFetchingNextPage, eventsQ.fetchNextPage, curveOk]);
+
   // Infinite scroll sentinel for the trades table.
   const sentinel = useRef<HTMLDivElement | null>(null);
   useEffect(() => {
@@ -134,6 +153,7 @@ function TokenPage() {
     io.observe(el);
     return () => io.disconnect();
   }, [eventsQ.hasNextPage, eventsQ.isFetchingNextPage, eventsQ.fetchNextPage, events.length]);
+
 
 
   const commentsQ = useQuery({
@@ -357,8 +377,14 @@ function TokenPage() {
               </div>
               <CommentBox
                 tokenId={dbRow?.id ? String(dbRow.id) : null}
+                fallback={{
+                  address: (tk.contract_address as string | null) ?? (isAddress(address) ? address : null),
+                  name: String(tk.name),
+                  ticker: String(tk.ticker),
+                }}
                 onSent={() => commentsQ.refetch()}
               />
+
 
               <ul className="divide-y divide-white/5">
                 {(commentsQ.data ?? []).map((c) => (
@@ -434,32 +460,43 @@ function ChainError({ error, onRetry }: { error: Error; onRetry: () => void }) {
 /**
  * Comments accept an existing Supabase session OR a connected wallet:
  * in the second case we complete SIWE silently before inserting.
+ * If the token only exists on-chain we register its row first, so a wallet
+ * user can always comment.
  */
-function CommentBox({ tokenId, onSent }: { tokenId: string | null; onSent: () => void }) {
+function CommentBox({
+  tokenId,
+  fallback,
+  onSent,
+}: {
+  tokenId: string | null;
+  fallback: { address: string | null; name: string; ticker: string };
+  onSent: () => void;
+}) {
   const { user } = useAuth();
   const { address, isConnected } = useAccount();
   const signIn = useSiweSignIn();
+  const ensureRow = useServerFn(ensureTokenRow);
   const [body, setBody] = useState("");
   const [busy, setBusy] = useState(false);
 
-  if (!tokenId) {
-    return (
-      <p className="mb-4 text-xs text-muted-foreground">
-        Este token todavía no tiene ficha en la base de datos: los comentarios se activan al guardarla.
-      </p>
-    );
-  }
-
-  const canPost = !!user || isConnected;
+  const canPost = (!!user || isConnected) && (!!tokenId || !!fallback.address);
 
   async function send() {
-    if (!body.trim() || !tokenId) return;
+    if (!body.trim()) return;
     setBusy(true);
     try {
       const me = user ?? (await signIn());
+      let id = tokenId;
+      if (!id) {
+        if (!fallback.address) throw new Error("Este token no tiene dirección on-chain válida.");
+        const r = await ensureRow({
+          data: { address: fallback.address, name: fallback.name, ticker: fallback.ticker },
+        });
+        id = r.id;
+      }
       const { error } = await supabase
         .from("comments")
-        .insert({ token_id: tokenId, content: body.trim(), user_id: me.id });
+        .insert({ token_id: id!, content: body.trim(), user_id: me.id });
       if (error) throw error;
       setBody("");
       onSent();
@@ -470,6 +507,7 @@ function CommentBox({ tokenId, onSent }: { tokenId: string | null; onSent: () =>
       setBusy(false);
     }
   }
+
 
   return (
     <div className="mb-4">

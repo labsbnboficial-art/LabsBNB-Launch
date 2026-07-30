@@ -51,10 +51,16 @@ function Card({ children }: { children: React.ReactNode }) {
 function AdminPage() {
   const status = useServerFn(adminAuthStatus);
   const q = useQuery({ queryKey: ["admin-auth-status"], queryFn: () => status(), retry: false });
+  const [loggedInOnce, setLoggedInOnce] = useState(false);
   const resetToken = useMemo(() => {
     if (typeof window === "undefined") return null;
     return new URLSearchParams(window.location.search).get("reset");
   }, []);
+
+  const refresh = async () => {
+    setLoggedInOnce(true);
+    await q.refetch();
+  };
 
   if (q.isLoading) return <AppShell><div className="p-12 text-center text-muted-foreground">…</div></AppShell>;
 
@@ -106,10 +112,45 @@ function AdminPage() {
     );
   }
 
-  if (d.needsBootstrap) return <AppShell><Bootstrap onDone={() => q.refetch()} /></AppShell>;
-  if (!d.stage) return <AppShell><LoginForm emailConfigured={d.emailConfigured} onDone={() => q.refetch()} /></AppShell>;
-  if (d.stage === "totp") return <AppShell><TotpStep onDone={() => q.refetch()} /></AppShell>;
-  if (d.stage !== "full") return <AppShell><PinStep onDone={() => q.refetch()} /></AppShell>;
+  // A successful login that does not produce a stage means the session was not
+  // readable on the next request: show the real cause instead of the login form.
+  if (loggedInOnce && !d.stage) {
+    return (
+      <AppShell>
+        <Card>
+          <div className="text-center">
+            <Shield className="mx-auto h-8 w-8 text-destructive" />
+            <h1 className="mt-3 font-display text-xl font-bold">La sesión de admin no se pudo leer</h1>
+            <p className="mt-2 break-words text-sm text-muted-foreground">
+              {d.sessionError
+                ? d.sessionError
+                : d.cookiePresent
+                  ? "La cookie llegó al servidor pero la sesión fue revocada, caducó o la tabla admin_sessions bloquea la lectura (revisa RLS/GRANTs de admin_sessions y admin_accounts)."
+                  : "El navegador no devolvió la cookie de sesión. Suele ocurrir dentro del iframe de vista previa: abre el panel en una pestaña nueva."}
+            </p>
+            <div className="mt-4 flex justify-center gap-2">
+              <Button variant="outline" onClick={() => q.refetch()}>Reintentar</Button>
+              <Button
+                className="brand-gradient text-primary-foreground"
+                onClick={() => window.open(`${window.location.origin}/admin`, "_blank", "noopener")}
+              >
+                Abrir en pestaña nueva
+              </Button>
+            </div>
+            <Button variant="ghost" className="mt-2 w-full text-xs" onClick={() => setLoggedInOnce(false)}>
+              Volver al inicio de sesión
+            </Button>
+          </div>
+        </Card>
+      </AppShell>
+    );
+  }
+
+  if (d.needsBootstrap) return <AppShell><Bootstrap onDone={refresh} /></AppShell>;
+  if (!d.stage) return <AppShell><LoginForm emailConfigured={d.emailConfigured} onDone={refresh} /></AppShell>;
+  if (d.stage === "totp") return <AppShell><TotpStep onDone={refresh} /></AppShell>;
+  if (d.stage !== "full") return <AppShell><PinStep onDone={refresh} /></AppShell>;
+
 
 
   return (

@@ -24,10 +24,21 @@ export const adminAuthStatus = createServerFn({ method: "GET" }).handler(async (
     totpEnabled: false,
     emailConfigured: !!process.env.RESEND_API_KEY,
     backendError: null as string | null,
+    cookiePresent: false,
+    sessionError: null as string | null,
   };
+  base.cookiePresent = m.hasSessionCookie();
   try {
     const count = await m.accountCount();
-    const cur = await m.currentSession();
+    let cur: Awaited<ReturnType<typeof m.currentSession>> = null;
+    let sessionError: string | null = null;
+    try {
+      cur = await m.currentSession();
+    } catch (e) {
+      // Session lookup can fail on its own (RLS / missing grants): report it
+      // instead of silently rendering the login form again.
+      sessionError = (e as Error).message;
+    }
     return {
       ...base,
       needsBootstrap: count === 0,
@@ -36,6 +47,7 @@ export const adminAuthStatus = createServerFn({ method: "GET" }).handler(async (
       username: cur?.account.username ?? null,
       email: cur?.account.email ?? null,
       totpEnabled: cur?.account.totp_enabled ?? false,
+      sessionError,
     };
   } catch (e) {
     if (e instanceof m.SetupRequiredError) {
@@ -45,6 +57,7 @@ export const adminAuthStatus = createServerFn({ method: "GET" }).handler(async (
     return { ...base, backendError: (e as Error).message || "Credenciales de servicio inválidas (LABSBNB_SERVICE_ROLE_KEY)." };
   }
 });
+
 
 
 /** First-run: creates the single admin account when none exists. */
