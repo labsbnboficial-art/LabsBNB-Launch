@@ -74,12 +74,15 @@ function TokenPage() {
     | null;
   const curveOk = curveAddr && isAddress(curveAddr) ? (curveAddr as `0x${string}`) : null;
 
-  // Recent trades — decoded straight from Trade(...) events.
-  const eventsQ = useQuery({
+  // Recent trades — decoded straight from Trade(...) events, paginated by block range.
+  const eventsQ = useInfiniteQuery({
     queryKey: ["curveTrades", curveOk],
     enabled: !!curveOk,
     refetchInterval: 15_000,
-    queryFn: () => fetchTradeEvents(curveOk!),
+    retry: 1,
+    initialPageParam: null as string | null,
+    queryFn: ({ pageParam }) => fetchTradePage(curveOk!, pageParam, 25),
+    getNextPageParam: (last) => last.nextCursor,
   });
 
   // volume24h() / priceChange() / holders() — the contract's own views.
@@ -90,7 +93,19 @@ function TokenPage() {
     queryFn: () => fetchCurveStats(curveOk!),
   });
 
-  const events = eventsQ.data ?? [];
+  const events = useMemo(() => {
+    const all = (eventsQ.data?.pages ?? []).flatMap((p) => p.events);
+    const seen = new Set<string>();
+    return all
+      .filter((e) => (seen.has(e.key) ? false : (seen.add(e.key), true)))
+      .sort((a, b) => (a.blockNumber === b.blockNumber ? 0 : a.blockNumber < b.blockNumber ? -1 : 1));
+  }, [eventsQ.data]);
+
+  const eventsError = eventsQ.error as Error | null;
+  useEffect(() => {
+    if (eventsError) console.error("[token] Trade events could not be read:", eventsError);
+  }, [eventsError]);
+
   const analytics = useMemo(() => {
     const buys = events.filter((e) => e.isBuy).length;
     return {
@@ -102,15 +117,24 @@ function TokenPage() {
     };
   }, [events, statsQ.data, chain]);
 
-  const chartData = useMemo(
-    () =>
-      events.map((e) => ({
-        t: e.timestamp * 1000,
-        price: Number(e.price) / 1e18,
-        label: new Date(e.timestamp * 1000).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-      })),
-    [events],
-  );
+  const [timeframe, setTimeframe] = useState<TimeframeId>("15m");
+  const tfSeconds = TIMEFRAMES.find((t) => t.id === timeframe)!.seconds;
+  const candles = useMemo(() => buildCandles(events, tfSeconds), [events, tfSeconds]);
+
+  // Infinite scroll sentinel for the trades table.
+  const sentinel = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    const el = sentinel.current;
+    if (!el) return;
+    const io = new IntersectionObserver((entries) => {
+      if (entries[0].isIntersecting && eventsQ.hasNextPage && !eventsQ.isFetchingNextPage) {
+        eventsQ.fetchNextPage();
+      }
+    }, { rootMargin: "200px" });
+    io.observe(el);
+    return () => io.disconnect();
+  }, [eventsQ.hasNextPage, eventsQ.isFetchingNextPage, eventsQ.fetchNextPage, events.length]);
+
 
   const commentsQ = useQuery({
     queryKey: ["comments", dbRow?.id],
