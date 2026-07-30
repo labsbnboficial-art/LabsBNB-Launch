@@ -9,7 +9,8 @@ import { Input } from "@/components/ui/input";
 import { Copy, Share2, ArrowLeftRight, ExternalLink, Users, Flame, Droplets, TrendingUp, MessageSquare } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/lib/auth";
-import { fetchOnChainToken, isAddress, EXPLORER, type OnChainToken } from "@/lib/web3/onchain-token";
+import { fetchOnChainToken, isAddress, type OnChainToken } from "@/lib/web3/onchain-token";
+import { TradePanel } from "@/components/labsbnb/TradePanel";
 
 
 export const Route = createFileRoute("/token/$address")({
@@ -138,6 +139,9 @@ function TokenPage() {
       ? { progress_bps: chain!.progressBps, target_bnb: chain!.targetBnbWei, real_bnb: chain!.realLiquidityWei }
       : null;
   const progress = curve ? Math.min(100, curve.progress_bps / 100) : 0;
+  const curveAddress: string | null =
+    (chain?.curve as string | null) ??
+    ((dbRow?.bonding_curves as { contract_address?: string } | null)?.contract_address ?? null);
 
 
   return (
@@ -273,7 +277,11 @@ function TokenPage() {
               )}
             </div>
 
-            <TradePanel tokenTicker={tk.ticker} />
+            <TradePanel
+              tokenTicker={tk.ticker}
+              tokenAddress={(tk.contract_address as string | null) ?? (isAddress(address) ? address : null)}
+              curveAddress={curveAddress}
+            />
 
             <div className="text-xs text-muted-foreground text-center">
               <Link to="/" className="hover:text-foreground">← back to launchpad</Link>
@@ -290,48 +298,6 @@ function StatCard({ icon, label, value, accent }: { icon: React.ReactNode; label
     <div className="glass rounded-xl p-3">
       <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-widest text-muted-foreground">{icon}{label}</div>
       <div className={`mt-1 font-display font-semibold ${accent ?? ""}`}>{value}</div>
-    </div>
-  );
-}
-
-function TradePanel({ tokenTicker }: { tokenTicker: string }) {
-  const { t } = useI18n();
-  const [ref, setRef] = useState("");
-  return (
-    <div className="glass-strong rounded-2xl p-6">
-      <div className="grid grid-cols-2 gap-2 mb-4">
-        <button className="rounded-lg brand-gradient text-primary-foreground py-2 font-medium text-sm glow-primary">{t("token.buy")}</button>
-        <button className="rounded-lg border border-white/10 bg-white/5 py-2 font-medium text-sm">{t("token.sell")}</button>
-      </div>
-      <div className="space-y-3">
-        <div className="rounded-xl border border-white/10 bg-white/5 p-3">
-          <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Pay with</div>
-          <div className="flex items-center justify-between mt-1">
-            <input placeholder="0.0" className="bg-transparent outline-none text-lg font-mono w-full" />
-            <span className="text-sm font-medium">BNB</span>
-          </div>
-        </div>
-        <div className="rounded-xl border border-white/10 bg-white/5 p-3">
-          <div className="text-[10px] uppercase tracking-widest text-muted-foreground">You receive (est.)</div>
-          <div className="flex items-center justify-between mt-1">
-            <span className="text-lg font-mono text-muted-foreground">—</span>
-            <span className="text-sm font-medium">${tokenTicker}</span>
-          </div>
-        </div>
-        <div className="rounded-xl border border-white/10 bg-white/5 p-3">
-          <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Referrer (optional — 0.10%)</div>
-          <input value={ref} onChange={(e) => setRef(e.target.value)} placeholder="0x…" className="mt-1 bg-transparent outline-none text-xs font-mono w-full" />
-        </div>
-        <div className="text-[11px] text-muted-foreground space-y-1">
-          <div className="flex justify-between"><span>Slippage</span><span>1.0%</span></div>
-          <div className="flex justify-between"><span>Protocol fee</span><span>0.30%</span></div>
-          <div className="flex justify-between"><span>Creator fee</span><span>0.20%</span></div>
-          {ref && <div className="flex justify-between"><span>Referral</span><span>0.10%</span></div>}
-        </div>
-        <button disabled className="w-full rounded-xl brand-gradient text-primary-foreground py-3 font-semibold disabled:opacity-50" title="Enabled once the on-chain factory is wired">
-          Confirm — pending contract
-        </button>
-      </div>
     </div>
   );
 }
