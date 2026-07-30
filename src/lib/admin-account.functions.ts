@@ -14,35 +14,38 @@ async function core() {
 
 export const adminAuthStatus = createServerFn({ method: "GET" }).handler(async () => {
   const m = await core();
+  const base = {
+    setupRequired: false as boolean,
+    needsBootstrap: true,
+    stage: null as string | null,
+    csrf: null as string | null,
+    username: null as string | null,
+    email: null as string | null,
+    totpEnabled: false,
+    emailConfigured: !!process.env.RESEND_API_KEY,
+    backendError: null as string | null,
+  };
   try {
     const count = await m.accountCount();
     const cur = await m.currentSession();
     return {
-      setupRequired: false as const,
+      ...base,
       needsBootstrap: count === 0,
       stage: cur?.session.stage ?? null,
       csrf: cur?.session.csrf_token ?? null,
       username: cur?.account.username ?? null,
       email: cur?.account.email ?? null,
       totpEnabled: cur?.account.totp_enabled ?? false,
-      emailConfigured: !!process.env.RESEND_API_KEY,
     };
   } catch (e) {
     if (e instanceof m.SetupRequiredError) {
-      return {
-        setupRequired: true as const,
-        needsBootstrap: true,
-        stage: null,
-        csrf: null,
-        username: null,
-        email: null,
-        totpEnabled: false,
-        emailConfigured: false,
-      };
+      return { ...base, setupRequired: true };
     }
-    throw e;
+    // Never hard-fail the panel: report the cause so the operator can fix it.
+    return { ...base, backendError: (e as Error).message || "Credenciales de servicio inválidas (LABSBNB_SERVICE_ROLE_KEY)." };
   }
 });
+
 
 /** First-run: creates the single admin account when none exists. */
 export const adminBootstrap = createServerFn({ method: "POST" })
