@@ -515,6 +515,12 @@ function TokenPage() {
               curveAddress={curveAddress}
             />
 
+            <TopHolders
+              token={(tk.contract_address as string | null) ?? (isAddress(address) ? address : null)}
+              ticker={String(tk.ticker)}
+            />
+
+
             <div className="text-xs text-muted-foreground text-center">
               <Link to="/" className="hover:text-foreground">← back to launchpad</Link>
             </div>
