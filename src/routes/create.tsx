@@ -106,6 +106,10 @@ function CreatePage() {
   const [deployedToken, setDeployedToken] = useState<string | null>(null);
   const [deployedCurve, setDeployedCurve] = useState<string | null>(null);
   const [deployState, setDeployState] = useState<string>("");
+  const [deployMeta, setDeployMeta] = useState<{ hash: string; metadataURI: string } | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const ensureSession = useSiweSignIn();
 
   const set = <K extends keyof FormState>(k: K, v: FormState[K]) => setForm((f) => ({ ...f, [k]: v }));
 
