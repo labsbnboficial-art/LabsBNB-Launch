@@ -10,7 +10,11 @@ import { Copy, Share2, ArrowLeftRight, ExternalLink, Users, Flame, Droplets, Tre
 import { toast } from "sonner";
 import { useAuth } from "@/lib/auth";
 import { fetchOnChainToken, isAddress, type OnChainToken } from "@/lib/web3/onchain-token";
+import { fetchTradeEvents, fetchCurveStats } from "@/lib/web3/curve-events";
+import { BSC_TESTNET } from "@/lib/web3/abis";
+import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
 import { TradePanel } from "@/components/labsbnb/TradePanel";
+
 
 
 export const Route = createFileRoute("/token/$address")({
