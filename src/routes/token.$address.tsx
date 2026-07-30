@@ -97,6 +97,19 @@ function TokenPage() {
     queryFn: () => fetchCurveStats(curveOk!),
   });
 
+  // Live market price: currentPrice() while the curve is active, PancakeSwap
+  // pair reserves once it graduated. Refreshed every 3s and on tab focus.
+  const liveQ = useQuery({
+    queryKey: ["curveLive", curveOk],
+    enabled: !!curveOk,
+    refetchInterval: 3_000,
+    refetchIntervalInBackground: false,
+    refetchOnWindowFocus: true,
+    staleTime: 0,
+    queryFn: () => fetchLivePrice(curveOk!, (tk0Address ?? null) as `0x${string}` | null),
+  });
+  const live = liveQ.data ?? null;
+
   const events = useMemo(() => {
     const all = (eventsQ.data?.pages ?? []).flatMap((p) => p.events);
     const seen = new Set<string>();
@@ -110,16 +123,32 @@ function TokenPage() {
     if (eventsError) console.error("[token] Trade events could not be read:", eventsError);
   }, [eventsError]);
 
+  // Every time the chain head moves, refresh the trades feed so the chart and
+  // the table follow the live price without a page reload.
+  const queryClient = useQueryClient();
+  const lastBlock = useRef<bigint>(0n);
+  useEffect(() => {
+    if (!live?.blockNumber || !curveOk) return;
+    if (lastBlock.current === 0n) {
+      lastBlock.current = live.blockNumber;
+      return;
+    }
+    if (live.blockNumber > lastBlock.current) {
+      lastBlock.current = live.blockNumber;
+      queryClient.invalidateQueries({ queryKey: ["curveTrades", curveOk] });
+    }
+  }, [live?.blockNumber, curveOk, queryClient]);
+
   const analytics = useMemo(() => {
     const buys = events.filter((e) => e.isBuy).length;
     return {
       buys,
       sells: events.length - buys,
-      holders: statsQ.data?.holders ?? chain?.holders ?? 0,
-      volume24h: Number(statsQ.data?.volume24hWei ?? 0n) / 1e18,
-      priceChange: Number(statsQ.data?.priceChangeBps ?? 0n) / 100,
+      holders: live?.holders ?? statsQ.data?.holders ?? chain?.holders ?? 0,
+      volume24h: Number(live?.volume24hWei ?? statsQ.data?.volume24hWei ?? 0n) / 1e18,
+      priceChange: (live?.priceChangeBps ?? Number(statsQ.data?.priceChangeBps ?? 0)) / 100,
     };
-  }, [events, statsQ.data, chain]);
+  }, [events, statsQ.data, chain, live]);
 
   const [timeframe, setTimeframe] = useState<TimeframeId>("15m");
   const tfSeconds = TIMEFRAMES.find((t) => t.id === timeframe)!.seconds;
