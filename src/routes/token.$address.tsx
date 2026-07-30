@@ -1,19 +1,22 @@
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
+import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { AppShell } from "@/components/labsbnb/AppShell";
 import { useI18n } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Copy, Share2, ArrowLeftRight, ExternalLink, Users, Flame, Droplets, TrendingUp, MessageSquare } from "lucide-react";
+import { Copy, Share2, ArrowLeftRight, ExternalLink, Users, Flame, Droplets, TrendingUp, MessageSquare, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/lib/auth";
+import { useAccount } from "wagmi";
+import { useSiweSignIn } from "@/lib/use-siwe";
 import { fetchOnChainToken, isAddress, type OnChainToken } from "@/lib/web3/onchain-token";
-import { fetchTradeEvents, fetchCurveStats } from "@/lib/web3/curve-events";
+import { fetchTradePage, fetchCurveStats, buildCandles, TIMEFRAMES, type TimeframeId } from "@/lib/web3/curve-events";
 import { BSC_TESTNET } from "@/lib/web3/abis";
-import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
+import { CandleChart } from "@/components/labsbnb/CandleChart";
 import { TradePanel } from "@/components/labsbnb/TradePanel";
+
 
 
 
@@ -71,12 +74,15 @@ function TokenPage() {
     | null;
   const curveOk = curveAddr && isAddress(curveAddr) ? (curveAddr as `0x${string}`) : null;
 
-  // Recent trades — decoded straight from Trade(...) events.
-  const eventsQ = useQuery({
+  // Recent trades — decoded straight from Trade(...) events, paginated by block range.
+  const eventsQ = useInfiniteQuery({
     queryKey: ["curveTrades", curveOk],
     enabled: !!curveOk,
     refetchInterval: 15_000,
-    queryFn: () => fetchTradeEvents(curveOk!),
+    retry: 1,
+    initialPageParam: null as string | null,
+    queryFn: ({ pageParam }) => fetchTradePage(curveOk!, pageParam, 25),
+    getNextPageParam: (last) => last.nextCursor,
   });
 
   // volume24h() / priceChange() / holders() — the contract's own views.
@@ -87,7 +93,19 @@ function TokenPage() {
     queryFn: () => fetchCurveStats(curveOk!),
   });
 
-  const events = eventsQ.data ?? [];
+  const events = useMemo(() => {
+    const all = (eventsQ.data?.pages ?? []).flatMap((p) => p.events);
+    const seen = new Set<string>();
+    return all
+      .filter((e) => (seen.has(e.key) ? false : (seen.add(e.key), true)))
+      .sort((a, b) => (a.blockNumber === b.blockNumber ? 0 : a.blockNumber < b.blockNumber ? -1 : 1));
+  }, [eventsQ.data]);
+
+  const eventsError = eventsQ.error as Error | null;
+  useEffect(() => {
+    if (eventsError) console.error("[token] Trade events could not be read:", eventsError);
+  }, [eventsError]);
+
   const analytics = useMemo(() => {
     const buys = events.filter((e) => e.isBuy).length;
     return {
@@ -99,15 +117,24 @@ function TokenPage() {
     };
   }, [events, statsQ.data, chain]);
 
-  const chartData = useMemo(
-    () =>
-      events.map((e) => ({
-        t: e.timestamp * 1000,
-        price: Number(e.price) / 1e18,
-        label: new Date(e.timestamp * 1000).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-      })),
-    [events],
-  );
+  const [timeframe, setTimeframe] = useState<TimeframeId>("15m");
+  const tfSeconds = TIMEFRAMES.find((t) => t.id === timeframe)!.seconds;
+  const candles = useMemo(() => buildCandles(events, tfSeconds), [events, tfSeconds]);
+
+  // Infinite scroll sentinel for the trades table.
+  const sentinel = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    const el = sentinel.current;
+    if (!el) return;
+    const io = new IntersectionObserver((entries) => {
+      if (entries[0].isIntersecting && eventsQ.hasNextPage && !eventsQ.isFetchingNextPage) {
+        eventsQ.fetchNextPage();
+      }
+    }, { rootMargin: "200px" });
+    io.observe(el);
+    return () => io.disconnect();
+  }, [eventsQ.hasNextPage, eventsQ.isFetchingNextPage, eventsQ.fetchNextPage, events.length]);
+
 
   const commentsQ = useQuery({
     queryKey: ["comments", dbRow?.id],
@@ -223,46 +250,44 @@ function TokenPage() {
         <div className="mt-6 grid gap-6 lg:grid-cols-3">
           <div className="lg:col-span-2 space-y-6">
             <div className="glass rounded-2xl p-6">
-              <div className="text-xs uppercase tracking-widest text-muted-foreground mb-4">Price chart</div>
-              {chartData.length > 1 ? (
-                <div className="h-64">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={chartData}>
-                      <defs>
-                        <linearGradient id="priceFill" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity={0.5} />
-                          <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity={0} />
-                        </linearGradient>
-                      </defs>
-                      <XAxis dataKey="label" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" minTickGap={24} />
-                      <YAxis
-                        tick={{ fontSize: 10 }}
-                        stroke="hsl(var(--muted-foreground))"
-                        width={70}
-                        domain={["auto", "auto"]}
-                        tickFormatter={(v: number) => v.toPrecision(3)}
-                      />
-                      <Tooltip
-                        contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 12, fontSize: 12 }}
-                        formatter={(v: number) => [`${v.toPrecision(6)} BNB`, "Price"]}
-                      />
-                      <Area type="monotone" dataKey="price" stroke="hsl(var(--primary))" fill="url(#priceFill)" strokeWidth={2} />
-                    </AreaChart>
-                  </ResponsiveContainer>
+              <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
+                <div className="text-xs uppercase tracking-widest text-muted-foreground">Price chart · candles</div>
+                <div className="flex gap-1 rounded-full border border-white/10 bg-white/5 p-1">
+                  {TIMEFRAMES.map((tf) => (
+                    <button
+                      key={tf.id}
+                      onClick={() => setTimeframe(tf.id)}
+                      className={`rounded-full px-2.5 py-1 text-[11px] font-mono transition ${
+                        timeframe === tf.id ? "brand-gradient text-primary-foreground" : "text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      {tf.label}
+                    </button>
+                  ))}
                 </div>
+              </div>
+              {eventsError ? (
+                <ChainError error={eventsError} onRetry={() => eventsQ.refetch()} />
+              ) : candles.length > 0 ? (
+                <CandleChart candles={candles} />
               ) : (
                 <div className="h-64 rounded-xl border border-dashed border-white/10 grid place-items-center text-sm text-muted-foreground">
-                  {eventsQ.isLoading ? "Loading on-chain trades…" : "Waiting for on-chain trades to populate the chart."}
+                  {eventsQ.isLoading ? "Leyendo eventos Trade on-chain…" : "Sin eventos Trade en el rango consultado."}
                 </div>
               )}
             </div>
 
             <div className="glass rounded-2xl p-6">
-              <div className="flex items-center gap-2 mb-4">
-                <ArrowLeftRight className="h-4 w-4 text-accent" />
-                <h3 className="font-display text-lg font-semibold">Recent trades</h3>
+              <div className="flex items-center justify-between gap-2 mb-4">
+                <div className="flex items-center gap-2">
+                  <ArrowLeftRight className="h-4 w-4 text-accent" />
+                  <h3 className="font-display text-lg font-semibold">Recent trades</h3>
+                </div>
+                <span className="text-[11px] font-mono text-muted-foreground">{events.length} eventos</span>
               </div>
-              {events.length > 0 ? (
+              {eventsError ? (
+                <ChainError error={eventsError} onRetry={() => eventsQ.refetch()} />
+              ) : events.length > 0 ? (
                 <div className="overflow-x-auto">
                   <table className="w-full text-xs">
                     <thead className="text-[10px] uppercase tracking-widest text-muted-foreground">
@@ -276,7 +301,7 @@ function TokenPage() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-white/5">
-                      {[...events].reverse().slice(0, 30).map((tr) => (
+                      {[...events].reverse().map((tr) => (
                         <tr key={tr.key}>
                           <td className="py-2 font-mono">
                             <a
@@ -303,13 +328,26 @@ function TokenPage() {
                       ))}
                     </tbody>
                   </table>
+                  <div ref={sentinel} className="h-8" />
+                  <div className="pt-2 text-center">
+                    {eventsQ.isFetchingNextPage ? (
+                      <span className="text-xs text-muted-foreground">Cargando más bloques…</span>
+                    ) : eventsQ.hasNextPage ? (
+                      <Button variant="outline" size="sm" className="border-white/10 bg-white/5" onClick={() => eventsQ.fetchNextPage()}>
+                        Cargar histórico anterior
+                      </Button>
+                    ) : (
+                      <span className="text-xs text-muted-foreground">Fin del histórico disponible.</span>
+                    )}
+                  </div>
                 </div>
               ) : (
                 <div className="rounded-xl border border-dashed border-white/10 py-10 text-center text-sm text-muted-foreground">
-                  {eventsQ.isLoading ? "Loading on-chain trades…" : t("empty.noTrades")}
+                  {eventsQ.isLoading ? "Leyendo eventos Trade on-chain…" : t("empty.noTrades")}
                 </div>
               )}
             </div>
+
 
 
             <div className="glass rounded-2xl p-6">
@@ -317,11 +355,11 @@ function TokenPage() {
                 <MessageSquare className="h-4 w-4 text-primary" />
                 <h3 className="font-display text-lg font-semibold">Comments</h3>
               </div>
-              {user ? (
-                <CommentBox tokenId={tk.id} onSent={() => commentsQ.refetch()} />
-              ) : (
-                <p className="text-xs text-muted-foreground mb-4">Sign in to comment.</p>
-              )}
+              <CommentBox
+                tokenId={dbRow?.id ? String(dbRow.id) : null}
+                onSent={() => commentsQ.refetch()}
+              />
+
               <ul className="divide-y divide-white/5">
                 {(commentsQ.data ?? []).map((c) => (
                   <li key={c.id} className="py-3 flex gap-3">
@@ -379,27 +417,82 @@ function StatCard({ icon, label, value, accent }: { icon: React.ReactNode; label
   );
 }
 
-function CommentBox({ tokenId, onSent }: { tokenId: string; onSent: () => void }) {
-  const { user } = useAuth();
-  const [body, setBody] = useState("");
-  const [busy, setBusy] = useState(false);
-  async function send() {
-    if (!body.trim() || !user) return;
-    setBusy(true);
-    try {
-      const { error } = await supabase.from("comments").insert({ token_id: tokenId, content: body.trim(), user_id: user.id });
-      if (error) throw error;
-      setBody("");
-      onSent();
-    } catch (e) { toast.error((e as Error).message); } finally { setBusy(false); }
-  }
+function ChainError({ error, onRetry }: { error: Error; onRetry: () => void }) {
   return (
-    <div className="mb-4 flex gap-2">
-      <Input value={body} onChange={(e) => setBody(e.target.value)} placeholder="Say something…" />
-      <Button onClick={send} disabled={busy} className="brand-gradient text-primary-foreground">Post</Button>
+    <div className="rounded-xl border border-destructive/40 bg-destructive/10 p-4 text-xs">
+      <div className="flex items-center gap-2 font-semibold text-destructive">
+        <AlertTriangle className="h-4 w-4" /> No se pudieron leer los eventos Trade
+      </div>
+      <p className="mt-2 break-words font-mono text-[11px] text-muted-foreground">{error.message}</p>
+      <Button variant="outline" size="sm" className="mt-3 border-white/10 bg-white/5" onClick={onRetry}>
+        Reintentar
+      </Button>
     </div>
   );
 }
+
+/**
+ * Comments accept an existing Supabase session OR a connected wallet:
+ * in the second case we complete SIWE silently before inserting.
+ */
+function CommentBox({ tokenId, onSent }: { tokenId: string | null; onSent: () => void }) {
+  const { user } = useAuth();
+  const { address, isConnected } = useAccount();
+  const signIn = useSiweSignIn();
+  const [body, setBody] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  if (!tokenId) {
+    return (
+      <p className="mb-4 text-xs text-muted-foreground">
+        Este token todavía no tiene ficha en la base de datos: los comentarios se activan al guardarla.
+      </p>
+    );
+  }
+
+  const canPost = !!user || isConnected;
+
+  async function send() {
+    if (!body.trim() || !tokenId) return;
+    setBusy(true);
+    try {
+      const me = user ?? (await signIn());
+      const { error } = await supabase
+        .from("comments")
+        .insert({ token_id: tokenId, content: body.trim(), user_id: me.id });
+      if (error) throw error;
+      setBody("");
+      onSent();
+    } catch (e) {
+      console.error("[comments] insert failed", e);
+      toast.error((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="mb-4">
+      <div className="flex gap-2">
+        <Input
+          value={body}
+          onChange={(e) => setBody(e.target.value)}
+          placeholder={canPost ? "Say something…" : "Conecta tu wallet para comentar"}
+          disabled={!canPost}
+        />
+        <Button onClick={send} disabled={busy || !canPost} className="brand-gradient text-primary-foreground">
+          {busy ? "…" : "Post"}
+        </Button>
+      </div>
+      {!user && isConnected && (
+        <p className="mt-2 text-[11px] text-muted-foreground font-mono">
+          Se firmará el mensaje SIWE con {address?.slice(0, 6)}…{address?.slice(-4)} al publicar.
+        </p>
+      )}
+    </div>
+  );
+}
+
 
 function SocialLink({ href, label }: { href: string; label: string }) {
   return (

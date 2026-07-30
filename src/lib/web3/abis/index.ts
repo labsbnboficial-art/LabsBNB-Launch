@@ -12,8 +12,21 @@ export const TOKEN_ABI = LabsBNBTokenAbi;
 /** BSC Testnet (chainId 97) deployment constants. */
 export const BSC_TESTNET = {
   chainId: 97,
-  rpcUrl: "https://data-seed-prebsc-1-s1.binance.org:8545",
+  rpcUrl: "https://bsc-prebsc-dataseed.bnbchain.org",
   pancakeRouter: "0xD99D1c33F9fC3444f8101754aBC46c52416550D1",
   wbnb: "0xae13d989daC2f0dEbFf460aC112a837C89BAa7cd",
   explorer: "https://testnet.bscscan.com",
 } as const;
+
+/**
+ * Endpoints that actually serve `eth_getLogs` on BSC Testnet.
+ * The classic `data-seed-prebsc-*` nodes reject it with "limit exceeded",
+ * so they are intentionally NOT in this list.
+ */
+export const LOG_RPC_URLS: string[] = [
+  "https://bsc-prebsc-dataseed.bnbchain.org",
+  "https://bnb-testnet.api.onfinality.io/public",
+  "https://bsc-testnet.drpc.org",
+  "https://bsc-testnet-rpc.publicnode.com",
+];
+
