@@ -190,71 +190,8 @@ function CreatePage() {
       toast.success("Token deployed on BNB Testnet");
 
       // 4) Persist the on-chain result (best effort — never hides a successful deploy).
-      if (!user) {
-        setDeployState("Deployed on-chain (sign in to save the token profile)");
-        return;
-      }
-      try {
-        const { data, error } = await supabase.from("tokens").insert({
-          creator_id: user.id,
-          name: form.name,
-          ticker: form.ticker.toUpperCase(),
-          description: form.description || null,
-          logo_url: form.logo_url || null,
-          banner_url: form.banner_url || null,
-          website: form.website || null,
-          telegram: form.telegram || null,
-          twitter: form.twitter || null,
-          discord: form.discord || null,
-          github: form.github || null,
-          category: form.category,
-          supply: form.supply,
-          decimals: form.decimals,
-          chain_id: chainId,
-          contract_address: tokenAddress,
-          deploy_tx_hash: hash,
-          status: "active",
-        }).select("id").single();
-        if (error) throw error;
-        await supabase.from("bonding_curves").insert({
-          token_id: data.id,
-          target_bnb: Math.floor(form.target_bnb * 1e18),
-        });
-        await supabase.from("activity").insert({
-          user_id: user.id,
-          token_id: data.id,
-          kind: "deploy",
-          payload: {
-            token_address: tokenAddress,
-            curve_address: curveAddress,
-            factory_address: factory,
-            tx_hash: hash,
-            chain_id: chainId,
-            metadata_uri: metadataURI,
-          },
-        });
-        if (adv.enabled) {
-          await supabase.from("activity").insert({
-            user_id: user.id,
-            token_id: data.id,
-            kind: "advanced_tokenomics",
-            payload: {
-              lp_pct: adv.lp_pct,
-              burn_pct: adv.burn_pct,
-              staking_pct: adv.staking_pct,
-              reward_pct: adv.reward_pct,
-              payment_tx: adv.paid_tx,
-              payment_wallet: cfg?.admin_wallet ?? null,
-              payment_amount_wei: cfg?.advanced_creation_fee_bnb ?? null,
-            },
-          });
-        }
-        setDeployState("Deployed and saved");
-      } catch (saveErr) {
-        console.error(saveErr);
-        setDeployState("Deployed on-chain (could not save the token profile)");
-        toast.warning("Token is live on-chain, but saving its profile failed.");
-      }
+      await saveDeployment(tokenAddress, curveAddress, hash, metadataURI);
+
     } catch (e) {
       console.error(e);
       setDeployState("Failed");
