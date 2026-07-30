@@ -247,14 +247,24 @@ function LoginForm({ emailConfigured, onDone }: { emailConfigured: boolean; onDo
         onSubmit={async (e) => {
           e.preventDefault();
           setBusy(true);
+          setError(null);
           try { await login({ data: { identifier, password } }); onDone(); }
-          catch (err) { toast.error((err as Error).message); } finally { setBusy(false); }
+          catch (err) {
+            const msg = (err as Error).message || "No se pudo iniciar sesión.";
+            setError(msg);
+            toast.error(msg);
+          } finally { setBusy(false); }
         }}
       >
         <Field label="Usuario o correo" value={identifier} onChange={setIdentifier} autoComplete="username" />
         <Field label="Contraseña" type="password" value={password} onChange={setPassword} autoComplete="current-password" />
+        {error && (
+          <p className="rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive break-words">
+            {error}
+          </p>
+        )}
         <Button type="submit" disabled={busy} className="w-full brand-gradient text-primary-foreground glow-primary">
-          {busy ? "…" : "Entrar"}
+          {busy ? "Verificando…" : "Entrar"}
         </Button>
       </form>
       <Button variant="ghost" className="mt-2 w-full text-xs" onClick={() => setForgot(true)}>¿Olvidaste tu contraseña?</Button>
