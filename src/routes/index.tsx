@@ -4,6 +4,8 @@ import { useI18n } from "@/lib/i18n";
 import { AppShell } from "@/components/labsbnb/AppShell";
 import { useBnbPrice } from "@/lib/web3/useLabsBnbPrice";
 import { supabase } from "@/integrations/supabase/client";
+import { fetchFactoryTokens, type FactoryToken } from "@/lib/web3/onchain-token";
+
 import { Button } from "@/components/ui/button";
 import { ArrowRight, Rocket, Search, Sparkles, TrendingUp, Clock, Flame } from "lucide-react";
 import { useState } from "react";
