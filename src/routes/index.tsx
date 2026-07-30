@@ -161,7 +161,7 @@ function LandingPage() {
             <StatCard label={t("stats.tokensToday")} value={String(s?.todayTokens ?? 0)} />
             <StatCard label={t("stats.tokensLaunched")} value={String(s?.launched ?? 0)} />
             <StatCard label={t("stats.users")} value={String(s?.users ?? 0)} />
-            <StatCard label="Tokens" value={String(s?.totalTokens ?? 0)} />
+            <StatCard label="Tokens" value={String(Math.max(s?.totalTokens ?? 0, merged.length))} />
             <StatCard label={t("stats.liquidity")} value="—" sub="on-chain indexer" />
             <StatCard label={t("stats.marketCap")} value="—" sub="pending index" />
           </div>
