@@ -37,6 +37,13 @@ const step1Schema = z.object({
   description: z.string().trim().max(500).optional().or(z.literal("")),
   logo_url: z.string().url().max(500).optional().or(z.literal("")),
   banner_url: z.string().url().max(500).optional().or(z.literal("")),
+  metadata_uri: z
+    .string()
+    .trim()
+    .max(500)
+    .refine((v) => v === "" || /^(https?:\/\/|ipfs:\/\/)/.test(v), "Use an https:// or ipfs:// URI")
+    .optional()
+    .or(z.literal("")),
   website: z.string().url().max(200).optional().or(z.literal("")),
   telegram: z.string().max(200).optional().or(z.literal("")),
   twitter: z.string().max(200).optional().or(z.literal("")),
@@ -73,7 +80,7 @@ const initialAdvanced: AdvancedState = {
 };
 
 const initial: FormState = {
-  name: "", ticker: "", description: "", logo_url: "", banner_url: "",
+  name: "", ticker: "", description: "", logo_url: "", banner_url: "", metadata_uri: "",
   website: "", telegram: "", twitter: "", discord: "", github: "",
   category: "Meme",
   supply: 1_000_000_000, decimals: 18, initial_buy_bnb: 0, target_bnb: 24,
@@ -97,6 +104,7 @@ function CreatePage() {
   const walletChainId = useChainId();
   const [deployTx, setDeployTx] = useState<`0x${string}` | null>(null);
   const [deployedToken, setDeployedToken] = useState<string | null>(null);
+  const [deployedCurve, setDeployedCurve] = useState<string | null>(null);
   const [deployState, setDeployState] = useState<string>("");
 
   const set = <K extends keyof FormState>(k: K, v: FormState[K]) => setForm((f) => ({ ...f, [k]: v }));
@@ -114,7 +122,7 @@ function CreatePage() {
   }
 
   async function deploy() {
-    if (!user) { toast.error("Sign in first"); navigate({ to: "/auth", search: { redirect: "/create" } }); return; }
+    // SIWE/session only authenticates + enables saving metadata. It never replaces the tx.
     if (!isConnected || !address) { toast.error("Connect your wallet first"); return; }
     if (adv.enabled && !adv.paid_tx) { toast.error("Pay the advanced tokenomics unlock first"); return; }
     if (adv.enabled) {
@@ -125,6 +133,7 @@ function CreatePage() {
     setSubmitting(true);
     setDeployTx(null);
     setDeployedToken(null);
+    setDeployedCurve(null);
     try {
       // 1) Make sure the wallet is on BNB Smart Chain Testnet (97) before signing.
       if (walletChainId !== chainId) {
@@ -136,7 +145,7 @@ function CreatePage() {
       }
 
       // 2) Simulate then send the real createToken() transaction.
-      const metadataURI = form.logo_url || form.website || "";
+      const metadataURI = (form.metadata_uri || form.logo_url || form.website || "").trim();
       const args = [form.name, form.ticker.toUpperCase(), metadataURI] as const;
       setDeployState("Checking the transaction with the factory…");
       await publicClient!.simulateContract({
@@ -176,65 +185,76 @@ function CreatePage() {
       }
       if (!tokenAddress) throw new Error("TokenCreated event not found in the transaction receipt");
       setDeployedToken(tokenAddress);
-      setDeployState("Deployed — saving…");
+      setDeployedCurve(curveAddress);
+      setDeployState("Deployed on-chain");
+      toast.success("Token deployed on BNB Testnet");
 
-      // 4) Persist the on-chain result.
-      const { data, error } = await supabase.from("tokens").insert({
-        creator_id: user.id,
-        name: form.name,
-        ticker: form.ticker.toUpperCase(),
-        description: form.description || null,
-        logo_url: form.logo_url || null,
-        banner_url: form.banner_url || null,
-        website: form.website || null,
-        telegram: form.telegram || null,
-        twitter: form.twitter || null,
-        discord: form.discord || null,
-        github: form.github || null,
-        category: form.category,
-        supply: form.supply,
-        decimals: form.decimals,
-        chain_id: chainId,
-        contract_address: tokenAddress,
-        deploy_tx_hash: hash,
-        status: "active",
-      }).select("id").single();
-      if (error) throw error;
-      await supabase.from("bonding_curves").insert({
-        token_id: data.id,
-        target_bnb: Math.floor(form.target_bnb * 1e18),
-      });
-      await supabase.from("activity").insert({
-        user_id: user.id,
-        token_id: data.id,
-        kind: "deploy",
-        payload: {
-          token_address: tokenAddress,
-          curve_address: curveAddress,
-          factory_address: factory,
-          tx_hash: hash,
+      // 4) Persist the on-chain result (best effort — never hides a successful deploy).
+      if (!user) {
+        setDeployState("Deployed on-chain (sign in to save the token profile)");
+        return;
+      }
+      try {
+        const { data, error } = await supabase.from("tokens").insert({
+          creator_id: user.id,
+          name: form.name,
+          ticker: form.ticker.toUpperCase(),
+          description: form.description || null,
+          logo_url: form.logo_url || null,
+          banner_url: form.banner_url || null,
+          website: form.website || null,
+          telegram: form.telegram || null,
+          twitter: form.twitter || null,
+          discord: form.discord || null,
+          github: form.github || null,
+          category: form.category,
+          supply: form.supply,
+          decimals: form.decimals,
           chain_id: chainId,
-        },
-      });
-      if (adv.enabled) {
+          contract_address: tokenAddress,
+          deploy_tx_hash: hash,
+          status: "active",
+        }).select("id").single();
+        if (error) throw error;
+        await supabase.from("bonding_curves").insert({
+          token_id: data.id,
+          target_bnb: Math.floor(form.target_bnb * 1e18),
+        });
         await supabase.from("activity").insert({
           user_id: user.id,
           token_id: data.id,
-          kind: "advanced_tokenomics",
+          kind: "deploy",
           payload: {
-            lp_pct: adv.lp_pct,
-            burn_pct: adv.burn_pct,
-            staking_pct: adv.staking_pct,
-            reward_pct: adv.reward_pct,
-            payment_tx: adv.paid_tx,
-            payment_wallet: cfg?.admin_wallet ?? null,
-            payment_amount_wei: cfg?.advanced_creation_fee_bnb ?? null,
+            token_address: tokenAddress,
+            curve_address: curveAddress,
+            factory_address: factory,
+            tx_hash: hash,
+            chain_id: chainId,
+            metadata_uri: metadataURI,
           },
         });
+        if (adv.enabled) {
+          await supabase.from("activity").insert({
+            user_id: user.id,
+            token_id: data.id,
+            kind: "advanced_tokenomics",
+            payload: {
+              lp_pct: adv.lp_pct,
+              burn_pct: adv.burn_pct,
+              staking_pct: adv.staking_pct,
+              reward_pct: adv.reward_pct,
+              payment_tx: adv.paid_tx,
+              payment_wallet: cfg?.admin_wallet ?? null,
+              payment_amount_wei: cfg?.advanced_creation_fee_bnb ?? null,
+            },
+          });
+        }
+        setDeployState("Deployed and saved");
+      } catch (saveErr) {
+        console.error(saveErr);
+        setDeployState("Deployed on-chain (could not save the token profile)");
+        toast.warning("Token is live on-chain, but saving its profile failed.");
       }
-      setDeployState("Deployed");
-      toast.success("Token deployed on-chain");
-      navigate({ to: "/token/$address", params: { address: tokenAddress } });
     } catch (e) {
       console.error(e);
       setDeployState("Failed");
@@ -266,6 +286,14 @@ function CreatePage() {
               <Field label={t("create.logo")}><FileUploader value={form.logo_url} onChange={(url) => set("logo_url", url)} kind="logo" userId={user?.id} /></Field>
               <Field label={t("create.banner")}><FileUploader value={form.banner_url} onChange={(url) => set("banner_url", url)} kind="banner" userId={user?.id} /></Field>
               <Field label={t("create.website")}><Input value={form.website} onChange={(e) => set("website", e.target.value)} placeholder="https://…" /></Field>
+              <Field label="Metadata URI" full>
+                <Input
+                  value={form.metadata_uri}
+                  onChange={(e) => set("metadata_uri", e.target.value)}
+                  placeholder="ipfs://… or https://… (optional — defaults to your logo URL)"
+                  className="font-mono text-xs"
+                />
+              </Field>
               <Field label="Telegram"><Input value={form.telegram} onChange={(e) => set("telegram", e.target.value)} /></Field>
               <Field label="X / Twitter"><Input value={form.twitter} onChange={(e) => set("twitter", e.target.value)} /></Field>
               <Field label="Discord"><Input value={form.discord} onChange={(e) => set("discord", e.target.value)} /></Field>
@@ -340,6 +368,29 @@ function CreatePage() {
                         {deployedToken}
                       </a>
                     </div>
+                  )}
+                  {deployedCurve && (
+                    <div>
+                      <span className="text-muted-foreground">Bonding curve: </span>
+                      <a
+                        className="font-mono underline break-all"
+                        href={`https://testnet.bscscan.com/address/${deployedCurve}`}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        {deployedCurve}
+                      </a>
+                    </div>
+                  )}
+                  {deployedToken && (
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      className="mt-2"
+                      onClick={() => navigate({ to: "/token/$address", params: { address: deployedToken } })}
+                    >
+                      Open token page
+                    </Button>
                   )}
                 </div>
               )}
