@@ -277,6 +277,7 @@ function CreatePage() {
       toast.success("Token deployed on BNB Testnet");
 
       // 4) Persist the on-chain result (best effort — never hides a successful deploy).
+      setDeployMeta({ hash, metadataURI });
       await saveDeployment(tokenAddress, curveAddress, hash, metadataURI);
 
     } catch (e) {
