@@ -7,8 +7,21 @@ import { DEFAULT_CONFIG } from "@/lib/launchpad-config";
 
 export const EXPLORER = BSC_TESTNET.explorer;
 
+/**
+ * Shared read client. `batch.multicall` aggregates all the concurrent
+ * `readContract` calls of a render into a single RPC round-trip, which keeps
+ * the homepage and the token page well under public-RPC rate limits.
+ */
+let cachedClient: ReturnType<typeof createPublicClient> | null = null;
 export function readClient() {
-  return createPublicClient({ chain: bscTestnet, transport: http(BSC_TESTNET.rpcUrl) });
+  if (!cachedClient) {
+    cachedClient = createPublicClient({
+      chain: bscTestnet,
+      transport: http(BSC_TESTNET.rpcUrl, { batch: true }),
+      batch: { multicall: { wait: 24 } },
+    });
+  }
+  return cachedClient;
 }
 
 export type OnChainToken = {

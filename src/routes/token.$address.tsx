@@ -19,6 +19,9 @@ import { CandleChart } from "@/components/labsbnb/CandleChart";
 import { TradePanel } from "@/components/labsbnb/TradePanel";
 import { useServerFn } from "@tanstack/react-start";
 import { ensureTokenRow } from "@/lib/tokens.functions";
+import { updateTokenMeta } from "@/lib/token-meta.functions";
+import { fetchTopHolders } from "@/lib/web3/holders";
+import { Textarea } from "@/components/ui/textarea";
 
 
 
@@ -452,6 +455,21 @@ function TokenPage() {
               )}
             </div>
 
+            <TokenInformation
+              tokenId={dbRow?.id ? String(dbRow.id) : null}
+              isCreator={!!user && !!dbRow?.creator_id && user.id === dbRow.creator_id}
+              values={{
+                description: (tk.description as string | null) ?? "",
+                logo_url: (tk.logo_url as string | null) ?? "",
+                banner_url: (tk.banner_url as string | null) ?? "",
+                website: (tk.website as string | null) ?? "",
+                twitter: (tk.twitter as string | null) ?? "",
+                telegram: (tk.telegram as string | null) ?? "",
+                discord: (tk.discord as string | null) ?? "",
+                github: ((dbRow?.github as string | null) ?? "") || "",
+              }}
+              onSaved={() => tokenQ.refetch()}
+            />
 
 
             <div className="glass rounded-2xl p-6">
@@ -511,6 +529,12 @@ function TokenPage() {
               tokenAddress={(tk.contract_address as string | null) ?? (isAddress(address) ? address : null)}
               curveAddress={curveAddress}
             />
+
+            <TopHolders
+              token={(tk.contract_address as string | null) ?? (isAddress(address) ? address : null)}
+              ticker={String(tk.ticker)}
+            />
+
 
             <div className="text-xs text-muted-foreground text-center">
               <Link to="/" className="hover:text-foreground">← back to launchpad</Link>
@@ -626,5 +650,187 @@ function SocialLink({ href, label }: { href: string; label: string }) {
     <a href={href} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/5 px-3 py-1 hover:bg-white/10">
       {label}<ExternalLink className="h-3 w-3" />
     </a>
+  );
+}
+
+/* ----------------------------- Top 10 holders ----------------------------- */
+
+function TopHolders({ token, ticker }: { token: string | null; ticker: string }) {
+  const valid = token && isAddress(token) ? (token as `0x${string}`) : null;
+  const q = useQuery({
+    queryKey: ["holders", valid],
+    enabled: !!valid,
+    refetchInterval: 60_000,
+    retry: 1,
+    queryFn: () => fetchTopHolders(valid!, 10),
+  });
+
+  return (
+    <div className="glass rounded-2xl p-6">
+      <div className="flex items-center justify-between gap-2 mb-3">
+        <div className="flex items-center gap-2">
+          <Users className="h-4 w-4 text-accent" />
+          <h3 className="font-display text-base font-semibold">Top 10 holders</h3>
+        </div>
+        {q.data && (
+          <span className="text-[10px] font-mono text-muted-foreground">{q.data.count} wallets</span>
+        )}
+      </div>
+
+      {!valid ? (
+        <p className="text-xs text-muted-foreground">Dirección de token no disponible.</p>
+      ) : q.isLoading ? (
+        <p className="text-xs text-muted-foreground">Leyendo transferencias on-chain…</p>
+      ) : q.error ? (
+        <p className="text-xs text-destructive break-words font-mono">{(q.error as Error).message}</p>
+      ) : !q.data?.holders.length ? (
+        <p className="text-xs text-muted-foreground">Sin transferencias en el rango consultado.</p>
+      ) : (
+        <ul className="space-y-2">
+          {q.data.holders.map((h, i) => (
+            <li key={h.address} className="flex items-center gap-2 text-xs">
+              <span className="w-4 text-muted-foreground font-mono">{i + 1}</span>
+              <a
+                href={`${BSC_TESTNET.explorer}/address/${h.address}`}
+                target="_blank"
+                rel="noreferrer"
+                className="font-mono text-muted-foreground hover:text-foreground"
+              >
+                {h.address.slice(0, 6)}…{h.address.slice(-4)}
+              </a>
+              <div className="flex-1 h-1.5 rounded-full bg-white/5 overflow-hidden">
+                <div className="h-full brand-gradient" style={{ width: `${Math.max(h.share, 1)}%` }} />
+              </div>
+              <span className="font-mono tabular-nums w-12 text-right">{h.share.toFixed(2)}%</span>
+            </li>
+          ))}
+        </ul>
+      )}
+      {q.data && !q.data.complete && (
+        <p className="mt-3 text-[10px] text-muted-foreground">
+          Ventana parcial de bloques: el reparto refleja las transferencias recientes de ${ticker}.
+        </p>
+      )}
+    </div>
+  );
+}
+
+/* --------------------------- Token information ---------------------------- */
+
+type MetaFields = {
+  description: string;
+  logo_url: string;
+  banner_url: string;
+  website: string;
+  twitter: string;
+  telegram: string;
+  discord: string;
+  github: string;
+};
+
+function TokenInformation({
+  tokenId,
+  isCreator,
+  values,
+  onSaved,
+}: {
+  tokenId: string | null;
+  isCreator: boolean;
+  values: MetaFields;
+  onSaved: () => void;
+}) {
+  const save = useServerFn(updateTokenMeta);
+  const [editing, setEditing] = useState(false);
+  const [form, setForm] = useState<MetaFields>(values);
+  const [busy, setBusy] = useState(false);
+  const set = (k: keyof MetaFields, v: string) => setForm((f) => ({ ...f, [k]: v }));
+
+  async function submit() {
+    if (!tokenId) return;
+    setBusy(true);
+    try {
+      await save({ data: { tokenId, ...form } });
+      toast.success("Información actualizada");
+      setEditing(false);
+      onSaved();
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const rows: Array<[string, string]> = [
+    ["Website", values.website],
+    ["X / Twitter", values.twitter],
+    ["Telegram", values.telegram],
+    ["Discord", values.discord],
+    ["GitHub", values.github],
+  ];
+
+  return (
+    <div className="glass rounded-2xl p-6">
+      <div className="flex items-center justify-between gap-2 mb-4">
+        <h3 className="font-display text-lg font-semibold">Token information</h3>
+        {isCreator && tokenId && (
+          <Button
+            variant="outline"
+            size="sm"
+            className="border-white/10 bg-white/5"
+            onClick={() => {
+              setForm(values);
+              setEditing((e) => !e);
+            }}
+          >
+            {editing ? "Cancelar" : "Editar detalles"}
+          </Button>
+        )}
+      </div>
+
+      {editing ? (
+        <div className="space-y-3">
+          <Textarea
+            rows={3}
+            placeholder="Descripción del proyecto"
+            value={form.description}
+            onChange={(e) => set("description", e.target.value)}
+          />
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Input placeholder="Logo URL" value={form.logo_url} onChange={(e) => set("logo_url", e.target.value)} />
+            <Input placeholder="Banner URL" value={form.banner_url} onChange={(e) => set("banner_url", e.target.value)} />
+            <Input placeholder="https://website" value={form.website} onChange={(e) => set("website", e.target.value)} />
+            <Input placeholder="X / Twitter" value={form.twitter} onChange={(e) => set("twitter", e.target.value)} />
+            <Input placeholder="Telegram" value={form.telegram} onChange={(e) => set("telegram", e.target.value)} />
+            <Input placeholder="Discord" value={form.discord} onChange={(e) => set("discord", e.target.value)} />
+            <Input placeholder="GitHub" value={form.github} onChange={(e) => set("github", e.target.value)} />
+          </div>
+          <Button onClick={submit} disabled={busy} className="brand-gradient text-primary-foreground">
+            {busy ? "Guardando…" : "Guardar cambios"}
+          </Button>
+        </div>
+      ) : (
+        <div className="space-y-3 text-sm">
+          <p className="text-muted-foreground">
+            {values.description || "El creador todavía no añadió una descripción."}
+          </p>
+          <dl className="grid gap-2 sm:grid-cols-2 text-xs">
+            {rows.map(([label, value]) => (
+              <div key={label} className="flex items-center justify-between gap-2 rounded-lg border border-white/5 bg-white/5 px-3 py-2">
+                <dt className="text-muted-foreground">{label}</dt>
+                <dd className="truncate max-w-[60%] text-right">
+                  {value ? (
+                    <a href={value} target="_blank" rel="noreferrer" className="text-accent hover:underline">
+                      {value.replace(/^https?:\/\//, "")}
+                    </a>
+                  ) : (
+                    <span className="text-muted-foreground">—</span>
+                  )}
+                </dd>
+              </div>
+            ))}
+          </dl>
+        </div>
+      )}
+    </div>
   );
 }

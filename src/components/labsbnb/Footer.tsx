@@ -39,8 +39,9 @@ export function Footer() {
           </div>
           <div>
             <div className="text-xs uppercase tracking-widest text-muted-foreground mb-3">Network</div>
-            <div className="text-sm text-muted-foreground">BNB Smart Chain</div>
-            <div className="mt-1 text-xs font-mono text-accent">Chain ID 56</div>
+            <div className="text-sm text-muted-foreground">BNB Smart Chain Testnet</div>
+            <div className="mt-1 text-xs font-mono text-accent">Chain ID 97</div>
+
           </div>
         </div>
         <div className="mt-10 pt-6 border-t border-white/5 text-xs text-muted-foreground flex flex-wrap items-center justify-between gap-2">

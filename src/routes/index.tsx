@@ -147,6 +147,32 @@ function LandingPage() {
     [merged],
   );
 
+  const topGainers = useMemo(
+    () =>
+      [...merged]
+        .filter((tk) => tk.metrics && tk.metrics.priceChangeBps !== 0)
+        .sort((a, b) => (b.metrics!.priceChangeBps ?? 0) - (a.metrics!.priceChangeBps ?? 0))
+        .slice(0, 5),
+    [merged],
+  );
+
+  const topMarketCap = useMemo(
+    () =>
+      [...merged]
+        .filter((tk) => wei(tk.metrics?.marketCapWei) > 0)
+        .sort((a, b) => wei(b.metrics?.marketCapWei) - wei(a.metrics?.marketCapWei))
+        .slice(0, 5),
+    [merged],
+  );
+
+  const recentlyCreated = useMemo(
+    () =>
+      [...merged]
+        .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+        .slice(0, 8),
+    [merged],
+  );
+
   const chainAggregates = useMemo(() => {
     const rows = merged.filter((tk) => tk.metrics);
     return {
@@ -318,6 +344,61 @@ function LandingPage() {
             )}
           </div>
         </div>
+
+        <div className="grid gap-8 md:grid-cols-2">
+          <div className="glass rounded-2xl p-6">
+            <div className="flex items-center gap-2 mb-4">
+              <TrendingUp className="h-4 w-4 text-success" />
+              <h3 className="font-display text-lg font-semibold">Top gainers 24h</h3>
+            </div>
+            {topGainers.length ? (
+              <ul className="space-y-2">
+                {topGainers.map((tk, i) => (
+                  <TokenRowItem
+                    key={tk.id}
+                    rank={i + 1}
+                    token={tk}
+                    right={`${(tk.metrics!.priceChangeBps / 100) >= 0 ? "+" : ""}${(tk.metrics!.priceChangeBps / 100).toFixed(2)}%`}
+                    rightLabel="cambio 24h"
+                  />
+                ))}
+              </ul>
+            ) : (
+              <EmptyHint label={chainTokens.isLoading ? "Leyendo la blockchain…" : "Sin variación de precio en 24h."} />
+            )}
+          </div>
+
+          <div className="glass rounded-2xl p-6">
+            <div className="flex items-center gap-2 mb-4">
+              <LineChart className="h-4 w-4 text-accent" />
+              <h3 className="font-display text-lg font-semibold">Top market cap</h3>
+            </div>
+            {topMarketCap.length ? (
+              <ul className="space-y-2">
+                {topMarketCap.map((tk, i) => (
+                  <TokenRowItem
+                    key={tk.id}
+                    rank={i + 1}
+                    token={tk}
+                    right={`${wei(tk.metrics?.marketCapWei).toFixed(3)} BNB`}
+                    rightLabel="market cap"
+                  />
+                ))}
+              </ul>
+            ) : (
+              <EmptyHint label={chainTokens.isLoading ? "Leyendo la blockchain…" : "Sin datos de market cap todavía."} />
+            )}
+          </div>
+        </div>
+
+        <TokenGrid
+          title="Recién creados"
+          icon={<Sparkles className="h-4 w-4" />}
+          tokens={recentlyCreated}
+          bnbUsd={bnbUsd}
+          loading={dbTokens.isLoading && chainTokens.isLoading}
+          emptyLabel={t("empty.noTokens")}
+        />
       </section>
     </AppShell>
   );
