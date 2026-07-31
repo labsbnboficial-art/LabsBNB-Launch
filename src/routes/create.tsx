@@ -1,6 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { uploadTokenMedia } from "@/lib/media.functions";
+import { SOCIAL_FIELDS, normalizeSocial, normalizeSocialRecord, type SocialKey } from "@/lib/social";
 import { useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { z } from "zod";
@@ -48,11 +49,18 @@ const step1Schema = z.object({
     .refine((v) => v === "" || /^(https?:\/\/|ipfs:\/\/)/.test(v), "Use an https:// or ipfs:// URI")
     .optional()
     .or(z.literal("")),
-  website: z.string().url().max(200).optional().or(z.literal("")),
-  telegram: z.string().max(200).optional().or(z.literal("")),
-  twitter: z.string().max(200).optional().or(z.literal("")),
-  discord: z.string().max(200).optional().or(z.literal("")),
-  github: z.string().max(200).optional().or(z.literal("")),
+  ...(Object.fromEntries(
+    SOCIAL_FIELDS.map((f) => [
+      f.key,
+      z
+        .string()
+        .trim()
+        .max(200)
+        .refine((v) => normalizeSocial(f.key, v) !== false, `URL de ${f.label} inválida`)
+        .optional()
+        .or(z.literal("")),
+    ]),
+  ) as Record<SocialKey, z.ZodTypeAny>),
   category: z.string().min(1),
 });
 
@@ -85,7 +93,7 @@ const initialAdvanced: AdvancedState = {
 
 const initial: FormState = {
   name: "", ticker: "", description: "", logo_url: "", banner_url: "", metadata_uri: "",
-  website: "", telegram: "", twitter: "", discord: "", github: "",
+  ...(Object.fromEntries(SOCIAL_FIELDS.map((f) => [f.key, ""])) as Record<SocialKey, string>),
   category: "Meme",
   supply: 1_000_000_000, decimals: 18, initial_buy_bnb: 0, target_bnb: 24,
 };
@@ -152,11 +160,7 @@ function CreatePage() {
         description: form.description || null,
         logo_url: form.logo_url || null,
         banner_url: form.banner_url || null,
-        website: form.website || null,
-        telegram: form.telegram || null,
-        twitter: form.twitter || null,
-        discord: form.discord || null,
-        github: form.github || null,
+        ...normalizeSocialRecord(form as unknown as Partial<Record<SocialKey, string>>),
         category: form.category,
         supply: form.supply,
         decimals: form.decimals,
@@ -320,7 +324,6 @@ function CreatePage() {
               <Field label={t("create.description")} full><Textarea rows={3} value={form.description} onChange={(e) => set("description", e.target.value)} /></Field>
               <Field label={t("create.logo")}><FileUploader value={form.logo_url} onChange={(url) => set("logo_url", url)} kind="logo" userId={user?.id} /></Field>
               <Field label={t("create.banner")}><FileUploader value={form.banner_url} onChange={(url) => set("banner_url", url)} kind="banner" userId={user?.id} /></Field>
-              <Field label={t("create.website")}><Input value={form.website} onChange={(e) => set("website", e.target.value)} placeholder="https://…" /></Field>
               <Field label="Metadata URI" full>
                 <Input
                   value={form.metadata_uri}
@@ -329,10 +332,11 @@ function CreatePage() {
                   className="font-mono text-xs"
                 />
               </Field>
-              <Field label="Telegram"><Input value={form.telegram} onChange={(e) => set("telegram", e.target.value)} /></Field>
-              <Field label="X / Twitter"><Input value={form.twitter} onChange={(e) => set("twitter", e.target.value)} /></Field>
-              <Field label="Discord"><Input value={form.discord} onChange={(e) => set("discord", e.target.value)} /></Field>
-              <Field label="GitHub"><Input value={form.github} onChange={(e) => set("github", e.target.value)} /></Field>
+              {SOCIAL_FIELDS.map((f) => (
+                <Field key={f.key} label={f.label}>
+                  <Input value={form[f.key]} onChange={(e) => set(f.key, e.target.value)} placeholder={f.placeholder} />
+                </Field>
+              ))}
               <Field label={t("create.category")}>
                 <select value={form.category} onChange={(e) => set("category", e.target.value)} className="h-10 w-full rounded-md border border-input bg-transparent px-3 text-sm">
                   {CATEGORIES.map((c) => <option key={c} value={c} className="bg-background">{c}</option>)}
