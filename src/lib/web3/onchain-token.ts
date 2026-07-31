@@ -174,6 +174,7 @@ export type FactoryToken = {
   creator: string | null;
   name: string;
   ticker: string;
+  metadataURI: string | null;
   index: number;
   metrics: CurveMetrics | null;
 };
@@ -234,9 +235,10 @@ export async function fetchFactoryTokens(
         const safe = async <T>(p: Promise<unknown>, fallback: T): Promise<T> => {
           try { return (await p) as T; } catch { return fallback; }
         };
-        const [name, ticker, curve, creator] = await Promise.all([
+        const [name, ticker, metadataURI, curve, creator] = await Promise.all([
           safe<string>(client.readContract({ address, abi: TOKEN_ABI as Abi, functionName: "name" }), ""),
           safe<string>(client.readContract({ address, abi: TOKEN_ABI as Abi, functionName: "symbol" }), ""),
+          safe<string | null>(client.readContract({ address, abi: TOKEN_ABI as Abi, functionName: "metadataURI" }), null),
           safe<`0x${string}` | null>(
             client.readContract({ address: factory, abi: FACTORY_ABI as Abi, functionName: "curveOf", args: [address] }),
             null,
@@ -254,6 +256,7 @@ export async function fetchFactoryTokens(
           creator,
           name: name || "Unknown token",
           ticker: ticker || "???",
+          metadataURI,
           index,
           metrics: curveOk ? await fetchCurveMetrics(curveOk) : null,
         } satisfies FactoryToken;

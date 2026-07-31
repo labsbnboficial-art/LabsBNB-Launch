@@ -21,7 +21,7 @@ export const ensureTokenRow = createServerFn({ method: "POST" })
       .parse(d),
   )
   .handler(async ({ data, context }) => {
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { adminClient: supabaseAdmin } = await import("@/integrations/supabase/admin.server");
     const address = data.address.toLowerCase();
 
     const { data: existing, error: findError } = await supabaseAdmin
@@ -85,7 +85,7 @@ export const saveTokenProfile = createServerFn({ method: "POST" })
       .parse(d),
   )
   .handler(async ({ data, context }) => {
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { adminClient: supabaseAdmin } = await import("@/integrations/supabase/admin.server");
     const address = data.address.toLowerCase();
 
     const socials = normalizeSocialRecord(

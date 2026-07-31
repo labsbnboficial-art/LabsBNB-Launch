@@ -28,7 +28,7 @@ export const updateTokenMeta = createServerFn({ method: "POST" })
       .parse(d),
   )
   .handler(async ({ data, context }) => {
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { adminClient: supabaseAdmin } = await import("@/integrations/supabase/admin.server");
     const { tokenId, description, logo_url, banner_url, ...socials } = data;
 
     const { data: row, error: findError } = await supabaseAdmin
