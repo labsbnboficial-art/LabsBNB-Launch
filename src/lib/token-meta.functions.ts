@@ -3,21 +3,16 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { normalizeSocialRecord, OPTIONAL_SOCIAL_KEYS, SOCIAL_FIELDS, type SocialKey } from "@/lib/social";
 
-const optionalUrl = z.string().trim().max(300).optional().nullable();
-
-const socialShape = Object.fromEntries(SOCIAL_FIELDS.map((f) => [f.key, optionalUrl])) as Record<
-  SocialKey,
-  typeof optionalUrl
->;
-
 /**
  * Updates the public profile of a token (description, images and socials).
  * Only the creator recorded in `tokens.creator_id` can perform the change.
  */
 export const updateTokenMeta = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d: unknown) =>
-    z
+  .inputValidator((d: unknown) => {
+    const optionalUrl = z.string().trim().max(500).optional().nullable();
+    const socialShape = Object.fromEntries(SOCIAL_FIELDS.map((f) => [f.key, optionalUrl])) as Record<SocialKey, typeof optionalUrl>;
+    return z
       .object({
         tokenId: z.string().uuid(),
         description: z.string().trim().max(1000).optional().nullable(),
@@ -25,8 +20,8 @@ export const updateTokenMeta = createServerFn({ method: "POST" })
         banner_url: optionalUrl,
         ...socialShape,
       })
-      .parse(d),
-  )
+      .parse(d);
+  })
   .handler(async ({ data, context }) => {
     const { adminClient: supabaseAdmin } = await import("@/integrations/supabase/admin.server");
     const { tokenId, description, logo_url, banner_url, ...socials } = data;
