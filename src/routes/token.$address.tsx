@@ -462,11 +462,7 @@ function TokenPage() {
                 description: (tk.description as string | null) ?? "",
                 logo_url: (tk.logo_url as string | null) ?? "",
                 banner_url: (tk.banner_url as string | null) ?? "",
-                website: (tk.website as string | null) ?? "",
-                twitter: (tk.twitter as string | null) ?? "",
-                telegram: (tk.telegram as string | null) ?? "",
-                discord: (tk.discord as string | null) ?? "",
-                github: ((dbRow?.github as string | null) ?? "") || "",
+                ...socialValues,
               }}
               onSaved={() => tokenQ.refetch()}
             />
