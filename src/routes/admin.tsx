@@ -450,6 +450,23 @@ function AdminBody({
   const logout = useServerFn(adminLogout);
   const cfgQ = useQuery({ queryKey: ["admin-config"], queryFn: () => loadCfg({ data: { csrf } }) });
 
+  if (cfgQ.isLoading) {
+    return <div className="p-12 text-center text-muted-foreground">Cargando configuración…</div>;
+  }
+
+  if (cfgQ.error) {
+    return (
+      <div className="mx-auto max-w-xl px-4 py-16 text-center">
+        <div className="glass-strong rounded-3xl p-8">
+          <Shield className="mx-auto h-8 w-8 text-destructive" />
+          <h1 className="mt-3 font-display text-xl font-bold">No se pudo cargar el panel</h1>
+          <p className="mt-2 break-words text-sm text-muted-foreground">{(cfgQ.error as Error).message}</p>
+          <Button variant="outline" className="mt-4" onClick={() => cfgQ.refetch()}>Reintentar</Button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="mx-auto max-w-5xl px-4 md:px-6 py-12">
       <div className="mb-8 flex flex-wrap items-center gap-3">
@@ -692,7 +709,10 @@ function ConfigEditor({ csrf, cfg, onSaved }: { csrf: string; cfg: Record<string
         let value: number | string | boolean | null = values[f.key];
         if (f.type === "bool") value = values[f.key] === "true";
         else if (value === "" || value == null) value = null;
-        else if (f.type === "number") value = Number(value);
+        else if (f.type === "number") {
+          value = Number(value);
+          if (!Number.isFinite(value)) throw new Error(`${f.label}: introduce un número válido.`);
+        }
         return { key: f.key, value, is_public: true };
       });
       await saveFn({ data: { csrf, entries } });

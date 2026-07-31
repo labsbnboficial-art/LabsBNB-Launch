@@ -163,12 +163,12 @@ function TokenPage() {
   // Keep the chart and the trades list on the same temporal range: when the
   // selected timeframe needs more history than the loaded pages cover, pull
   // older pages (bounded) so candles and rows always describe the same window.
-  const targetWindow = tfSeconds * 40; // ~40 candles worth of history
+  const targetWindow = tfSeconds * 100; // denser, more detailed market history
   const [autoPages, setAutoPages] = useState(0);
   useEffect(() => setAutoPages(0), [timeframe, curveOk]);
   useEffect(() => {
     if (!events.length || eventsQ.isFetchingNextPage || !eventsQ.hasNextPage) return;
-    if (autoPages >= 6) return;
+    if (autoPages >= 10) return;
     const oldest = events[0].timestamp;
     const newest = events[events.length - 1].timestamp;
     if (newest - oldest >= targetWindow) return;

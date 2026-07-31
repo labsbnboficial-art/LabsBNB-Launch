@@ -43,7 +43,7 @@ export const updateTokenMeta = createServerFn({ method: "POST" })
     };
 
     const write = async (body: Record<string, string | null>) =>
-      supabaseAdmin.from("tokens").update(body as never).eq("id", tokenId);
+      supabaseAdmin.from("tokens").update(body as never).eq("id", tokenId).select("id").single();
 
     let { error } = await write(patch);
     // The medium/youtube/instagram columns are optional (added by a later
@@ -53,6 +53,6 @@ export const updateTokenMeta = createServerFn({ method: "POST" })
       OPTIONAL_SOCIAL_KEYS.forEach((k) => delete reduced[k]);
       ({ error } = await write(reduced));
     }
-    if (error) throw new Error(error.message);
+    if (error) throw new Error(`No se pudo actualizar la información del token: ${error.message}`);
     return { ok: true };
   });
