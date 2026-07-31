@@ -40,7 +40,7 @@ function ExplorerPage() {
             try {
               return { token, events: await fetchTradeEvents(token.curve) };
             } catch (error) {
-              console.warn(`[explorer] trades unavailable for ${token.address ?? token.contract_address}`, error);
+              console.warn(`[explorer] trades unavailable for ${token.contract_address}`, error);
               return { token, events: [] as TradeEvent[] };
             }
           }),
