@@ -178,34 +178,39 @@ function CreatePage() {
           ...socials,
         },
       });
-      await supabase.from("activity").insert({
-        user_id: account.id,
-        token_id: data.id,
-        kind: "deploy",
-        payload: {
-          token_address: tokenAddress,
-          curve_address: curveAddress,
-          factory_address: factory,
-          tx_hash: hash,
-          chain_id: chainId,
-          metadata_uri: metadataURI,
-        },
-      });
-      if (adv.enabled) {
+      // Activity feed is cosmetic: never fail the save because of it.
+      try {
         await supabase.from("activity").insert({
           user_id: account.id,
           token_id: data.id,
-          kind: "advanced_tokenomics",
+          kind: "deploy",
           payload: {
-            lp_pct: adv.lp_pct,
-            burn_pct: adv.burn_pct,
-            staking_pct: adv.staking_pct,
-            reward_pct: adv.reward_pct,
-            payment_tx: adv.paid_tx,
-            payment_wallet: cfg?.admin_wallet ?? null,
-            payment_amount_wei: cfg?.advanced_creation_fee_bnb ?? null,
+            token_address: tokenAddress,
+            curve_address: curveAddress,
+            factory_address: factory,
+            tx_hash: hash,
+            chain_id: chainId,
+            metadata_uri: metadataURI,
           },
         });
+        if (adv.enabled) {
+          await supabase.from("activity").insert({
+            user_id: account.id,
+            token_id: data.id,
+            kind: "advanced_tokenomics",
+            payload: {
+              lp_pct: adv.lp_pct,
+              burn_pct: adv.burn_pct,
+              staking_pct: adv.staking_pct,
+              reward_pct: adv.reward_pct,
+              payment_tx: adv.paid_tx,
+              payment_wallet: cfg?.admin_wallet ?? null,
+              payment_amount_wei: cfg?.advanced_creation_fee_bnb ?? null,
+            },
+          });
+        }
+      } catch (activityErr) {
+        console.warn("[create] activity log skipped", activityErr);
       }
       setDeployState("Deployed and saved");
       // Refresh the launchpad listings so the new token shows up immediately.
