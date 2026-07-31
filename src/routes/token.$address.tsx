@@ -1,4 +1,6 @@
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
+import { SOCIAL_FIELDS, type SocialKey } from "@/lib/social";
+import { SocialLinks } from "@/components/labsbnb/SocialLinks";
 import { useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -256,6 +258,14 @@ function TokenPage() {
   const marketCapBnb = live ? Number(live.marketCapWei) / 1e18 : null;
   const curveAddress: string | null = curveAddr;
 
+  // Social links: database first (the creator can edit them), falling back to
+  // the on-chain metadata URI when the row does not exist yet.
+  const socialSource = (dbRow ?? tk) as Record<string, unknown>;
+  const socialValues = Object.fromEntries(
+    SOCIAL_FIELDS.map((f) => [f.key, ((socialSource[f.key] as string | null) ?? "") || ""]),
+  ) as Record<SocialKey, string>;
+  if (!socialValues.website && tk.website) socialValues.website = tk.website as string;
+
 
 
   return (
@@ -294,10 +304,7 @@ function TokenPage() {
                 <Copy className="h-3 w-3" />
                 {(tk.contract_address ?? tk.id).slice(0, 10)}…
               </button>
-              {tk.website && <SocialLink href={tk.website} label="Web" />}
-              {tk.twitter && <SocialLink href={tk.twitter} label="X" />}
-              {tk.telegram && <SocialLink href={tk.telegram} label="TG" />}
-              {tk.discord && <SocialLink href={tk.discord} label="DC" />}
+              <SocialLinks values={socialValues} />
             </div>
           </div>
           <div className="flex gap-2">
@@ -462,11 +469,7 @@ function TokenPage() {
                 description: (tk.description as string | null) ?? "",
                 logo_url: (tk.logo_url as string | null) ?? "",
                 banner_url: (tk.banner_url as string | null) ?? "",
-                website: (tk.website as string | null) ?? "",
-                twitter: (tk.twitter as string | null) ?? "",
-                telegram: (tk.telegram as string | null) ?? "",
-                discord: (tk.discord as string | null) ?? "",
-                github: ((dbRow?.github as string | null) ?? "") || "",
+                ...socialValues,
               }}
               onSaved={() => tokenQ.refetch()}
             />
@@ -645,14 +648,6 @@ function CommentBox({
 }
 
 
-function SocialLink({ href, label }: { href: string; label: string }) {
-  return (
-    <a href={href} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/5 px-3 py-1 hover:bg-white/10">
-      {label}<ExternalLink className="h-3 w-3" />
-    </a>
-  );
-}
-
 /* ----------------------------- Top 10 holders ----------------------------- */
 
 function TopHolders({ token, ticker }: { token: string | null; ticker: string }) {
@@ -721,12 +716,7 @@ type MetaFields = {
   description: string;
   logo_url: string;
   banner_url: string;
-  website: string;
-  twitter: string;
-  telegram: string;
-  discord: string;
-  github: string;
-};
+} & Record<SocialKey, string>;
 
 function TokenInformation({
   tokenId,
@@ -760,13 +750,7 @@ function TokenInformation({
     }
   }
 
-  const rows: Array<[string, string]> = [
-    ["Website", values.website],
-    ["X / Twitter", values.twitter],
-    ["Telegram", values.telegram],
-    ["Discord", values.discord],
-    ["GitHub", values.github],
-  ];
+  const rows: Array<[string, string]> = SOCIAL_FIELDS.map((f) => [f.label, values[f.key]]);
 
   return (
     <div className="glass rounded-2xl p-6">
@@ -798,11 +782,14 @@ function TokenInformation({
           <div className="grid gap-3 sm:grid-cols-2">
             <Input placeholder="Logo URL" value={form.logo_url} onChange={(e) => set("logo_url", e.target.value)} />
             <Input placeholder="Banner URL" value={form.banner_url} onChange={(e) => set("banner_url", e.target.value)} />
-            <Input placeholder="https://website" value={form.website} onChange={(e) => set("website", e.target.value)} />
-            <Input placeholder="X / Twitter" value={form.twitter} onChange={(e) => set("twitter", e.target.value)} />
-            <Input placeholder="Telegram" value={form.telegram} onChange={(e) => set("telegram", e.target.value)} />
-            <Input placeholder="Discord" value={form.discord} onChange={(e) => set("discord", e.target.value)} />
-            <Input placeholder="GitHub" value={form.github} onChange={(e) => set("github", e.target.value)} />
+            {SOCIAL_FIELDS.map((f) => (
+              <Input
+                key={f.key}
+                placeholder={f.placeholder}
+                value={form[f.key]}
+                onChange={(e) => set(f.key, e.target.value)}
+              />
+            ))}
           </div>
           <Button onClick={submit} disabled={busy} className="brand-gradient text-primary-foreground">
             {busy ? "Guardando…" : "Guardar cambios"}

@@ -1,4 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useServerFn } from "@tanstack/react-start";
+import { uploadTokenMedia } from "@/lib/media.functions";
+import { SOCIAL_FIELDS, normalizeSocial, normalizeSocialRecord, OPTIONAL_SOCIAL_KEYS, type SocialKey } from "@/lib/social";
 import { useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { z } from "zod";
@@ -46,11 +49,18 @@ const step1Schema = z.object({
     .refine((v) => v === "" || /^(https?:\/\/|ipfs:\/\/)/.test(v), "Use an https:// or ipfs:// URI")
     .optional()
     .or(z.literal("")),
-  website: z.string().url().max(200).optional().or(z.literal("")),
-  telegram: z.string().max(200).optional().or(z.literal("")),
-  twitter: z.string().max(200).optional().or(z.literal("")),
-  discord: z.string().max(200).optional().or(z.literal("")),
-  github: z.string().max(200).optional().or(z.literal("")),
+  ...(Object.fromEntries(
+    SOCIAL_FIELDS.map((f) => [
+      f.key,
+      z
+        .string()
+        .trim()
+        .max(200)
+        .refine((v) => normalizeSocial(f.key, v) !== false, `URL de ${f.label} inválida`)
+        .optional()
+        .or(z.literal("")),
+    ]),
+  ) as unknown as Record<SocialKey, z.ZodTypeAny>),
   category: z.string().min(1),
 });
 
@@ -83,7 +93,7 @@ const initialAdvanced: AdvancedState = {
 
 const initial: FormState = {
   name: "", ticker: "", description: "", logo_url: "", banner_url: "", metadata_uri: "",
-  website: "", telegram: "", twitter: "", discord: "", github: "",
+  ...(Object.fromEntries(SOCIAL_FIELDS.map((f) => [f.key, ""])) as Record<SocialKey, string>),
   category: "Meme",
   supply: 1_000_000_000, decimals: 18, initial_buy_bnb: 0, target_bnb: 24,
 };
@@ -142,6 +152,14 @@ function CreatePage() {
     setSaving(true);
     try {
       setDeployState("Saving the token profile…");
+      const allSocials = normalizeSocialRecord(form as unknown as Partial<Record<SocialKey, string>>);
+      const coreSocials: Record<string, string | null> = {};
+      const extraSocials: Record<string, string | null> = {};
+      for (const [k, v] of Object.entries(allSocials)) {
+        (OPTIONAL_SOCIAL_KEYS as readonly string[]).includes(k)
+          ? (extraSocials[k] = v)
+          : (coreSocials[k] = v);
+      }
       const account = await ensureSession(); // creates the SIWE session if missing
       const { data, error } = await supabase.from("tokens").insert({
         creator_id: account.id,
@@ -150,11 +168,7 @@ function CreatePage() {
         description: form.description || null,
         logo_url: form.logo_url || null,
         banner_url: form.banner_url || null,
-        website: form.website || null,
-        telegram: form.telegram || null,
-        twitter: form.twitter || null,
-        discord: form.discord || null,
-        github: form.github || null,
+        ...coreSocials,
         category: form.category,
         supply: form.supply,
         decimals: form.decimals,
@@ -164,6 +178,10 @@ function CreatePage() {
         status: "active",
       }).select("id").single();
       if (error) throw error;
+      // medium/youtube/instagram live behind a later migration — best effort.
+      if (Object.values(extraSocials).some(Boolean)) {
+        await supabase.from("tokens").update(extraSocials as never).eq("id", data.id);
+      }
       await supabase.from("bonding_curves").insert({
         token_id: data.id,
         target_bnb: Math.floor(form.target_bnb * 1e18),
@@ -318,7 +336,6 @@ function CreatePage() {
               <Field label={t("create.description")} full><Textarea rows={3} value={form.description} onChange={(e) => set("description", e.target.value)} /></Field>
               <Field label={t("create.logo")}><FileUploader value={form.logo_url} onChange={(url) => set("logo_url", url)} kind="logo" userId={user?.id} /></Field>
               <Field label={t("create.banner")}><FileUploader value={form.banner_url} onChange={(url) => set("banner_url", url)} kind="banner" userId={user?.id} /></Field>
-              <Field label={t("create.website")}><Input value={form.website} onChange={(e) => set("website", e.target.value)} placeholder="https://…" /></Field>
               <Field label="Metadata URI" full>
                 <Input
                   value={form.metadata_uri}
@@ -327,10 +344,11 @@ function CreatePage() {
                   className="font-mono text-xs"
                 />
               </Field>
-              <Field label="Telegram"><Input value={form.telegram} onChange={(e) => set("telegram", e.target.value)} /></Field>
-              <Field label="X / Twitter"><Input value={form.twitter} onChange={(e) => set("twitter", e.target.value)} /></Field>
-              <Field label="Discord"><Input value={form.discord} onChange={(e) => set("discord", e.target.value)} /></Field>
-              <Field label="GitHub"><Input value={form.github} onChange={(e) => set("github", e.target.value)} /></Field>
+              {SOCIAL_FIELDS.map((f) => (
+                <Field key={f.key} label={f.label}>
+                  <Input value={form[f.key]} onChange={(e) => set(f.key, e.target.value)} placeholder={f.placeholder} />
+                </Field>
+              ))}
               <Field label={t("create.category")}>
                 <select value={form.category} onChange={(e) => set("category", e.target.value)} className="h-10 w-full rounded-md border border-input bg-transparent px-3 text-sm">
                   {CATEGORIES.map((c) => <option key={c} value={c} className="bg-background">{c}</option>)}
@@ -625,27 +643,54 @@ function AdvancedTokenomics({
   );
 }
 
+/**
+ * Downscales the picture in the browser (phone cameras easily produce 6-12 MB
+ * files, which used to fail silently on Android/iOS) and re-encodes it to a
+ * format every browser can display, then uploads it through the server.
+ */
+async function prepareImage(file: File): Promise<{ contentType: string; base64: string }> {
+  const bitmap = await createImageBitmap(file).catch(() => null);
+  if (!bitmap) throw new Error("No pudimos leer la imagen. Usa PNG, JPG o WEBP.");
+  const MAX = 1024;
+  const scale = Math.min(1, MAX / Math.max(bitmap.width, bitmap.height));
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.max(1, Math.round(bitmap.width * scale));
+  canvas.height = Math.max(1, Math.round(bitmap.height * scale));
+  const ctx = canvas.getContext("2d");
+  if (!ctx) throw new Error("Canvas no disponible en este navegador.");
+  ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+  bitmap.close?.();
+
+  const type = file.type === "image/png" ? "image/png" : "image/jpeg";
+  const blob: Blob | null = await new Promise((r) => canvas.toBlob(r, type, 0.9));
+  if (!blob) throw new Error("No pudimos procesar la imagen.");
+  const buf = new Uint8Array(await blob.arrayBuffer());
+  let bin = "";
+  for (let i = 0; i < buf.length; i += 0x8000) bin += String.fromCharCode(...buf.subarray(i, i + 0x8000));
+  return { contentType: type, base64: btoa(bin) };
+}
+
 function FileUploader({ value, onChange, kind, userId }: { value?: string; onChange: (url: string) => void; kind: "logo" | "banner"; userId?: string }) {
   const [busy, setBusy] = useState(false);
+  const upload = useServerFn(uploadTokenMedia);
   async function onFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
-    if (!file || !userId) return;
+    if (!file) return;
+    if (!userId) { toast.error("Conecta tu wallet antes de subir imágenes."); return; }
     setBusy(true);
     try {
-      const ext = file.name.split(".").pop() || "png";
-      const path = `${userId}/${kind}-${Date.now()}.${ext}`;
-      const up = await supabase.storage.from("token-media").upload(path, file, { upsert: true, contentType: file.type });
-      if (up.error) throw up.error;
-      const { data } = await supabase.storage.from("token-media").createSignedUrl(path, 60 * 60 * 24 * 365);
-      if (data?.signedUrl) onChange(data.signedUrl);
-      toast.success("Uploaded");
+      const { contentType, base64 } = await prepareImage(file);
+      const res = await upload({ data: { kind, contentType, data: base64 } });
+      onChange(res.url);
+      toast.success("Imagen subida");
     } catch (err) { toast.error((err as Error).message); }
-    finally { setBusy(false); }
+    finally { setBusy(false); e.target.value = ""; }
   }
   return (
     <div className="space-y-2">
-      <Input type="file" accept="image/*" disabled={busy} onChange={onFile} />
-      {value && <img src={value} alt="" className="h-16 w-16 rounded-lg object-cover border border-white/10" />}
+      <Input type="file" accept="image/png,image/jpeg,image/jpg,image/webp,image/gif" disabled={busy} onChange={onFile} />
+      {busy && <p className="text-xs text-muted-foreground">Subiendo…</p>}
+      {value && <img src={value} alt="" loading="lazy" className="h-16 w-16 rounded-lg object-cover border border-white/10" />}
     </div>
   );
 }
