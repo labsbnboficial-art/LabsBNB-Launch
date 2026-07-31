@@ -1,7 +1,8 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { uploadTokenMedia } from "@/lib/media.functions";
-import { SOCIAL_FIELDS, normalizeSocial, normalizeSocialRecord, OPTIONAL_SOCIAL_KEYS, type SocialKey } from "@/lib/social";
+import { saveTokenProfile } from "@/lib/tokens.functions";
+import { SOCIAL_FIELDS, normalizeSocial, type SocialKey } from "@/lib/social";
 import { useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { z } from "zod";
@@ -123,6 +124,7 @@ function CreatePage() {
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const ensureSession = useSiweSignIn();
+  const persistProfile = useServerFn(saveTokenProfile);
 
   const set = <K extends keyof FormState>(k: K, v: FormState[K]) => setForm((f) => ({ ...f, [k]: v }));
 
