@@ -11,7 +11,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Wallet, Rocket, Trophy, User, Shield, Globe, Search, Bell, Sparkles } from "lucide-react";
+import { Wallet, Rocket, Trophy, User, Globe, Search, Bell, Sparkles } from "lucide-react";
 import { RiskDisclaimer } from "@/components/labsbnb/RiskDisclaimer";
 
 function shortAddr(a?: string) {
@@ -62,9 +62,6 @@ export function Header() {
               <span className="inline-flex items-center gap-1.5"><User className="h-3.5 w-3.5" />{t("nav.profile")}</span>
             </Link>
           )}
-          <Link to="/admin" className="px-3 py-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-white/5 transition">
-            <span className="inline-flex items-center gap-1.5"><Shield className="h-3.5 w-3.5" />{t("nav.admin")}</span>
-          </Link>
         </nav>
 
         <div className="flex items-center gap-2">
