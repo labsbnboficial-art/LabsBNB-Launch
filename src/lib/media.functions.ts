@@ -9,15 +9,6 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
  * every card that rendered them.
  */
 
-const MAX_BYTES = 4 * 1024 * 1024;
-const ALLOWED: Record<string, string> = {
-  "image/png": "png",
-  "image/jpeg": "jpg",
-  "image/jpg": "jpg",
-  "image/webp": "webp",
-  "image/gif": "gif",
-};
-
 export const uploadTokenMedia = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) =>
@@ -31,12 +22,20 @@ export const uploadTokenMedia = createServerFn({ method: "POST" })
       .parse(d),
   )
   .handler(async ({ data, context }) => {
-    const ext = ALLOWED[data.contentType.toLowerCase()];
+    const maxBytes = 4 * 1024 * 1024;
+    const allowed: Record<string, string> = {
+      "image/png": "png",
+      "image/jpeg": "jpg",
+      "image/jpg": "jpg",
+      "image/webp": "webp",
+      "image/gif": "gif",
+    };
+    const ext = allowed[data.contentType.toLowerCase()];
     if (!ext) throw new Error("Formato no soportado. Usa PNG, JPG, WEBP o GIF.");
 
     const bytes = Buffer.from(data.data, "base64");
     if (!bytes.length) throw new Error("El archivo está vacío.");
-    if (bytes.length > MAX_BYTES) throw new Error("La imagen supera los 4 MB.");
+    if (bytes.length > maxBytes) throw new Error("La imagen supera los 4 MB.");
 
     const { adminClient } = await import("@/integrations/supabase/admin.server");
     const path = `${context.userId}/${data.kind}-${Date.now()}.${ext}`;

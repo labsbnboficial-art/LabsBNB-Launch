@@ -33,7 +33,18 @@ function ExplorerPage() {
     refetchInterval: 15_000,
     queryFn: async () => {
       const tokens = latestTokens.data ?? [];
-      const pages = await Promise.all(tokens.filter((token) => token.curve).map(async (token) => ({ token, events: await fetchTradeEvents(token.curve!) })));
+      const pages = await Promise.all(
+        tokens
+          .filter((token): token is LaunchToken & { curve: `0x${string}` } => token.curve !== null)
+          .map(async (token) => {
+            try {
+              return { token, events: await fetchTradeEvents(token.curve) };
+            } catch (error) {
+              console.warn(`[explorer] trades unavailable for ${token.address ?? token.contract_address}`, error);
+              return { token, events: [] as TradeEvent[] };
+            }
+          }),
+      );
       return pages.flatMap(({ token, events }) => events.map((event) => ({ token, event }))).sort((a, b) => b.event.timestamp - a.event.timestamp).slice(0, 50);
     },
   });

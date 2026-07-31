@@ -17,7 +17,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/lib/auth";
 import { useSiweSignIn } from "@/lib/use-siwe";
 import { useLaunchpadConfig } from "@/lib/launchpad-config";
 import { toast } from "sonner";
@@ -105,7 +104,6 @@ function CreatePage() {
   const [form, setForm] = useState<FormState>(initial);
   const [adv, setAdv] = useState<AdvancedState>(initialAdvanced);
   const [submitting, setSubmitting] = useState(false);
-  const { user } = useAuth();
   const { address, isConnected } = useAccount();
   const navigate = useNavigate();
   const { data: cfg } = useLaunchpadConfig();
