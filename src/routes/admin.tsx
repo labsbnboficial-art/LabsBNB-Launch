@@ -15,6 +15,7 @@ import {
   adminAuthStatus,
   adminBootstrap,
   adminLogin,
+  adminProvision,
   adminLogout,
   adminVerifyPinStep,
   adminVerifyTotpStep,
