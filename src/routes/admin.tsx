@@ -269,7 +269,69 @@ function LoginForm({ emailConfigured, onDone }: { emailConfigured: boolean; onDo
         </Button>
       </form>
       <Button variant="ghost" className="mt-2 w-full text-xs" onClick={() => setForgot(true)}>¿Olvidaste tu contraseña?</Button>
+      <ProvisionForm />
     </Card>
+  );
+}
+
+/**
+ * Emergency access: creates a new admin (or resets an existing one) using the
+ * ADMIN_SETUP_KEY master key. Also clears account locks and failed attempts.
+ */
+function ProvisionForm() {
+  const fn = useServerFn(adminProvision);
+  const [open, setOpen] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [v, setV] = useState({ setupKey: "", username: "", email: "", password: "", pin: "" });
+
+  if (!open) {
+    return (
+      <Button variant="ghost" className="mt-1 w-full text-xs text-muted-foreground" onClick={() => setOpen(true)}>
+        Crear / restablecer administrador
+      </Button>
+    );
+  }
+
+  return (
+    <div className="mt-4 rounded-xl border border-white/10 bg-white/5 p-4">
+      <h2 className="font-display text-sm font-semibold">Crear / restablecer administrador</h2>
+      <p className="mt-1 text-xs text-muted-foreground">
+        Requiere la clave maestra <span className="font-mono">ADMIN_SETUP_KEY</span>. Si el usuario o el correo ya
+        existen, se restablecen la contraseña y el PIN y se desbloquea la cuenta.
+      </p>
+      <div className="mt-4 space-y-3">
+        <Field label="Clave maestra" type="password" value={v.setupKey} onChange={(x) => setV({ ...v, setupKey: x })} />
+        <Field label="Usuario" value={v.username} onChange={(x) => setV({ ...v, username: x })} />
+        <Field label="Correo" type="email" value={v.email} onChange={(x) => setV({ ...v, email: x })} />
+        <Field label="Contraseña (mín. 10 caracteres)" type="password" value={v.password} onChange={(x) => setV({ ...v, password: x })} />
+        <Field label="PIN (6 dígitos)" value={v.pin} onChange={(x) => setV({ ...v, pin: x.replace(/\D/g, "").slice(0, 6) })} mono />
+      </div>
+      {error && (
+        <p className="mt-3 rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive break-words">
+          {error}
+        </p>
+      )}
+      <Button
+        className="mt-4 w-full brand-gradient text-primary-foreground"
+        disabled={busy}
+        onClick={async () => {
+          setBusy(true);
+          setError(null);
+          try {
+            const r = await fn({ data: v });
+            toast.success(r.created ? "Administrador creado. Ya puedes iniciar sesión." : "Credenciales restablecidas. Ya puedes iniciar sesión.");
+            setOpen(false);
+            setV({ setupKey: "", username: "", email: "", password: "", pin: "" });
+          } catch (e) {
+            const msg = (e as Error).message || "No se pudo completar la operación.";
+            setError(msg);
+            toast.error(msg);
+          } finally { setBusy(false); }
+        }}
+      >{busy ? "Guardando…" : "Guardar credenciales"}</Button>
+      <Button variant="ghost" className="mt-2 w-full text-xs" onClick={() => setOpen(false)}>Cancelar</Button>
+    </div>
   );
 }
 
