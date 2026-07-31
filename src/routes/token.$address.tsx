@@ -256,6 +256,14 @@ function TokenPage() {
   const marketCapBnb = live ? Number(live.marketCapWei) / 1e18 : null;
   const curveAddress: string | null = curveAddr;
 
+  // Social links: database first (the creator can edit them), falling back to
+  // the on-chain metadata URI when the row does not exist yet.
+  const socialSource = (dbRow ?? tk) as Record<string, unknown>;
+  const socialValues = Object.fromEntries(
+    SOCIAL_FIELDS.map((f) => [f.key, ((socialSource[f.key] as string | null) ?? "") || ""]),
+  ) as Record<SocialKey, string>;
+  if (!socialValues.website && tk.website) socialValues.website = tk.website as string;
+
 
 
   return (
