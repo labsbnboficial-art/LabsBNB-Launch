@@ -6,6 +6,7 @@ import { useBnbPrice } from "@/lib/web3/useLabsBnbPrice";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchFactoryTokens, type CurveMetrics, type FactoryToken } from "@/lib/web3/onchain-token";
 import { formatPrice } from "@/lib/web3/live-price";
+import { tokenMediaUrl } from "@/lib/media-url";
 
 import { Button } from "@/components/ui/button";
 import { ArrowRight, Rocket, Search, Sparkles, TrendingUp, Clock, Flame, LineChart } from "lucide-react";
@@ -102,7 +103,7 @@ function LandingPage() {
         id: db?.id ?? c.address,
         name: db?.name || c.name,
         ticker: db?.ticker || c.ticker,
-        logo_url: db?.logo_url ?? null,
+        logo_url: tokenMediaUrl(db?.logo_url) ?? tokenMediaUrl(c.metadataURI),
         contract_address: c.address,
         status: db?.status ?? "on-chain",
         created_at: db?.created_at ?? new Date(0).toISOString(),
