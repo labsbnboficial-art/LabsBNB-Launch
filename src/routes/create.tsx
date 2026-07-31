@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { uploadTokenMedia } from "@/lib/media.functions";
-import { SOCIAL_FIELDS, normalizeSocial, normalizeSocialRecord, type SocialKey } from "@/lib/social";
+import { SOCIAL_FIELDS, normalizeSocial, normalizeSocialRecord, OPTIONAL_SOCIAL_KEYS, type SocialKey } from "@/lib/social";
 import { useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { z } from "zod";
@@ -60,7 +60,7 @@ const step1Schema = z.object({
         .optional()
         .or(z.literal("")),
     ]),
-  ) as Record<SocialKey, z.ZodTypeAny>),
+  ) as unknown as Record<SocialKey, z.ZodTypeAny>),
   category: z.string().min(1),
 });
 
@@ -152,6 +152,14 @@ function CreatePage() {
     setSaving(true);
     try {
       setDeployState("Saving the token profile…");
+      const allSocials = normalizeSocialRecord(form as unknown as Partial<Record<SocialKey, string>>);
+      const coreSocials: Record<string, string | null> = {};
+      const extraSocials: Record<string, string | null> = {};
+      for (const [k, v] of Object.entries(allSocials)) {
+        (OPTIONAL_SOCIAL_KEYS as readonly string[]).includes(k)
+          ? (extraSocials[k] = v)
+          : (coreSocials[k] = v);
+      }
       const account = await ensureSession(); // creates the SIWE session if missing
       const { data, error } = await supabase.from("tokens").insert({
         creator_id: account.id,
@@ -160,7 +168,7 @@ function CreatePage() {
         description: form.description || null,
         logo_url: form.logo_url || null,
         banner_url: form.banner_url || null,
-        ...normalizeSocialRecord(form as unknown as Partial<Record<SocialKey, string>>),
+        ...coreSocials,
         category: form.category,
         supply: form.supply,
         decimals: form.decimals,
@@ -170,6 +178,10 @@ function CreatePage() {
         status: "active",
       }).select("id").single();
       if (error) throw error;
+      // medium/youtube/instagram live behind a later migration — best effort.
+      if (Object.values(extraSocials).some(Boolean)) {
+        await supabase.from("tokens").update(extraSocials as never).eq("id", data.id);
+      }
       await supabase.from("bonding_curves").insert({
         token_id: data.id,
         target_bnb: Math.floor(form.target_bnb * 1e18),
