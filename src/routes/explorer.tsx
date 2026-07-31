@@ -1,7 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
 import { AppShell } from "@/components/labsbnb/AppShell";
+import { fetchLaunchTokens, type LaunchToken } from "@/lib/token-list";
+import { fetchTradeEvents, type TradeEvent } from "@/lib/web3/curve-events";
 import { Search, TrendingUp, Coins, ArrowLeftRight, Users } from "lucide-react";
 import { useState } from "react";
 
@@ -22,35 +23,25 @@ function ExplorerPage() {
 
   const latestTokens = useQuery({
     queryKey: ["ex-tokens"],
-    queryFn: async () => {
-      const { data } = await supabase.from("tokens").select("id,name,ticker,logo_url,contract_address,status,created_at").order("created_at", { ascending: false }).limit(20);
-      return data ?? [];
-    },
+    refetchInterval: 15_000,
+    queryFn: () => fetchLaunchTokens(50),
   });
 
   const latestTrades = useQuery({
-    queryKey: ["ex-trades"],
+    queryKey: ["ex-trades", latestTokens.data?.map((token) => token.curve).join(",")],
+    enabled: !!latestTokens.data,
     refetchInterval: 15_000,
     queryFn: async () => {
-      const { data } = await supabase.from("trades").select("id,side,amount_bnb,amount_token,wallet_address,tx_hash,created_at,token_id,tokens(name,ticker,contract_address)").order("created_at", { ascending: false }).limit(30);
-      return data ?? [];
+      const tokens = latestTokens.data ?? [];
+      const pages = await Promise.all(tokens.filter((token) => token.curve).map(async (token) => ({ token, events: await fetchTradeEvents(token.curve!) })));
+      return pages.flatMap(({ token, events }) => events.map((event) => ({ token, event }))).sort((a, b) => b.event.timestamp - a.event.timestamp).slice(0, 50);
     },
   });
 
-  const topVolume = useQuery({
-    queryKey: ["ex-top-vol"],
-    queryFn: async () => {
-      const since = new Date(Date.now() - 24 * 3600_000).toISOString();
-      const { data } = await supabase.from("trades").select("token_id,amount_bnb,tokens(id,name,ticker,contract_address,logo_url)").gte("created_at", since);
-      const agg = new Map<string, { vol: number; tk: { id: string; name: string; ticker: string; contract_address: string | null; logo_url: string | null } | null }>();
-      (data ?? []).forEach((t) => {
-        const cur = agg.get(t.token_id) ?? { vol: 0, tk: (t.tokens as never) ?? null };
-        cur.vol += Number(t.amount_bnb) / 1e18;
-        agg.set(t.token_id, cur);
-      });
-      return [...agg.entries()].map(([id, v]) => ({ id, ...v })).sort((a, b) => b.vol - a.vol).slice(0, 10);
-    },
-  });
+  const topVolume = [...(latestTokens.data ?? [])]
+    .filter((token) => BigInt(token.metrics?.volume24hWei ?? "0") > 0n)
+    .sort((a, b) => Number(BigInt(b.metrics?.volume24hWei ?? "0") - BigInt(a.metrics?.volume24hWei ?? "0")))
+    .slice(0, 10);
 
   const filtered = (latestTokens.data ?? []).filter((t) =>
     !q || t.name.toLowerCase().includes(q.toLowerCase()) || t.ticker.toLowerCase().includes(q.toLowerCase()) || (t.contract_address ?? "").toLowerCase().includes(q.toLowerCase()),
@@ -111,17 +102,17 @@ function ExplorerPage() {
                 <h3 className="font-display font-semibold">Top 24h volume</h3>
               </div>
               <ol className="space-y-2 text-sm">
-                {(topVolume.data ?? []).map((row, i) => row.tk && (
-                  <li key={row.id} className="flex items-center justify-between">
-                    <Link to="/token/$address" params={{ address: row.tk.contract_address ?? row.tk.id }} className="flex items-center gap-2 hover:text-accent">
+                {topVolume.map((token, i) => (
+                  <li key={token.id} className="flex items-center justify-between">
+                    <Link to="/token/$address" params={{ address: token.contract_address }} className="flex items-center gap-2 hover:text-accent">
                       <span className="w-4 text-xs text-muted-foreground">{i + 1}</span>
-                      {row.tk.logo_url ? <img src={row.tk.logo_url} className="h-5 w-5 rounded object-cover" alt="" /> : <span className="h-5 w-5 rounded brand-gradient" />}
-                      <span className="truncate">{row.tk.name}</span>
+                      {token.logo_url ? <img src={token.logo_url} className="h-5 w-5 rounded object-cover" alt="" /> : <span className="h-5 w-5 rounded brand-gradient" />}
+                      <span className="truncate">{token.name}</span>
                     </Link>
-                    <span className="font-mono text-xs">{row.vol.toFixed(3)} BNB</span>
+                    <span className="font-mono text-xs">{(Number(token.metrics?.volume24hWei ?? "0") / 1e18).toFixed(3)} BNB</span>
                   </li>
                 ))}
-                {(topVolume.data ?? []).length === 0 && <li className="py-6 text-center text-xs text-muted-foreground">No trades in 24h.</li>}
+                {topVolume.length === 0 && <li className="py-6 text-center text-xs text-muted-foreground">No trades in 24h.</li>}
               </ol>
             </div>
 
@@ -131,13 +122,12 @@ function ExplorerPage() {
                 <h3 className="font-display font-semibold">Live trades</h3>
               </div>
               <ul className="divide-y divide-white/5 text-xs">
-                {(latestTrades.data ?? []).slice(0, 12).map((tr) => {
-                  const tk = tr.tokens as unknown as { name: string; ticker: string; contract_address: string | null } | null;
+                {(latestTrades.data ?? []).slice(0, 12).map(({ token, event }) => {
                   return (
-                    <li key={tr.id} className="py-2 flex items-center justify-between gap-2">
-                      <span className={tr.side === "buy" ? "text-success uppercase" : "text-destructive uppercase"}>{tr.side}</span>
-                      <span className="flex-1 truncate">{tk?.ticker ?? "—"}</span>
-                      <span className="font-mono">{(Number(tr.amount_bnb) / 1e18).toFixed(3)} BNB</span>
+                    <li key={`${token.id}-${event.key}`} className="py-2 flex items-center justify-between gap-2">
+                      <span className={event.isBuy ? "text-success uppercase" : "text-destructive uppercase"}>{event.isBuy ? "buy" : "sell"}</span>
+                      <span className="flex-1 truncate">{token.ticker}</span>
+                      <span className="font-mono">{(Number(event.amountBnb) / 1e18).toFixed(3)} BNB</span>
                     </li>
                   );
                 })}
@@ -150,7 +140,7 @@ function ExplorerPage() {
                 <Users className="h-4 w-4 text-accent" />
                 <h3 className="font-display font-semibold text-sm">Network</h3>
               </div>
-              <NetworkStats />
+              <NetworkStats tokens={latestTokens.data ?? []} trades={(latestTrades.data ?? []).map((row) => row.event)} />
             </div>
           </div>
         </div>
@@ -159,25 +149,13 @@ function ExplorerPage() {
   );
 }
 
-function NetworkStats() {
-  const q = useQuery({
-    queryKey: ["ex-network"],
-    queryFn: async () => {
-      const [tokens, trades, wallets] = await Promise.all([
-        supabase.from("tokens").select("id", { count: "exact", head: true }),
-        supabase.from("trades").select("id", { count: "exact", head: true }),
-        supabase.from("trades").select("wallet_address"),
-      ]);
-      const uniq = new Set((wallets.data ?? []).map((r) => r.wallet_address.toLowerCase()));
-      return { tokens: tokens.count ?? 0, trades: trades.count ?? 0, wallets: uniq.size };
-    },
-  });
-  const d = q.data;
+function NetworkStats({ tokens, trades }: { tokens: LaunchToken[]; trades: TradeEvent[] }) {
+  const wallets = new Set(trades.map((trade) => trade.trader.toLowerCase())).size;
   return (
     <div className="grid grid-cols-3 gap-2 text-center">
-      <Stat label="Tokens" value={d?.tokens ?? "—"} />
-      <Stat label="Trades" value={d?.trades ?? "—"} />
-      <Stat label="Wallets" value={d?.wallets ?? "—"} />
+      <Stat label="Tokens" value={tokens.length} />
+      <Stat label="Trades" value={trades.length} />
+      <Stat label="Wallets" value={wallets} />
     </div>
   );
 }

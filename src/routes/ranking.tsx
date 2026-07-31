@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { fetchLaunchTokens } from "@/lib/token-list";
 import { AppShell } from "@/components/labsbnb/AppShell";
 import { Trophy, Flame, Sparkles, ArrowUp, ArrowDown, Check } from "lucide-react";
 import { useState } from "react";
@@ -30,13 +30,14 @@ function RankingPage() {
 
   const q = useQuery({
     queryKey: ["ranking", tab],
+    refetchInterval: 15_000,
     queryFn: async () => {
-      let query = supabase.from("tokens").select("id,name,ticker,logo_url,contract_address,status,created_at").limit(50);
-      if (tab === "graduated") query = query.eq("status", "graduated");
-      query = query.order("created_at", { ascending: false });
-      const { data, error } = await query;
-      if (error) throw error;
-      return data ?? [];
+      const tokens = await fetchLaunchTokens(50);
+      if (tab === "graduated") return tokens.filter((token) => token.status === "graduated" || (token.metrics?.progressBps ?? 0) >= 10_000);
+      if (tab === "trending") return tokens.sort((a, b) => Number(BigInt(b.metrics?.volume24hWei ?? "0") - BigInt(a.metrics?.volume24hWei ?? "0")));
+      if (tab === "gainers") return tokens.filter((token) => (token.metrics?.priceChangeBps ?? 0) > 0).sort((a, b) => (b.metrics?.priceChangeBps ?? 0) - (a.metrics?.priceChangeBps ?? 0));
+      if (tab === "losers") return tokens.filter((token) => (token.metrics?.priceChangeBps ?? 0) < 0).sort((a, b) => (a.metrics?.priceChangeBps ?? 0) - (b.metrics?.priceChangeBps ?? 0));
+      return tokens;
     },
   });
 
@@ -85,7 +86,11 @@ function RankingPage() {
                   <div className="font-medium truncate">{tk.name}</div>
                   <div className="text-xs font-mono text-muted-foreground">${tk.ticker}</div>
                 </div>
-                <span className="text-[10px] uppercase tracking-widest text-muted-foreground">{tk.status}</span>
+                <div className="text-right">
+                  <span className="block text-[10px] uppercase tracking-widest text-muted-foreground">{tk.status}</span>
+                  {tab === "trending" && <span className="text-xs font-mono">{(Number(tk.metrics?.volume24hWei ?? "0") / 1e18).toFixed(3)} BNB</span>}
+                  {(tab === "gainers" || tab === "losers") && <span className={tab === "gainers" ? "text-success text-xs" : "text-destructive text-xs"}>{((tk.metrics?.priceChangeBps ?? 0) / 100).toFixed(2)}%</span>}
+                </div>
               </Link>
             ))
           ) : (
