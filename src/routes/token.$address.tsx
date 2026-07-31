@@ -24,6 +24,8 @@ import { ensureTokenRow } from "@/lib/tokens.functions";
 import { updateTokenMeta } from "@/lib/token-meta.functions";
 import { fetchTopHolders } from "@/lib/web3/holders";
 import { Textarea } from "@/components/ui/textarea";
+import { uploadTokenMedia } from "@/lib/media.functions";
+import { tokenMediaUrl } from "@/lib/media-url";
 
 
 
@@ -163,12 +165,12 @@ function TokenPage() {
   // Keep the chart and the trades list on the same temporal range: when the
   // selected timeframe needs more history than the loaded pages cover, pull
   // older pages (bounded) so candles and rows always describe the same window.
-  const targetWindow = tfSeconds * 40; // ~40 candles worth of history
+  const targetWindow = tfSeconds * 100; // denser, more detailed market history
   const [autoPages, setAutoPages] = useState(0);
   useEffect(() => setAutoPages(0), [timeframe, curveOk]);
   useEffect(() => {
     if (!events.length || eventsQ.isFetchingNextPage || !eventsQ.hasNextPage) return;
-    if (autoPages >= 6) return;
+    if (autoPages >= 10) return;
     const oldest = events[0].timestamp;
     const newest = events[events.length - 1].timestamp;
     if (newest - oldest >= targetWindow) return;
@@ -278,8 +280,8 @@ function TokenPage() {
   return (
     <AppShell>
       <div className="relative h-40 md:h-56 overflow-hidden">
-        {tk.banner_url ? (
-          <img src={tk.banner_url} alt="" className="w-full h-full object-cover" />
+        {tokenMediaUrl(tk.banner_url) ? (
+          <img src={tokenMediaUrl(tk.banner_url) ?? ""} alt={`${tk.name} banner`} className="w-full h-full object-cover" />
         ) : (
           <div className="w-full h-full hero-bg" />
         )}
@@ -288,8 +290,8 @@ function TokenPage() {
 
       <div className="mx-auto max-w-6xl px-4 md:px-6 -mt-16 relative z-10">
         <div className="glass-strong rounded-3xl p-6 flex flex-col md:flex-row gap-5 md:items-center">
-          {tk.logo_url ? (
-            <img src={tk.logo_url} alt="" className="h-20 w-20 rounded-2xl object-cover glow-primary" />
+          {tokenMediaUrl(tk.logo_url) ? (
+            <img src={tokenMediaUrl(tk.logo_url) ?? ""} alt={`${tk.name} logo`} className="h-20 w-20 rounded-2xl object-cover glow-primary" />
           ) : (
             <div className="h-20 w-20 rounded-2xl brand-gradient grid place-items-center font-display text-3xl font-bold text-primary-foreground glow-primary">
               {tk.ticker[0]}
@@ -745,11 +747,33 @@ function TokenInformation({
 }) {
   const save = useServerFn(updateTokenMeta);
   const ensureRow = useServerFn(ensureTokenRow);
+  const uploadMedia = useServerFn(uploadTokenMedia);
   const ensureSession = useSiweSignIn();
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState<MetaFields>(values);
   const [busy, setBusy] = useState(false);
+  const [uploading, setUploading] = useState<"logo" | "banner" | null>(null);
   const set = (k: keyof MetaFields, v: string) => setForm((f) => ({ ...f, [k]: v }));
+
+  async function upload(kind: "logo" | "banner", file: File | undefined) {
+    if (!file) return;
+    setUploading(kind);
+    try {
+      await ensureSession();
+      if (!/^image\/(png|jpeg|jpg|webp|gif)$/i.test(file.type)) throw new Error("Usa una imagen PNG, JPG, WEBP o GIF.");
+      if (file.size > 4 * 1024 * 1024) throw new Error("La imagen supera los 4 MB.");
+      const bytes = new Uint8Array(await file.arrayBuffer());
+      let binary = "";
+      for (let i = 0; i < bytes.length; i += 0x8000) binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+      const result = await uploadMedia({ data: { kind, contentType: file.type, data: btoa(binary) } });
+      set(kind === "logo" ? "logo_url" : "banner_url", result.url);
+      toast.success("Imagen subida");
+    } catch (error) {
+      toast.error((error as Error).message);
+    } finally {
+      setUploading(null);
+    }
+  }
 
   async function submit() {
     setBusy(true);
@@ -804,8 +828,14 @@ function TokenInformation({
             onChange={(e) => set("description", e.target.value)}
           />
           <div className="grid gap-3 sm:grid-cols-2">
-            <Input placeholder="Logo URL" value={form.logo_url} onChange={(e) => set("logo_url", e.target.value)} />
-            <Input placeholder="Banner URL" value={form.banner_url} onChange={(e) => set("banner_url", e.target.value)} />
+            <div className="space-y-2">
+              <Input placeholder="Logo URL" value={form.logo_url} onChange={(e) => set("logo_url", e.target.value)} />
+              <Input type="file" accept="image/png,image/jpeg,image/jpg,image/webp,image/gif" disabled={uploading !== null} onChange={(e) => upload("logo", e.target.files?.[0])} />
+            </div>
+            <div className="space-y-2">
+              <Input placeholder="Banner URL" value={form.banner_url} onChange={(e) => set("banner_url", e.target.value)} />
+              <Input type="file" accept="image/png,image/jpeg,image/jpg,image/webp,image/gif" disabled={uploading !== null} onChange={(e) => upload("banner", e.target.files?.[0])} />
+            </div>
             {SOCIAL_FIELDS.map((f) => (
               <Input
                 key={f.key}
@@ -815,8 +845,8 @@ function TokenInformation({
               />
             ))}
           </div>
-          <Button onClick={submit} disabled={busy} className="brand-gradient text-primary-foreground">
-            {busy ? "Guardando…" : "Guardar cambios"}
+          <Button onClick={submit} disabled={busy || uploading !== null} className="brand-gradient text-primary-foreground">
+            {uploading ? "Subiendo imagen…" : busy ? "Guardando…" : "Guardar cambios"}
           </Button>
         </div>
       ) : (

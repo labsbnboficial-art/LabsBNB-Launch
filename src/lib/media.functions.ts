@@ -45,6 +45,5 @@ export const uploadTokenMedia = createServerFn({ method: "POST" })
       .upload(path, bytes, { contentType: data.contentType, upsert: true, cacheControl: "31536000" });
     if (error) throw new Error(error.message);
 
-    const { data: pub } = adminClient.storage.from("token-media").getPublicUrl(path);
-    return { url: pub.publicUrl };
+    return { url: `/api/public/token-media?path=${encodeURIComponent(path)}` };
   });

@@ -78,10 +78,21 @@ export const siweVerify = createServerFn({ method: "POST" })
 
     const email = walletEmail(data.address);
 
-    // Find or create the Supabase user
-    
-    const listed = await supabaseAdmin.auth.admin.listUsers({ page: 1, perPage: 200 });
-    let user = listed.data?.users?.find((u: { email?: string | null }) => u.email?.toLowerCase() === email);
+    // Resolve by wallet profile first. Unlike listUsers(page 1), this remains
+    // deterministic after the project grows beyond 200 users.
+    const { data: existingProfile, error: profileLookupError } = await supabaseAdmin
+      .from("profiles")
+      .select("id")
+      .eq("wallet_address", data.address.toLowerCase())
+      .maybeSingle();
+    if (profileLookupError) throw new Error(`No se pudo consultar el perfil: ${profileLookupError.message}`);
+
+    let user = null;
+    if (existingProfile?.id) {
+      const existingUser = await supabaseAdmin.auth.admin.getUserById(existingProfile.id);
+      if (existingUser.error) throw new Error(`No se pudo recuperar el usuario: ${existingUser.error.message}`);
+      user = existingUser.data.user;
+    }
     if (!user) {
       const created = await supabaseAdmin.auth.admin.createUser({
         email,
@@ -93,11 +104,12 @@ export const siweVerify = createServerFn({ method: "POST" })
     }
 
     // Upsert profile with wallet
-    await supabaseAdmin.from("profiles").upsert({
+    const { error: profileError } = await supabaseAdmin.from("profiles").upsert({
       id: user.id,
       wallet_address: data.address.toLowerCase(),
       username: `wallet_${data.address.slice(2, 8).toLowerCase()}`,
     }, { onConflict: "id" });
+    if (profileError) throw new Error(`No se pudo crear el perfil: ${profileError.message}`);
 
     // If this wallet is the admin wallet, ensure admin role
     const { data: adminCfg } = await supabaseAdmin

@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import { fetchFactoryTokens, type CurveMetrics } from "@/lib/web3/onchain-token";
+import { tokenMediaUrl } from "@/lib/media-url";
 
 export type LaunchToken = {
   id: string;
@@ -42,7 +43,7 @@ export async function fetchLaunchTokens(limit = 50): Promise<LaunchToken[]> {
       id: db?.id ?? token.address,
       name: db?.name || token.name,
       ticker: db?.ticker || token.ticker,
-      logo_url: db?.logo_url || imageFromMetadata(token.metadataURI),
+      logo_url: tokenMediaUrl(db?.logo_url || imageFromMetadata(token.metadataURI)),
       contract_address: token.address,
       status: db?.status ?? "on-chain",
       created_at: db?.created_at ?? null,

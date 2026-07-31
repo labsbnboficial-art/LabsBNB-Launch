@@ -34,10 +34,10 @@ function CandleShape(props: ShapeProps) {
   const bodyBottom = priceToY(Math.min(open, close));
   const bodyH = Math.max(2, bodyBottom - bodyTop);
   const cx = x + width / 2;
-  const bw = Math.max(3, width * 0.6);
+  const bw = Math.max(2, Math.min(5, width * 0.42));
   return (
     <g>
-      <line x1={cx} x2={cx} y1={y} y2={y + height} stroke={color} strokeWidth={1.5} />
+      <line x1={cx} x2={cx} y1={y} y2={y + height} stroke={color} strokeWidth={1} />
       <rect x={cx - bw / 2} y={bodyTop} width={bw} height={bodyH} fill={color} opacity={up ? 0.95 : 0.9} rx={1} />
     </g>
   );
@@ -65,10 +65,10 @@ export function CandleChart({ candles }: { candles: Candle[] }) {
 
   return (
     <div className="space-y-2">
-      <div className="h-64">
+      <div className="h-72 md:h-80">
         <ResponsiveContainer width="100%" height="100%">
-          <ComposedChart data={data} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
-            <XAxis dataKey="label" tick={{ fontSize: 10 }} stroke="var(--muted-foreground)" minTickGap={24} />
+          <ComposedChart data={data} barCategoryGap="4%" barGap={0} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+            <XAxis dataKey="label" tick={{ fontSize: 10 }} stroke="var(--muted-foreground)" minTickGap={14} />
             <YAxis
               tick={{ fontSize: 10 }}
               stroke="var(--muted-foreground)"
@@ -99,13 +99,13 @@ export function CandleChart({ candles }: { candles: Candle[] }) {
                 );
               }}
             />
-            <Bar dataKey="hl" shape={<CandleShape />} isAnimationActive={false} />
+            <Bar dataKey="hl" shape={<CandleShape />} isAnimationActive={false} maxBarSize={7} />
           </ComposedChart>
         </ResponsiveContainer>
       </div>
       <div className="h-16">
         <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={data} margin={{ top: 0, right: 8, left: 0, bottom: 0 }}>
+          <BarChart data={data} barCategoryGap="4%" barGap={0} margin={{ top: 0, right: 8, left: 0, bottom: 0 }}>
             <XAxis dataKey="label" hide />
             {/* Same axis width as the price chart so bars line up with candles. */}
             <YAxis width={78} tick={false} axisLine={false} tickLine={false} />
