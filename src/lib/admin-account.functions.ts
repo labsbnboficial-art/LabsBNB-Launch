@@ -327,3 +327,68 @@ export const adminAuditLog = createServerFn({ method: "POST" })
       created_at: String(r.created_at),
     }));
   });
+
+/* --------------------- provisioning / recovery by key ---------------------- */
+
+/**
+ * Creates a new admin account (or resets an existing one) without needing an
+ * active session. Used when the operator is locked out of the panel.
+ * Authorised by the ADMIN_SETUP_KEY secret, which only the project owner knows.
+ */
+export const adminProvision = createServerFn({ method: "POST" })
+  .inputValidator((d: { setupKey: string; username: string; email: string; password: string; pin: string }) =>
+    z
+      .object({
+        setupKey: z.string().min(8).max(200),
+        username: z.string().trim().min(3).max(32).regex(/^[a-zA-Z0-9._-]+$/),
+        email: z.string().trim().email().max(255),
+        password: z.string().min(10).max(128),
+        pin: z.string().regex(pinRe),
+      })
+      .parse(d),
+  )
+  .handler(async ({ data }) => {
+    const m = await core();
+    const expected = process.env.ADMIN_SETUP_KEY;
+    if (!expected) throw new Error("Falta el secreto ADMIN_SETUP_KEY en el servidor.");
+    // Constant-time comparison over the hashes so length/prefix don't leak.
+    if (m.hashToken(data.setupKey) !== m.hashToken(expected)) {
+      await m.audit("admin.provision.denied", null, { username: data.username });
+      throw new Error("Clave maestra incorrecta.");
+    }
+
+    const { adminClient } = await import("@/integrations/supabase/admin.server");
+    const c = adminClient as never as import("@supabase/supabase-js").SupabaseClient;
+    const username = data.username.toLowerCase();
+    const email = data.email.toLowerCase();
+
+    const credentials = {
+      username,
+      email,
+      password_hash: await m.hashSecret(data.password),
+      pin_hash: await m.hashSecret(data.pin),
+      failed_attempts: 0,
+      locked_until: null as string | null,
+      reset_token_hash: null as string | null,
+      reset_expires_at: null as string | null,
+    };
+
+    const { data: existing } = await c
+      .from("admin_accounts")
+      .select("id")
+      .or(`username.eq.${username},email.eq.${email}`)
+      .maybeSingle();
+
+    if (existing) {
+      const { error } = await c.from("admin_accounts").update(credentials).eq("id", existing.id);
+      if (error) throw new Error(error.message);
+      await m.revokeAllSessions(existing.id as string);
+      await m.audit("admin.provision.reset", existing.id as string, { username });
+      return { ok: true, created: false };
+    }
+
+    const { data: row, error } = await c.from("admin_accounts").insert(credentials).select("id").single();
+    if (error) throw new Error(error.message);
+    await m.audit("admin.provision.created", row.id as string, { username });
+    return { ok: true, created: true };
+  });
