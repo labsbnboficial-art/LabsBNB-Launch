@@ -45,6 +45,7 @@ function TokenPage() {
   const { address } = Route.useParams();
   const { t } = useI18n();
   const { user } = useAuth();
+  const { address: wallet } = useAccount();
 
   const tokenQ = useQuery({
     queryKey: ["token", address],
@@ -266,6 +267,12 @@ function TokenPage() {
   ) as Record<SocialKey, string>;
   if (!socialValues.website && tk.website) socialValues.website = tk.website as string;
 
+  // The creator can edit the profile both when the database row exists and when
+  // the token only lives on-chain (the row is created on the first save).
+  const isCreator =
+    (!!user && !!dbRow?.creator_id && user.id === dbRow.creator_id) ||
+    (!!wallet && !!chain?.creator && wallet.toLowerCase() === chain.creator.toLowerCase());
+
 
 
   return (
@@ -464,7 +471,12 @@ function TokenPage() {
 
             <TokenInformation
               tokenId={dbRow?.id ? String(dbRow.id) : null}
-              isCreator={!!user && !!dbRow?.creator_id && user.id === dbRow.creator_id}
+              fallback={{
+                address: (tk.contract_address as string | null) ?? (isAddress(address) ? address : null),
+                name: String(tk.name),
+                ticker: String(tk.ticker),
+              }}
+              isCreator={isCreator}
               values={{
                 description: (tk.description as string | null) ?? "",
                 logo_url: (tk.logo_url as string | null) ?? "",
@@ -720,26 +732,38 @@ type MetaFields = {
 
 function TokenInformation({
   tokenId,
+  fallback,
   isCreator,
   values,
   onSaved,
 }: {
   tokenId: string | null;
+  fallback: { address: string | null; name: string; ticker: string };
   isCreator: boolean;
   values: MetaFields;
   onSaved: () => void;
 }) {
   const save = useServerFn(updateTokenMeta);
+  const ensureRow = useServerFn(ensureTokenRow);
+  const ensureSession = useSiweSignIn();
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState<MetaFields>(values);
   const [busy, setBusy] = useState(false);
   const set = (k: keyof MetaFields, v: string) => setForm((f) => ({ ...f, [k]: v }));
 
   async function submit() {
-    if (!tokenId) return;
     setBusy(true);
     try {
-      await save({ data: { tokenId, ...form } });
+      await ensureSession();
+      let id = tokenId;
+      if (!id) {
+        if (!fallback.address) throw new Error("No se pudo identificar el token.");
+        const r = await ensureRow({
+          data: { address: fallback.address, name: fallback.name, ticker: fallback.ticker },
+        });
+        id = r.id;
+      }
+      await save({ data: { tokenId: id, ...form } });
       toast.success("Información actualizada");
       setEditing(false);
       onSaved();
@@ -756,7 +780,7 @@ function TokenInformation({
     <div className="glass rounded-2xl p-6">
       <div className="flex items-center justify-between gap-2 mb-4">
         <h3 className="font-display text-lg font-semibold">Token information</h3>
-        {isCreator && tokenId && (
+        {isCreator && (
           <Button
             variant="outline"
             size="sm"

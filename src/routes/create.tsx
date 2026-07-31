@@ -1,7 +1,8 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { uploadTokenMedia } from "@/lib/media.functions";
-import { SOCIAL_FIELDS, normalizeSocial, normalizeSocialRecord, OPTIONAL_SOCIAL_KEYS, type SocialKey } from "@/lib/social";
+import { saveTokenProfile } from "@/lib/tokens.functions";
+import { SOCIAL_FIELDS, normalizeSocial, type SocialKey } from "@/lib/social";
 import { useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { z } from "zod";
@@ -123,6 +124,7 @@ function CreatePage() {
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const ensureSession = useSiweSignIn();
+  const persistProfile = useServerFn(saveTokenProfile);
 
   const set = <K extends keyof FormState>(k: K, v: FormState[K]) => setForm((f) => ({ ...f, [k]: v }));
 
@@ -152,68 +154,63 @@ function CreatePage() {
     setSaving(true);
     try {
       setDeployState("Saving the token profile…");
-      const allSocials = normalizeSocialRecord(form as unknown as Partial<Record<SocialKey, string>>);
-      const coreSocials: Record<string, string | null> = {};
-      const extraSocials: Record<string, string | null> = {};
-      for (const [k, v] of Object.entries(allSocials)) {
-        (OPTIONAL_SOCIAL_KEYS as readonly string[]).includes(k)
-          ? (extraSocials[k] = v)
-          : (coreSocials[k] = v);
-      }
+      const socials = Object.fromEntries(
+        SOCIAL_FIELDS.map((f) => [f.key, (form as unknown as Record<string, string>)[f.key] || null]),
+      );
       const account = await ensureSession(); // creates the SIWE session if missing
-      const { data, error } = await supabase.from("tokens").insert({
-        creator_id: account.id,
-        name: form.name,
-        ticker: form.ticker.toUpperCase(),
-        description: form.description || null,
-        logo_url: form.logo_url || null,
-        banner_url: form.banner_url || null,
-        ...coreSocials,
-        category: form.category,
-        supply: form.supply,
-        decimals: form.decimals,
-        chain_id: chainId,
-        contract_address: tokenAddress,
-        deploy_tx_hash: hash,
-        status: "active",
-      }).select("id").single();
-      if (error) throw error;
-      // medium/youtube/instagram live behind a later migration — best effort.
-      if (Object.values(extraSocials).some(Boolean)) {
-        await supabase.from("tokens").update(extraSocials as never).eq("id", data.id);
-      }
-      await supabase.from("bonding_curves").insert({
-        token_id: data.id,
-        target_bnb: Math.floor(form.target_bnb * 1e18),
-      });
-      await supabase.from("activity").insert({
-        user_id: account.id,
-        token_id: data.id,
-        kind: "deploy",
-        payload: {
-          token_address: tokenAddress,
-          curve_address: curveAddress,
-          factory_address: factory,
-          tx_hash: hash,
+      // Saved with the service role: RLS on `tokens` can never drop the logo,
+      // banner or the social links of a token that is already deployed.
+      const data = await persistProfile({
+        data: {
+          address: tokenAddress,
+          name: form.name,
+          ticker: form.ticker.toUpperCase(),
+          description: form.description || null,
+          logo_url: form.logo_url || null,
+          banner_url: form.banner_url || null,
+          category: form.category,
+          supply: Number(form.supply),
+          decimals: Number(form.decimals),
           chain_id: chainId,
-          metadata_uri: metadataURI,
+          deploy_tx_hash: hash,
+          curve_address: curveAddress,
+          target_bnb: Number(form.target_bnb),
+          ...socials,
         },
       });
-      if (adv.enabled) {
+      // Activity feed is cosmetic: never fail the save because of it.
+      try {
         await supabase.from("activity").insert({
           user_id: account.id,
           token_id: data.id,
-          kind: "advanced_tokenomics",
+          kind: "deploy",
           payload: {
-            lp_pct: adv.lp_pct,
-            burn_pct: adv.burn_pct,
-            staking_pct: adv.staking_pct,
-            reward_pct: adv.reward_pct,
-            payment_tx: adv.paid_tx,
-            payment_wallet: cfg?.admin_wallet ?? null,
-            payment_amount_wei: cfg?.advanced_creation_fee_bnb ?? null,
+            token_address: tokenAddress,
+            curve_address: curveAddress,
+            factory_address: factory,
+            tx_hash: hash,
+            chain_id: chainId,
+            metadata_uri: metadataURI,
           },
         });
+        if (adv.enabled) {
+          await supabase.from("activity").insert({
+            user_id: account.id,
+            token_id: data.id,
+            kind: "advanced_tokenomics",
+            payload: {
+              lp_pct: adv.lp_pct,
+              burn_pct: adv.burn_pct,
+              staking_pct: adv.staking_pct,
+              reward_pct: adv.reward_pct,
+              payment_tx: adv.paid_tx,
+              payment_wallet: cfg?.admin_wallet ?? null,
+              payment_amount_wei: cfg?.advanced_creation_fee_bnb ?? null,
+            },
+          });
+        }
+      } catch (activityErr) {
+        console.warn("[create] activity log skipped", activityErr);
       }
       setDeployState("Deployed and saved");
       // Refresh the launchpad listings so the new token shows up immediately.
