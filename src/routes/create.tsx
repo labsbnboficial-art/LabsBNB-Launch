@@ -625,27 +625,54 @@ function AdvancedTokenomics({
   );
 }
 
+/**
+ * Downscales the picture in the browser (phone cameras easily produce 6-12 MB
+ * files, which used to fail silently on Android/iOS) and re-encodes it to a
+ * format every browser can display, then uploads it through the server.
+ */
+async function prepareImage(file: File): Promise<{ contentType: string; base64: string }> {
+  const bitmap = await createImageBitmap(file).catch(() => null);
+  if (!bitmap) throw new Error("No pudimos leer la imagen. Usa PNG, JPG o WEBP.");
+  const MAX = 1024;
+  const scale = Math.min(1, MAX / Math.max(bitmap.width, bitmap.height));
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.max(1, Math.round(bitmap.width * scale));
+  canvas.height = Math.max(1, Math.round(bitmap.height * scale));
+  const ctx = canvas.getContext("2d");
+  if (!ctx) throw new Error("Canvas no disponible en este navegador.");
+  ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+  bitmap.close?.();
+
+  const type = file.type === "image/png" ? "image/png" : "image/jpeg";
+  const blob: Blob | null = await new Promise((r) => canvas.toBlob(r, type, 0.9));
+  if (!blob) throw new Error("No pudimos procesar la imagen.");
+  const buf = new Uint8Array(await blob.arrayBuffer());
+  let bin = "";
+  for (let i = 0; i < buf.length; i += 0x8000) bin += String.fromCharCode(...buf.subarray(i, i + 0x8000));
+  return { contentType: type, base64: btoa(bin) };
+}
+
 function FileUploader({ value, onChange, kind, userId }: { value?: string; onChange: (url: string) => void; kind: "logo" | "banner"; userId?: string }) {
   const [busy, setBusy] = useState(false);
+  const upload = useServerFn(uploadTokenMedia);
   async function onFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
-    if (!file || !userId) return;
+    if (!file) return;
+    if (!userId) { toast.error("Conecta tu wallet antes de subir imágenes."); return; }
     setBusy(true);
     try {
-      const ext = file.name.split(".").pop() || "png";
-      const path = `${userId}/${kind}-${Date.now()}.${ext}`;
-      const up = await supabase.storage.from("token-media").upload(path, file, { upsert: true, contentType: file.type });
-      if (up.error) throw up.error;
-      const { data } = await supabase.storage.from("token-media").createSignedUrl(path, 60 * 60 * 24 * 365);
-      if (data?.signedUrl) onChange(data.signedUrl);
-      toast.success("Uploaded");
+      const { contentType, base64 } = await prepareImage(file);
+      const res = await upload({ data: { kind, contentType, data: base64 } });
+      onChange(res.url);
+      toast.success("Imagen subida");
     } catch (err) { toast.error((err as Error).message); }
-    finally { setBusy(false); }
+    finally { setBusy(false); e.target.value = ""; }
   }
   return (
     <div className="space-y-2">
-      <Input type="file" accept="image/*" disabled={busy} onChange={onFile} />
-      {value && <img src={value} alt="" className="h-16 w-16 rounded-lg object-cover border border-white/10" />}
+      <Input type="file" accept="image/png,image/jpeg,image/jpg,image/webp,image/gif" disabled={busy} onChange={onFile} />
+      {busy && <p className="text-xs text-muted-foreground">Subiendo…</p>}
+      {value && <img src={value} alt="" loading="lazy" className="h-16 w-16 rounded-lg object-cover border border-white/10" />}
     </div>
   );
 }
