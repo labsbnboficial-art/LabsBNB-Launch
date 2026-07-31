@@ -21,7 +21,7 @@ export const ensureTokenRow = createServerFn({ method: "POST" })
       .parse(d),
   )
   .handler(async ({ data, context }) => {
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { adminClient: supabaseAdmin } = await import("@/integrations/supabase/admin.server");
     const address = data.address.toLowerCase();
 
     const { data: existing, error: findError } = await supabaseAdmin
@@ -51,12 +51,6 @@ export const ensureTokenRow = createServerFn({ method: "POST" })
 /*  Full profile save right after a deployment                                 */
 /* -------------------------------------------------------------------------- */
 
-const optionalText = z.string().trim().max(500).optional().nullable();
-const socialShape = Object.fromEntries(SOCIAL_FIELDS.map((f) => [f.key, optionalText])) as Record<
-  SocialKey,
-  typeof optionalText
->;
-
 /**
  * Persists the token profile (images, description and socials) with the service
  * role, so a missing/incorrect RLS policy on `tokens` can never make a freshly
@@ -64,8 +58,10 @@ const socialShape = Object.fromEntries(SOCIAL_FIELDS.map((f) => [f.key, optional
  */
 export const saveTokenProfile = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d: unknown) =>
-    z
+  .inputValidator((d: unknown) => {
+    const optionalText = z.string().trim().max(500).optional().nullable();
+    const socialShape = Object.fromEntries(SOCIAL_FIELDS.map((f) => [f.key, optionalText])) as Record<SocialKey, typeof optionalText>;
+    return z
       .object({
         address: z.string().regex(/^0x[a-fA-F0-9]{40}$/),
         name: z.string().trim().min(1).max(64),
@@ -82,10 +78,10 @@ export const saveTokenProfile = createServerFn({ method: "POST" })
         target_bnb: z.number().optional().nullable(),
         ...socialShape,
       })
-      .parse(d),
-  )
+      .parse(d);
+  })
   .handler(async ({ data, context }) => {
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { adminClient: supabaseAdmin } = await import("@/integrations/supabase/admin.server");
     const address = data.address.toLowerCase();
 
     const socials = normalizeSocialRecord(
@@ -138,7 +134,8 @@ export const saveTokenProfile = createServerFn({ method: "POST" })
     }
     if (error) throw new Error(error.message);
 
-    const tokenId = row!.id as string;
+    if (!row) throw new Error("El token se guardó, pero no se pudo recuperar su identificador.");
+    const tokenId = row.id as string;
 
     if (data.curve_address || data.target_bnb) {
       await supabaseAdmin

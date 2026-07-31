@@ -17,7 +17,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/lib/auth";
 import { useSiweSignIn } from "@/lib/use-siwe";
 import { useLaunchpadConfig } from "@/lib/launchpad-config";
 import { toast } from "sonner";
@@ -105,7 +104,6 @@ function CreatePage() {
   const [form, setForm] = useState<FormState>(initial);
   const [adv, setAdv] = useState<AdvancedState>(initialAdvanced);
   const [submitting, setSubmitting] = useState(false);
-  const { user } = useAuth();
   const { address, isConnected } = useAccount();
   const navigate = useNavigate();
   const { data: cfg } = useLaunchpadConfig();
@@ -331,8 +329,8 @@ function CreatePage() {
               <Field label={t("create.name")}><Input value={form.name} onChange={(e) => set("name", e.target.value)} /></Field>
               <Field label={t("create.ticker")}><Input value={form.ticker} onChange={(e) => set("ticker", e.target.value.toUpperCase())} className="font-mono" /></Field>
               <Field label={t("create.description")} full><Textarea rows={3} value={form.description} onChange={(e) => set("description", e.target.value)} /></Field>
-              <Field label={t("create.logo")}><FileUploader value={form.logo_url} onChange={(url) => set("logo_url", url)} kind="logo" userId={user?.id} /></Field>
-              <Field label={t("create.banner")}><FileUploader value={form.banner_url} onChange={(url) => set("banner_url", url)} kind="banner" userId={user?.id} /></Field>
+              <Field label={t("create.logo")}><FileUploader value={form.logo_url} onChange={(url) => set("logo_url", url)} kind="logo" /></Field>
+              <Field label={t("create.banner")}><FileUploader value={form.banner_url} onChange={(url) => set("banner_url", url)} kind="banner" /></Field>
               <Field label="Metadata URI" full>
                 <Input
                   value={form.metadata_uri}
@@ -667,15 +665,16 @@ async function prepareImage(file: File): Promise<{ contentType: string; base64: 
   return { contentType: type, base64: btoa(bin) };
 }
 
-function FileUploader({ value, onChange, kind, userId }: { value?: string; onChange: (url: string) => void; kind: "logo" | "banner"; userId?: string }) {
+function FileUploader({ value, onChange, kind }: { value?: string; onChange: (url: string) => void; kind: "logo" | "banner" }) {
   const [busy, setBusy] = useState(false);
   const upload = useServerFn(uploadTokenMedia);
+  const ensureSession = useSiweSignIn();
   async function onFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (!userId) { toast.error("Conecta tu wallet antes de subir imágenes."); return; }
     setBusy(true);
     try {
+      await ensureSession();
       const { contentType, base64 } = await prepareImage(file);
       const res = await upload({ data: { kind, contentType, data: base64 } });
       onChange(res.url);
