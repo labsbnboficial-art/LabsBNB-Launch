@@ -648,14 +648,6 @@ function CommentBox({
 }
 
 
-function SocialLink({ href, label }: { href: string; label: string }) {
-  return (
-    <a href={href} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/5 px-3 py-1 hover:bg-white/10">
-      {label}<ExternalLink className="h-3 w-3" />
-    </a>
-  );
-}
-
 /* ----------------------------- Top 10 holders ----------------------------- */
 
 function TopHolders({ token, ticker }: { token: string | null; ticker: string }) {
