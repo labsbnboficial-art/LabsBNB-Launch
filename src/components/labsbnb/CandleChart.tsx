@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import {
   Bar,
   BarChart,
@@ -34,7 +34,7 @@ function CandleShape(props: ShapeProps) {
   const bodyBottom = priceToY(Math.min(open, close));
   const bodyH = Math.max(2, bodyBottom - bodyTop);
   const cx = x + width / 2;
-  const bw = Math.max(2, Math.min(5, width * 0.42));
+  const bw = Math.max(1.5, Math.min(width, width * 0.8));
   return (
     <g>
       <line x1={cx} x2={cx} y1={y} y2={y + height} stroke={color} strokeWidth={1} />
@@ -43,7 +43,37 @@ function CandleShape(props: ShapeProps) {
   );
 }
 
-export function CandleChart({ candles }: { candles: Candle[] }) {
+export function CandleChart({
+  candles,
+  gap = "1%",
+  barSize = 5,
+  onZoom,
+}: {
+  candles: Candle[];
+  /** Horizontal separation between candles (smaller = tighter). */
+  gap?: string;
+  /** Maximum candle width in px. */
+  barSize?: number;
+  /** Wheel / pinch zoom: +1 zoom in (fewer candles), -1 zoom out. */
+  onZoom?: (direction: 1 | -1) => void;
+}) {
+  const zoomRef = useRef(onZoom);
+  zoomRef.current = onZoom;
+  const wrapRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    const el = wrapRef.current;
+    if (!el) return;
+    const onWheel = (e: WheelEvent) => {
+      if (!zoomRef.current) return;
+      e.preventDefault();
+      const dy = e.deltaY * (e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? 100 : 1);
+      if (Math.abs(dy) < 1) return;
+      zoomRef.current(dy < 0 ? 1 : -1);
+    };
+    el.addEventListener("wheel", onWheel, { passive: false });
+    return () => el.removeEventListener("wheel", onWheel);
+  }, []);
+
   const data = useMemo(
     () =>
       candles.map((c) => ({
@@ -64,10 +94,11 @@ export function CandleChart({ candles }: { candles: Candle[] }) {
 
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-2" ref={wrapRef}>
       <div className="h-72 md:h-80">
         <ResponsiveContainer width="100%" height="100%">
-          <ComposedChart data={data} barCategoryGap="4%" barGap={0} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+          <ComposedChart data={data} barCategoryGap={gap} barGap={0} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+
             <XAxis dataKey="label" tick={{ fontSize: 10 }} stroke="var(--muted-foreground)" minTickGap={14} />
             <YAxis
               tick={{ fontSize: 10 }}
@@ -99,18 +130,18 @@ export function CandleChart({ candles }: { candles: Candle[] }) {
                 );
               }}
             />
-            <Bar dataKey="hl" shape={<CandleShape />} isAnimationActive={false} maxBarSize={7} />
+            <Bar dataKey="hl" shape={<CandleShape />} isAnimationActive={false} maxBarSize={barSize} />
           </ComposedChart>
         </ResponsiveContainer>
       </div>
       <div className="h-16">
         <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={data} barCategoryGap="4%" barGap={0} margin={{ top: 0, right: 8, left: 0, bottom: 0 }}>
+          <BarChart data={data} barCategoryGap={gap} barGap={0} margin={{ top: 0, right: 8, left: 0, bottom: 0 }}>
             <XAxis dataKey="label" hide />
             {/* Same axis width as the price chart so bars line up with candles. */}
             <YAxis width={78} tick={false} axisLine={false} tickLine={false} />
 
-            <Bar dataKey="volume" isAnimationActive={false}>
+            <Bar dataKey="volume" isAnimationActive={false} maxBarSize={barSize}>
               {data.map((c) => (
                 <Cell
                   key={c.time}

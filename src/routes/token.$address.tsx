@@ -160,23 +160,37 @@ function TokenPage() {
 
   const [timeframe, setTimeframe] = useState<TimeframeId>("15m");
   const tfSeconds = TIMEFRAMES.find((t) => t.id === timeframe)!.seconds;
-  const candles = useMemo(() => buildCandles(events, tfSeconds), [events, tfSeconds]);
+  const allCandles = useMemo(() => buildCandles(events, tfSeconds), [events, tfSeconds]);
+
+  // Zoom / visible range: how many of the most recent candles are drawn.
+  const ZOOM_STEPS = [20, 40, 60, 90, 120, 180, 240, 360] as const;
+  const [zoomIndex, setZoomIndex] = useState(3);
+  const visibleCount = ZOOM_STEPS[zoomIndex];
+  const zoom = (dir: 1 | -1) =>
+    setZoomIndex((i) => Math.min(ZOOM_STEPS.length - 1, Math.max(0, i - dir)));
+  const candles = useMemo(() => allCandles.slice(-visibleCount), [allCandles, visibleCount]);
+  // Tighter candles when few are shown, thinner ones as the range grows.
+  const barSize = visibleCount <= 40 ? 10 : visibleCount <= 90 ? 6 : visibleCount <= 180 ? 4 : 3;
 
   // Keep the chart and the trades list on the same temporal range: when the
   // selected timeframe needs more history than the loaded pages cover, pull
   // older pages (bounded) so candles and rows always describe the same window.
-  const targetWindow = tfSeconds * 100; // denser, more detailed market history
+  const targetWindow = tfSeconds * visibleCount;
   const [autoPages, setAutoPages] = useState(0);
-  useEffect(() => setAutoPages(0), [timeframe, curveOk]);
+  useEffect(() => setAutoPages(0), [timeframe, curveOk, visibleCount]);
   useEffect(() => {
-    if (!events.length || eventsQ.isFetchingNextPage || !eventsQ.hasNextPage) return;
+    if (eventsQ.isFetching || !eventsQ.hasNextPage) return;
     if (autoPages >= 10) return;
-    const oldest = events[0].timestamp;
-    const newest = events[events.length - 1].timestamp;
-    if (newest - oldest >= targetWindow) return;
+    // An empty first page just means the curve has been idle: keep scanning back.
+    if (events.length) {
+      const oldest = events[0].timestamp;
+      const newest = events[events.length - 1].timestamp;
+      if (newest - oldest >= targetWindow) return;
+    }
     setAutoPages((n) => n + 1);
     eventsQ.fetchNextPage();
-  }, [events, targetWindow, autoPages, eventsQ.hasNextPage, eventsQ.isFetchingNextPage, eventsQ.fetchNextPage, curveOk]);
+  }, [events, targetWindow, autoPages, eventsQ.hasNextPage, eventsQ.isFetching, eventsQ.fetchNextPage, curveOk]);
+
 
   // Infinite scroll sentinel for the trades table.
   const sentinel = useRef<HTMLDivElement | null>(null);
@@ -388,16 +402,40 @@ function TokenPage() {
                     </button>
                   ))}
                 </div>
+                <div className="flex items-center gap-1 rounded-full border border-white/10 bg-white/5 p-1">
+                  <button
+                    onClick={() => zoom(-1)}
+                    disabled={zoomIndex >= ZOOM_STEPS.length - 1}
+                    aria-label="Alejar (más velas)"
+                    className="rounded-full px-2 py-1 text-[11px] font-mono text-muted-foreground hover:text-foreground disabled:opacity-30"
+                  >
+                    −
+                  </button>
+                  <span className="px-1 text-[11px] font-mono tabular-nums text-muted-foreground">
+                    {Math.min(visibleCount, allCandles.length || visibleCount)} velas
+                  </span>
+                  <button
+                    onClick={() => zoom(1)}
+                    disabled={zoomIndex <= 0}
+                    aria-label="Acercar (menos velas)"
+                    className="rounded-full px-2 py-1 text-[11px] font-mono text-muted-foreground hover:text-foreground disabled:opacity-30"
+                  >
+                    +
+                  </button>
+                </div>
               </div>
               {eventsError ? (
                 <ChainError error={eventsError} onRetry={() => eventsQ.refetch()} />
               ) : candles.length > 0 ? (
-                <CandleChart candles={candles} />
+                <CandleChart candles={candles} barSize={barSize} gap="1%" onZoom={zoom} />
               ) : (
                 <div className="h-64 rounded-xl border border-dashed border-white/10 grid place-items-center text-sm text-muted-foreground">
-                  {eventsQ.isLoading ? "Leyendo eventos Trade on-chain…" : "Sin eventos Trade en el rango consultado."}
+                  {eventsQ.isLoading || eventsQ.isFetchingNextPage
+                    ? "Leyendo eventos Trade on-chain…"
+                    : "Sin eventos Trade en el rango consultado."}
                 </div>
               )}
+
             </div>
 
             <div className="glass rounded-2xl p-6">
