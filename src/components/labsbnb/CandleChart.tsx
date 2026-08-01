@@ -34,7 +34,7 @@ function CandleShape(props: ShapeProps) {
   const bodyBottom = priceToY(Math.min(open, close));
   const bodyH = Math.max(2, bodyBottom - bodyTop);
   const cx = x + width / 2;
-  const bw = Math.max(2, Math.min(5, width * 0.42));
+  const bw = Math.max(1.5, Math.min(width, width * 0.8));
   return (
     <g>
       <line x1={cx} x2={cx} y1={y} y2={y + height} stroke={color} strokeWidth={1} />
@@ -130,13 +130,13 @@ export function CandleChart({
                 );
               }}
             />
-            <Bar dataKey="hl" shape={<CandleShape />} isAnimationActive={false} maxBarSize={7} />
+            <Bar dataKey="hl" shape={<CandleShape />} isAnimationActive={false} maxBarSize={barSize} />
           </ComposedChart>
         </ResponsiveContainer>
       </div>
       <div className="h-16">
         <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={data} barCategoryGap="4%" barGap={0} margin={{ top: 0, right: 8, left: 0, bottom: 0 }}>
+          <BarChart data={data} barCategoryGap={gap} barGap={0} margin={{ top: 0, right: 8, left: 0, bottom: 0 }}>
             <XAxis dataKey="label" hide />
             {/* Same axis width as the price chart so bars line up with candles. */}
             <YAxis width={78} tick={false} axisLine={false} tickLine={false} />
