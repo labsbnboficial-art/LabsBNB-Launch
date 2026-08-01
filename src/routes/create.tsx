@@ -250,16 +250,52 @@ function CreatePage() {
       }
 
       // 2) Simulate then send the real createToken() transaction.
-      const metadataURI = (form.metadata_uri || form.logo_url || form.website || "").trim();
+      const rawUri = (form.metadata_uri || form.logo_url || form.website || "").trim();
+      // The factory stores the URI verbatim: normalise "labs.com" -> "https://labs.com"
+      // and reject anything that is not a valid ipfs:// or http(s):// resource.
+      const metadataURI = rawUri
+        ? /^(ipfs|https?):\/\//i.test(rawUri)
+          ? rawUri
+          : /^[\w.-]+\.[a-z]{2,}(\/.*)?$/i.test(rawUri)
+            ? `https://${rawUri}`
+            : ""
+        : "";
+      if (rawUri && !metadataURI) {
+        throw new Error(`Invalid metadata URI "${rawUri}". Use ipfs://… or https://…`);
+      }
       const args = [form.name, form.ticker.toUpperCase(), metadataURI] as const;
       setDeployState("Checking the transaction with the factory…");
-      await publicClient!.simulateContract({
-        account: address,
-        address: factory,
-        abi: FACTORY_ABI as Abi,
-        functionName: "createToken",
-        args: args as unknown as unknown[],
+      console.info("[labsbnb] createToken preflight", {
+        chainId,
+        walletChainId,
+        factory,
+        rpc: publicClient?.transport?.url ?? "fallback(multi-rpc)",
+        args,
       });
+      try {
+        await publicClient!.simulateContract({
+          account: address,
+          address: factory,
+          abi: FACTORY_ABI as Abi,
+          functionName: "createToken",
+          args: args as unknown as unknown[],
+        });
+        const gas = await publicClient!
+          .estimateContractGas({
+            account: address,
+            address: factory,
+            abi: FACTORY_ABI as Abi,
+            functionName: "createToken",
+            args: args as unknown as unknown[],
+          })
+          .catch(() => null);
+        console.info("[labsbnb] createToken simulate OK", { gas: gas ? String(gas) : "n/a" });
+      } catch (e) {
+        const err = e as { shortMessage?: string; details?: string; message?: string };
+        const reason = err.shortMessage || err.details || err.message || "unknown revert";
+        console.error("[labsbnb] createToken simulate FAILED", { factory, chainId, reason });
+        throw new Error(`Factory simulation failed: ${reason}`);
+      }
 
       setDeployState("Confirm the transaction in your wallet (gas in tBNB)…");
       const hash = await writeContractAsync({
@@ -274,6 +310,12 @@ function CreatePage() {
 
       // 3) Wait for the receipt and read the TokenCreated event.
       const receipt = await publicClient!.waitForTransactionReceipt({ hash });
+      console.info("[labsbnb] createToken receipt", {
+        hash,
+        status: receipt.status,
+        gasUsed: String(receipt.gasUsed),
+        block: String(receipt.blockNumber),
+      });
       if (receipt.status === "reverted") throw new Error("Transaction reverted on-chain");
       let tokenAddress: string | null = null;
       let curveAddress: string | null = null;
