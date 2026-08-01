@@ -29,7 +29,11 @@ export type TradeEvent = {
 
 const CHUNK = 9_000n; // largest range every working public RPC accepts
 const MAX_LOOKBACK = 600_000n; // ~21 days on BSC (3s blocks)
-const MAX_CHUNKS_PER_PAGE = 12; // bounds latency of a single page request
+const MAX_CHUNKS_PER_PAGE = 12; // bounds latency once the page already has trades
+// A curve can be idle for days: keep scanning further back while nothing was
+// found yet, otherwise the very first page returns empty and the UI stops.
+const MAX_EMPTY_CHUNKS_PER_PAGE = 36;
+const PARALLEL_CHUNKS = 6; // chunks fetched at once (cached ones resolve instantly)
 const HEAD_MARGIN = 6n; // blocks near the head are not cached (may still reorg)
 
 let preferredRpc: string | null = null;
