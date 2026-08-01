@@ -160,23 +160,37 @@ function TokenPage() {
 
   const [timeframe, setTimeframe] = useState<TimeframeId>("15m");
   const tfSeconds = TIMEFRAMES.find((t) => t.id === timeframe)!.seconds;
-  const candles = useMemo(() => buildCandles(events, tfSeconds), [events, tfSeconds]);
+  const allCandles = useMemo(() => buildCandles(events, tfSeconds), [events, tfSeconds]);
+
+  // Zoom / visible range: how many of the most recent candles are drawn.
+  const ZOOM_STEPS = [20, 40, 60, 90, 120, 180, 240, 360] as const;
+  const [zoomIndex, setZoomIndex] = useState(3);
+  const visibleCount = ZOOM_STEPS[zoomIndex];
+  const zoom = (dir: 1 | -1) =>
+    setZoomIndex((i) => Math.min(ZOOM_STEPS.length - 1, Math.max(0, i - dir)));
+  const candles = useMemo(() => allCandles.slice(-visibleCount), [allCandles, visibleCount]);
+  // Tighter candles when few are shown, thinner ones as the range grows.
+  const barSize = visibleCount <= 40 ? 10 : visibleCount <= 90 ? 6 : visibleCount <= 180 ? 4 : 3;
 
   // Keep the chart and the trades list on the same temporal range: when the
   // selected timeframe needs more history than the loaded pages cover, pull
   // older pages (bounded) so candles and rows always describe the same window.
-  const targetWindow = tfSeconds * 100; // denser, more detailed market history
+  const targetWindow = tfSeconds * visibleCount;
   const [autoPages, setAutoPages] = useState(0);
-  useEffect(() => setAutoPages(0), [timeframe, curveOk]);
+  useEffect(() => setAutoPages(0), [timeframe, curveOk, visibleCount]);
   useEffect(() => {
-    if (!events.length || eventsQ.isFetchingNextPage || !eventsQ.hasNextPage) return;
+    if (eventsQ.isFetching || !eventsQ.hasNextPage) return;
     if (autoPages >= 10) return;
-    const oldest = events[0].timestamp;
-    const newest = events[events.length - 1].timestamp;
-    if (newest - oldest >= targetWindow) return;
+    // An empty first page just means the curve has been idle: keep scanning back.
+    if (events.length) {
+      const oldest = events[0].timestamp;
+      const newest = events[events.length - 1].timestamp;
+      if (newest - oldest >= targetWindow) return;
+    }
     setAutoPages((n) => n + 1);
     eventsQ.fetchNextPage();
-  }, [events, targetWindow, autoPages, eventsQ.hasNextPage, eventsQ.isFetchingNextPage, eventsQ.fetchNextPage, curveOk]);
+  }, [events, targetWindow, autoPages, eventsQ.hasNextPage, eventsQ.isFetching, eventsQ.fetchNextPage, curveOk]);
+
 
   // Infinite scroll sentinel for the trades table.
   const sentinel = useRef<HTMLDivElement | null>(null);
