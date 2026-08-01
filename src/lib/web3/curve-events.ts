@@ -175,7 +175,8 @@ export async function fetchTradePage(
       batch.push(index - i);
     }
     const results = await Promise.all(batch.map((i) => getChunk(curve, i, head)));
-    results.reverse().forEach((events) => collected.unshift(...events));
+    results.flat().forEach((e) => collected.push(e)); // ordered by the sort below
+
     chunks += batch.length;
     index -= batch.length;
   }
