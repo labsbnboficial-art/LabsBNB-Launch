@@ -141,7 +141,7 @@ export function CandleChart({
             {/* Same axis width as the price chart so bars line up with candles. */}
             <YAxis width={78} tick={false} axisLine={false} tickLine={false} />
 
-            <Bar dataKey="volume" isAnimationActive={false}>
+            <Bar dataKey="volume" isAnimationActive={false} maxBarSize={barSize}>
               {data.map((c) => (
                 <Cell
                   key={c.time}
