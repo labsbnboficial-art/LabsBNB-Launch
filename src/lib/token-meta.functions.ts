@@ -50,7 +50,8 @@ export const updateTokenMeta = createServerFn({ method: "POST" })
     const write = async (body: Record<string, string | null>) =>
       supabaseAdmin.from("tokens").update(body as never).eq("id", tokenId).select("id").single();
 
-    let { error } = await write(patch);
+    let body = { ...patch };
+    let { error } = await write(body);
     // Some columns are optional (added by later migrations); retry without the
     // ones the database complains about instead of losing the whole update.
     let attempts = 0;
@@ -58,13 +59,14 @@ export const updateTokenMeta = createServerFn({ method: "POST" })
       attempts += 1;
       const missing = error.message.match(/'([a-z0-9_]+)' column|column "?([a-z0-9_]+)"?/i);
       const key = missing?.[1] ?? missing?.[2];
-      const reduced = { ...patch };
-      if (key && key in reduced) delete reduced[key];
-      else OPTIONAL_SOCIAL_KEYS.forEach((k) => delete reduced[k]);
-      ({ error } = await write(reduced));
-      if (!error) break;
-      Object.assign(patch, reduced);
+      const next = { ...body };
+      if (key && key in next) delete next[key];
+      else OPTIONAL_SOCIAL_KEYS.forEach((k) => delete next[k]);
+      if (Object.keys(next).length === Object.keys(body).length) break;
+      body = next;
+      ({ error } = await write(body));
     }
+
     if (error) throw new Error(`No se pudo actualizar la información del token: ${error.message}`);
     return { ok: true };
 
