@@ -165,12 +165,21 @@ export async function fetchTradePage(
   const collected: TradeEvent[] = [];
   let chunks = 0;
 
-  while (index >= floorIndex && collected.length < pageSize && chunks < MAX_CHUNKS_PER_PAGE) {
-    const events = await getChunk(curve, index, head);
-    collected.unshift(...events);
-    chunks += 1;
-    index -= 1;
+  const budget = () => (collected.length ? MAX_CHUNKS_PER_PAGE : MAX_EMPTY_CHUNKS_PER_PAGE);
+
+  while (index >= floorIndex && collected.length < pageSize && chunks < budget()) {
+    // Fetch a small batch of consecutive chunks in parallel to keep latency low
+    // even when the last trades happened days ago.
+    const batch: number[] = [];
+    for (let i = 0; i < PARALLEL_CHUNKS && index - i >= floorIndex && chunks + i < budget(); i += 1) {
+      batch.push(index - i);
+    }
+    const results = await Promise.all(batch.map((i) => getChunk(curve, i, head)));
+    results.reverse().forEach((events) => collected.unshift(...events));
+    chunks += batch.length;
+    index -= batch.length;
   }
+
 
   collected.sort((x, y) => (x.blockNumber === y.blockNumber ? 0 : x.blockNumber < y.blockNumber ? -1 : 1));
 
