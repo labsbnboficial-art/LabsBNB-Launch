@@ -14,6 +14,33 @@ import { invalidateTradeCache } from "@/lib/web3/curve-events";
 
 const SLIPPAGE_BPS = 100n; // 1%
 
+/**
+ * Runs `simulateContract` + `estimateContractGas` before every write and logs
+ * chain id, contract, gas and the real revert reason when it fails.
+ */
+async function simulateOrThrow(
+  client: ReturnType<typeof readClient>,
+  req: Record<string, unknown>,
+  label: string,
+) {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await (client as any).simulateContract(req);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const gas = await (client as any).estimateContractGas(req).catch(() => null);
+    console.info(`[labsbnb] ${label} simulate OK`, {
+      chainId: ACTIVE_CHAIN_ID,
+      contract: req["address"],
+      gas: gas ? String(gas) : "n/a",
+    });
+  } catch (e) {
+    const err = e as { shortMessage?: string; details?: string; message?: string };
+    const reason = err.shortMessage || err.details || err.message || "unknown revert";
+    console.error(`[labsbnb] ${label} simulate FAILED`, { chainId: ACTIVE_CHAIN_ID, contract: req["address"], reason });
+    throw new Error(reason);
+  }
+}
+
 type CurveState = {
   curve: `0x${string}`;
   progressBps: number;
@@ -154,11 +181,21 @@ export function TradePanel({
 
       let hash: `0x${string}`;
       if (side === "buy") {
-        hash = await writeContractAsync({
+        const buyReq = {
+          account: wallet,
           address: curve.curve,
           abi: CURVE_ABI as Abi,
           functionName: "buy",
           args: [minOut, (ref && isAddress(ref) ? ref : "0x0000000000000000000000000000000000000000") as `0x${string}`],
+          value: wei,
+        } as const;
+        // Simulate first: surfaces the real revert reason instead of a wallet error.
+        await simulateOrThrow(client, buyReq, "buy");
+        hash = await writeContractAsync({
+          address: curve.curve,
+          abi: CURVE_ABI as Abi,
+          functionName: "buy",
+          args: buyReq.args as unknown as unknown[],
           value: wei,
           chainId: ACTIVE_CHAIN_ID,
         });
@@ -179,6 +216,11 @@ export function TradePanel({
           });
           await client.waitForTransactionReceipt({ hash: approveHash });
         }
+        await simulateOrThrow(
+          client,
+          { account: wallet, address: curve.curve, abi: CURVE_ABI as Abi, functionName: "sell", args: [wei, minOut] },
+          "sell",
+        );
         hash = await writeContractAsync({
           address: curve.curve,
           abi: CURVE_ABI as Abi,
