@@ -43,7 +43,37 @@ function CandleShape(props: ShapeProps) {
   );
 }
 
-export function CandleChart({ candles }: { candles: Candle[] }) {
+export function CandleChart({
+  candles,
+  gap = "1%",
+  barSize = 5,
+  onZoom,
+}: {
+  candles: Candle[];
+  /** Horizontal separation between candles (smaller = tighter). */
+  gap?: string;
+  /** Maximum candle width in px. */
+  barSize?: number;
+  /** Wheel / pinch zoom: +1 zoom in (fewer candles), -1 zoom out. */
+  onZoom?: (direction: 1 | -1) => void;
+}) {
+  const zoomRef = useRef(onZoom);
+  zoomRef.current = onZoom;
+  const wrapRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    const el = wrapRef.current;
+    if (!el) return;
+    const onWheel = (e: WheelEvent) => {
+      if (!zoomRef.current) return;
+      e.preventDefault();
+      const dy = e.deltaY * (e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? 100 : 1);
+      if (Math.abs(dy) < 1) return;
+      zoomRef.current(dy < 0 ? 1 : -1);
+    };
+    el.addEventListener("wheel", onWheel, { passive: false });
+    return () => el.removeEventListener("wheel", onWheel);
+  }, []);
+
   const data = useMemo(
     () =>
       candles.map((c) => ({
@@ -64,10 +94,11 @@ export function CandleChart({ candles }: { candles: Candle[] }) {
 
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-2" ref={wrapRef}>
       <div className="h-72 md:h-80">
         <ResponsiveContainer width="100%" height="100%">
-          <ComposedChart data={data} barCategoryGap="4%" barGap={0} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+          <ComposedChart data={data} barCategoryGap={gap} barGap={0} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+
             <XAxis dataKey="label" tick={{ fontSize: 10 }} stroke="var(--muted-foreground)" minTickGap={14} />
             <YAxis
               tick={{ fontSize: 10 }}
