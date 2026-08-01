@@ -402,16 +402,40 @@ function TokenPage() {
                     </button>
                   ))}
                 </div>
+                <div className="flex items-center gap-1 rounded-full border border-white/10 bg-white/5 p-1">
+                  <button
+                    onClick={() => zoom(-1)}
+                    disabled={zoomIndex >= ZOOM_STEPS.length - 1}
+                    aria-label="Alejar (más velas)"
+                    className="rounded-full px-2 py-1 text-[11px] font-mono text-muted-foreground hover:text-foreground disabled:opacity-30"
+                  >
+                    −
+                  </button>
+                  <span className="px-1 text-[11px] font-mono tabular-nums text-muted-foreground">
+                    {Math.min(visibleCount, allCandles.length || visibleCount)} velas
+                  </span>
+                  <button
+                    onClick={() => zoom(1)}
+                    disabled={zoomIndex <= 0}
+                    aria-label="Acercar (menos velas)"
+                    className="rounded-full px-2 py-1 text-[11px] font-mono text-muted-foreground hover:text-foreground disabled:opacity-30"
+                  >
+                    +
+                  </button>
+                </div>
               </div>
               {eventsError ? (
                 <ChainError error={eventsError} onRetry={() => eventsQ.refetch()} />
               ) : candles.length > 0 ? (
-                <CandleChart candles={candles} />
+                <CandleChart candles={candles} barSize={barSize} gap="1%" onZoom={zoom} />
               ) : (
                 <div className="h-64 rounded-xl border border-dashed border-white/10 grid place-items-center text-sm text-muted-foreground">
-                  {eventsQ.isLoading ? "Leyendo eventos Trade on-chain…" : "Sin eventos Trade en el rango consultado."}
+                  {eventsQ.isLoading || eventsQ.isFetchingNextPage
+                    ? "Leyendo eventos Trade on-chain…"
+                    : "Sin eventos Trade en el rango consultado."}
                 </div>
               )}
+
             </div>
 
             <div className="glass rounded-2xl p-6">
