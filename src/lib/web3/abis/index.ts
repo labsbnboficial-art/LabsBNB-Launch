@@ -18,15 +18,4 @@ export const BSC_TESTNET = {
   explorer: "https://testnet.bscscan.com",
 } as const;
 
-/**
- * Endpoints that actually serve `eth_getLogs` on BSC Testnet.
- * The classic `data-seed-prebsc-*` nodes reject it with "limit exceeded",
- * so they are intentionally NOT in this list.
- */
-export const LOG_RPC_URLS: string[] = [
-  "https://bsc-prebsc-dataseed.bnbchain.org",
-  "https://bnb-testnet.api.onfinality.io/public",
-  "https://bsc-testnet.drpc.org",
-  "https://bsc-testnet-rpc.publicnode.com",
-];
-
+export { LOG_RPC_URLS } from "../rpc";

@@ -1,4 +1,5 @@
-import { createConfig, http } from "wagmi";
+import { createConfig } from "wagmi";
+import { testnetTransport, mainnetTransport, TESTNET_RPC_URLS } from "./rpc";
 import { bsc, bscTestnet } from "wagmi/chains";
 import { injected, walletConnect, coinbaseWallet } from "wagmi/connectors";
 
@@ -19,7 +20,7 @@ const appMeta = {
 };
 
 /** Testing phase: BNB Smart Chain Testnet (97) is the default/primary chain. */
-export const BSC_TESTNET_RPC = "https://data-seed-prebsc-1-s1.binance.org:8545";
+export const BSC_TESTNET_RPC = TESTNET_RPC_URLS[0]!;
 
 export const web3Config = createConfig({
   chains: [bscTestnet, bsc],
@@ -33,8 +34,8 @@ export const web3Config = createConfig({
     coinbaseWallet({ appName: appMeta.name }),
   ],
   transports: {
-    [bscTestnet.id]: http(BSC_TESTNET_RPC),
-    [bsc.id]: http("https://bsc-dataseed.bnbchain.org"),
+    [bscTestnet.id]: testnetTransport({ batch: true }),
+    [bsc.id]: mainnetTransport({ batch: true }),
   },
   ssr: true,
 });
