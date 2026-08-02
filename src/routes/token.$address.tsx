@@ -402,7 +402,7 @@ function TokenPage() {
                 <div className="flex items-center gap-1 rounded-full border border-white/10 bg-white/5 p-1">
                   <button
                     onClick={() => zoom(-1)}
-                    disabled={zoomIndex >= ZOOM_STEPS.length - 1}
+                    disabled={visibleCount >= 600}
                     aria-label="Alejar (más velas)"
                     className="rounded-full px-2 py-1 text-[11px] font-mono text-muted-foreground hover:text-foreground disabled:opacity-30"
                   >
@@ -413,7 +413,7 @@ function TokenPage() {
                   </span>
                   <button
                     onClick={() => zoom(1)}
-                    disabled={zoomIndex <= 0}
+                    disabled={visibleCount <= 15}
                     aria-label="Acercar (menos velas)"
                     className="rounded-full px-2 py-1 text-[11px] font-mono text-muted-foreground hover:text-foreground disabled:opacity-30"
                   >
@@ -423,8 +423,9 @@ function TokenPage() {
               </div>
               {eventsError ? (
                 <ChainError error={eventsError} onRetry={() => eventsQ.refetch()} />
-              ) : candles.length > 0 ? (
-                <CandleChart candles={candles} barSize={barSize} gap="1%" onZoom={zoom} />
+              ) : allCandles.length > 0 ? (
+                <CandleChart candles={allCandles} visibleCount={visibleCount} onVisibleCountChange={setVisibleCount} />
+
               ) : (
                 <div className="h-64 rounded-xl border border-dashed border-white/10 grid place-items-center text-sm text-muted-foreground">
                   {eventsQ.isLoading || eventsQ.isFetchingNextPage
