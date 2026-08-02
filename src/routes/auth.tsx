@@ -64,8 +64,11 @@ function AuthPage() {
       const domain = typeof window !== "undefined" ? window.location.host : "labsbnb.app";
       const { message } = await challenge({ data: { address, domain, chainId: bscTestnet.id } });
       const signature = await signMessageAsync({ message });
-      const { email, token_hash } = await verify({ data: { address, message, signature } });
-      const { error } = await supabase.auth.verifyOtp({ email, token_hash, type: "magiclink" });
+      const { token_hash } = await verify({ data: { address, message, signature } });
+      // Passing `email` alongside `token_hash` makes Supabase answer
+      // "Only the token_hash and type should be provided".
+      const { error } = await supabase.auth.verifyOtp({ token_hash, type: "magiclink" });
+
       if (error) throw error;
       toast.success("Signed in");
       navigate({ to: target });
