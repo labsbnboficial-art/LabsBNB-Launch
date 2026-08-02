@@ -391,15 +391,6 @@ function LandingPage() {
             )}
           </div>
         </div>
-
-        <TokenGrid
-          title="Recién creados"
-          icon={<Sparkles className="h-4 w-4" />}
-          tokens={recentlyCreated}
-          bnbUsd={bnbUsd}
-          loading={dbTokens.isLoading && chainTokens.isLoading}
-          emptyLabel={t("empty.noTokens")}
-        />
       </section>
     </AppShell>
   );
