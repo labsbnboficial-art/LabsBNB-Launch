@@ -302,95 +302,45 @@ function LandingPage() {
         />
 
         <div className="grid gap-8 md:grid-cols-2">
-          <div className="glass rounded-2xl p-6">
-            <div className="flex items-center gap-2 mb-4">
-              <Flame className="h-4 w-4 text-accent" />
-              <h3 className="font-display text-lg font-semibold">{t("section.trending")}</h3>
-            </div>
-            {trending.length ? (
-              <ul className="space-y-2">
-                {trending.map((tk, i) => (
-                  <TokenRowItem
-                    key={tk.id}
-                    rank={i + 1}
-                    token={tk}
-                    right={`${wei(tk.metrics?.volume24hWei).toFixed(3)} BNB`}
-                    rightLabel="vol 24h"
-                  />
-                ))}
-              </ul>
-            ) : (
-              <EmptyHint label={chainTokens.isLoading ? "Leyendo la blockchain…" : "Todavía no hay volumen en las últimas 24h."} />
-            )}
-          </div>
-          <div className="glass rounded-2xl p-6">
-            <div className="flex items-center gap-2 mb-4">
-              <TrendingUp className="h-4 w-4 text-accent" />
-              <h3 className="font-display text-lg font-semibold">{t("section.nearGraduation")}</h3>
-            </div>
-            {nearGraduation.length ? (
-              <ul className="space-y-2">
-                {nearGraduation.map((tk, i) => (
-                  <TokenRowItem
-                    key={tk.id}
-                    rank={i + 1}
-                    token={tk}
-                    right={`${((tk.metrics?.progressBps ?? 0) / 100).toFixed(2)}%`}
-                    rightLabel="bonding curve"
-                  />
-                ))}
-              </ul>
-            ) : (
-              <EmptyHint label={chainTokens.isLoading ? "Leyendo la blockchain…" : "Ninguna curva ha avanzado todavía."} />
-            )}
-          </div>
+          <TokenCarousel
+            title={t("section.trending")}
+            icon={<Flame className="h-4 w-4 text-accent" />}
+            tokens={trending}
+            rightLabel="vol 24h"
+            renderRight={(tk) => `${wei(tk.metrics?.volume24hWei).toFixed(3)} BNB`}
+            empty={chainTokens.isLoading ? "Leyendo la blockchain…" : "Todavía no hay volumen en las últimas 24h."}
+          />
+          <TokenCarousel
+            title={t("section.nearGraduation")}
+            icon={<TrendingUp className="h-4 w-4 text-accent" />}
+            tokens={nearGraduation}
+            rightLabel="bonding curve"
+            renderRight={(tk) => `${((tk.metrics?.progressBps ?? 0) / 100).toFixed(2)}%`}
+            empty={chainTokens.isLoading ? "Leyendo la blockchain…" : "Ninguna curva ha avanzado todavía."}
+          />
         </div>
 
         <div className="grid gap-8 md:grid-cols-2">
-          <div className="glass rounded-2xl p-6">
-            <div className="flex items-center gap-2 mb-4">
-              <TrendingUp className="h-4 w-4 text-success" />
-              <h3 className="font-display text-lg font-semibold">Top gainers 24h</h3>
-            </div>
-            {topGainers.length ? (
-              <ul className="space-y-2">
-                {topGainers.map((tk, i) => (
-                  <TokenRowItem
-                    key={tk.id}
-                    rank={i + 1}
-                    token={tk}
-                    right={`${(tk.metrics!.priceChangeBps / 100) >= 0 ? "+" : ""}${(tk.metrics!.priceChangeBps / 100).toFixed(2)}%`}
-                    rightLabel="cambio 24h"
-                  />
-                ))}
-              </ul>
-            ) : (
-              <EmptyHint label={chainTokens.isLoading ? "Leyendo la blockchain…" : "Sin variación de precio en 24h."} />
-            )}
-          </div>
-
-          <div className="glass rounded-2xl p-6">
-            <div className="flex items-center gap-2 mb-4">
-              <LineChart className="h-4 w-4 text-accent" />
-              <h3 className="font-display text-lg font-semibold">Top market cap</h3>
-            </div>
-            {topMarketCap.length ? (
-              <ul className="space-y-2">
-                {topMarketCap.map((tk, i) => (
-                  <TokenRowItem
-                    key={tk.id}
-                    rank={i + 1}
-                    token={tk}
-                    right={`${wei(tk.metrics?.marketCapWei).toFixed(3)} BNB`}
-                    rightLabel="market cap"
-                  />
-                ))}
-              </ul>
-            ) : (
-              <EmptyHint label={chainTokens.isLoading ? "Leyendo la blockchain…" : "Sin datos de market cap todavía."} />
-            )}
-          </div>
+          <TokenCarousel
+            title="Top gainers 24h"
+            icon={<TrendingUp className="h-4 w-4 text-success" />}
+            tokens={topGainers}
+            rightLabel="cambio 24h"
+            renderRight={(tk) =>
+              `${tk.metrics!.priceChangeBps / 100 >= 0 ? "+" : ""}${(tk.metrics!.priceChangeBps / 100).toFixed(2)}%`
+            }
+            empty={chainTokens.isLoading ? "Leyendo la blockchain…" : "Sin variación de precio en 24h."}
+          />
+          <TokenCarousel
+            title="Top market cap"
+            icon={<LineChart className="h-4 w-4 text-accent" />}
+            tokens={topMarketCap}
+            rightLabel="market cap"
+            renderRight={(tk) => `${wei(tk.metrics?.marketCapWei).toFixed(3)} BNB`}
+            empty={chainTokens.isLoading ? "Leyendo la blockchain…" : "Sin datos de market cap todavía."}
+          />
         </div>
+
       </section>
     </AppShell>
   );
