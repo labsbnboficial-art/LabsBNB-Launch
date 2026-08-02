@@ -25,8 +25,11 @@ export function useSiweSignIn() {
     const domain = typeof window !== "undefined" ? window.location.host : "labsbnb.app";
     const { message } = await challenge({ data: { address, domain, chainId: bscTestnet.id } });
     const signature = await signMessageAsync({ message });
-    const { email, token_hash } = await verify({ data: { address, message, signature } });
-    const { data, error } = await supabase.auth.verifyOtp({ email, token_hash, type: "magiclink" });
+    const { token_hash } = await verify({ data: { address, message, signature } });
+    // Supabase rejects `email` + `token_hash` together with
+    // "Only the token_hash and type should be provided".
+    const { data, error } = await supabase.auth.verifyOtp({ token_hash, type: "magiclink" });
+
     if (error) throw error;
     if (!data.session?.user) throw new Error("Session was not created");
     return data.session.user;

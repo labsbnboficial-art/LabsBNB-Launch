@@ -134,8 +134,7 @@ function LandingPage() {
     () =>
       [...merged]
         .filter((tk) => wei(tk.metrics?.volume24hWei) > 0)
-        .sort((a, b) => wei(b.metrics?.volume24hWei) - wei(a.metrics?.volume24hWei))
-        .slice(0, 5),
+        .sort((a, b) => wei(b.metrics?.volume24hWei) - wei(a.metrics?.volume24hWei)),
     [merged],
   );
 
@@ -143,8 +142,7 @@ function LandingPage() {
     () =>
       [...merged]
         .filter((tk) => (tk.metrics?.progressBps ?? 0) > 0)
-        .sort((a, b) => (b.metrics?.progressBps ?? 0) - (a.metrics?.progressBps ?? 0))
-        .slice(0, 5),
+        .sort((a, b) => (b.metrics?.progressBps ?? 0) - (a.metrics?.progressBps ?? 0)),
     [merged],
   );
 
@@ -152,8 +150,7 @@ function LandingPage() {
     () =>
       [...merged]
         .filter((tk) => tk.metrics && tk.metrics.priceChangeBps !== 0)
-        .sort((a, b) => (b.metrics!.priceChangeBps ?? 0) - (a.metrics!.priceChangeBps ?? 0))
-        .slice(0, 5),
+        .sort((a, b) => (b.metrics!.priceChangeBps ?? 0) - (a.metrics!.priceChangeBps ?? 0)),
     [merged],
   );
 
@@ -161,18 +158,16 @@ function LandingPage() {
     () =>
       [...merged]
         .filter((tk) => wei(tk.metrics?.marketCapWei) > 0)
-        .sort((a, b) => wei(b.metrics?.marketCapWei) - wei(a.metrics?.marketCapWei))
-        .slice(0, 5),
+        .sort((a, b) => wei(b.metrics?.marketCapWei) - wei(a.metrics?.marketCapWei)),
     [merged],
   );
 
-  const recentlyCreated = useMemo(
-    () =>
-      [...merged]
-        .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-        .slice(0, 8),
+  /** Graduated = bonding curve completed on-chain (100%) or flagged in the DB. */
+  const graduatedOnChain = useMemo(
+    () => merged.filter((tk) => (tk.metrics?.progressBps ?? 0) >= 10_000).length,
     [merged],
   );
+
 
   const chainAggregates = useMemo(() => {
     const rows = merged.filter((tk) => tk.metrics);
@@ -252,7 +247,12 @@ function LandingPage() {
             <StatCard label={t("stats.tokensToday")} value={String(Math.max(s?.todayTokens ?? 0, merged.filter((token) => token.created_at && Date.now() - new Date(token.created_at).getTime() <= 86_400_000).length))} />
             <StatCard label={t("stats.tokensLaunched")} value={String(Math.max(s?.totalTokens ?? 0, merged.length))} />
             <StatCard label={t("stats.users")} value={String(s?.users ?? 0)} />
-            <StatCard label="Tokens" value={String(Math.max(s?.totalTokens ?? 0, merged.length))} />
+            <StatCard
+              label="Tokens graduados"
+              value={String(Math.max(s?.launched ?? 0, graduatedOnChain))}
+              sub="curva completada"
+            />
+
             <StatCard
               label={t("stats.liquidity")}
               value={`${chainAggregates.liquidity.toFixed(3)} BNB`}
@@ -302,104 +302,45 @@ function LandingPage() {
         />
 
         <div className="grid gap-8 md:grid-cols-2">
-          <div className="glass rounded-2xl p-6">
-            <div className="flex items-center gap-2 mb-4">
-              <Flame className="h-4 w-4 text-accent" />
-              <h3 className="font-display text-lg font-semibold">{t("section.trending")}</h3>
-            </div>
-            {trending.length ? (
-              <ul className="space-y-2">
-                {trending.map((tk, i) => (
-                  <TokenRowItem
-                    key={tk.id}
-                    rank={i + 1}
-                    token={tk}
-                    right={`${wei(tk.metrics?.volume24hWei).toFixed(3)} BNB`}
-                    rightLabel="vol 24h"
-                  />
-                ))}
-              </ul>
-            ) : (
-              <EmptyHint label={chainTokens.isLoading ? "Leyendo la blockchain…" : "Todavía no hay volumen en las últimas 24h."} />
-            )}
-          </div>
-          <div className="glass rounded-2xl p-6">
-            <div className="flex items-center gap-2 mb-4">
-              <TrendingUp className="h-4 w-4 text-accent" />
-              <h3 className="font-display text-lg font-semibold">{t("section.nearGraduation")}</h3>
-            </div>
-            {nearGraduation.length ? (
-              <ul className="space-y-2">
-                {nearGraduation.map((tk, i) => (
-                  <TokenRowItem
-                    key={tk.id}
-                    rank={i + 1}
-                    token={tk}
-                    right={`${((tk.metrics?.progressBps ?? 0) / 100).toFixed(2)}%`}
-                    rightLabel="bonding curve"
-                  />
-                ))}
-              </ul>
-            ) : (
-              <EmptyHint label={chainTokens.isLoading ? "Leyendo la blockchain…" : "Ninguna curva ha avanzado todavía."} />
-            )}
-          </div>
+          <TokenCarousel
+            title={t("section.trending")}
+            icon={<Flame className="h-4 w-4 text-accent" />}
+            tokens={trending}
+            rightLabel="vol 24h"
+            renderRight={(tk) => `${wei(tk.metrics?.volume24hWei).toFixed(3)} BNB`}
+            empty={chainTokens.isLoading ? "Leyendo la blockchain…" : "Todavía no hay volumen en las últimas 24h."}
+          />
+          <TokenCarousel
+            title={t("section.nearGraduation")}
+            icon={<TrendingUp className="h-4 w-4 text-accent" />}
+            tokens={nearGraduation}
+            rightLabel="bonding curve"
+            renderRight={(tk) => `${((tk.metrics?.progressBps ?? 0) / 100).toFixed(2)}%`}
+            empty={chainTokens.isLoading ? "Leyendo la blockchain…" : "Ninguna curva ha avanzado todavía."}
+          />
         </div>
 
         <div className="grid gap-8 md:grid-cols-2">
-          <div className="glass rounded-2xl p-6">
-            <div className="flex items-center gap-2 mb-4">
-              <TrendingUp className="h-4 w-4 text-success" />
-              <h3 className="font-display text-lg font-semibold">Top gainers 24h</h3>
-            </div>
-            {topGainers.length ? (
-              <ul className="space-y-2">
-                {topGainers.map((tk, i) => (
-                  <TokenRowItem
-                    key={tk.id}
-                    rank={i + 1}
-                    token={tk}
-                    right={`${(tk.metrics!.priceChangeBps / 100) >= 0 ? "+" : ""}${(tk.metrics!.priceChangeBps / 100).toFixed(2)}%`}
-                    rightLabel="cambio 24h"
-                  />
-                ))}
-              </ul>
-            ) : (
-              <EmptyHint label={chainTokens.isLoading ? "Leyendo la blockchain…" : "Sin variación de precio en 24h."} />
-            )}
-          </div>
-
-          <div className="glass rounded-2xl p-6">
-            <div className="flex items-center gap-2 mb-4">
-              <LineChart className="h-4 w-4 text-accent" />
-              <h3 className="font-display text-lg font-semibold">Top market cap</h3>
-            </div>
-            {topMarketCap.length ? (
-              <ul className="space-y-2">
-                {topMarketCap.map((tk, i) => (
-                  <TokenRowItem
-                    key={tk.id}
-                    rank={i + 1}
-                    token={tk}
-                    right={`${wei(tk.metrics?.marketCapWei).toFixed(3)} BNB`}
-                    rightLabel="market cap"
-                  />
-                ))}
-              </ul>
-            ) : (
-              <EmptyHint label={chainTokens.isLoading ? "Leyendo la blockchain…" : "Sin datos de market cap todavía."} />
-            )}
-          </div>
+          <TokenCarousel
+            title="Top gainers 24h"
+            icon={<TrendingUp className="h-4 w-4 text-success" />}
+            tokens={topGainers}
+            rightLabel="cambio 24h"
+            renderRight={(tk) =>
+              `${tk.metrics!.priceChangeBps / 100 >= 0 ? "+" : ""}${(tk.metrics!.priceChangeBps / 100).toFixed(2)}%`
+            }
+            empty={chainTokens.isLoading ? "Leyendo la blockchain…" : "Sin variación de precio en 24h."}
+          />
+          <TokenCarousel
+            title="Top market cap"
+            icon={<LineChart className="h-4 w-4 text-accent" />}
+            tokens={topMarketCap}
+            rightLabel="market cap"
+            renderRight={(tk) => `${wei(tk.metrics?.marketCapWei).toFixed(3)} BNB`}
+            empty={chainTokens.isLoading ? "Leyendo la blockchain…" : "Sin datos de market cap todavía."}
+          />
         </div>
 
-        <TokenGrid
-          title="Recién creados"
-          icon={<Sparkles className="h-4 w-4" />}
-          tokens={recentlyCreated}
-          bnbUsd={bnbUsd}
-          loading={dbTokens.isLoading && chainTokens.isLoading}
-          emptyLabel={t("empty.noTokens")}
-        />
       </section>
     </AppShell>
   );
@@ -456,7 +397,80 @@ function TokenRowItem({
   );
 }
 
+/** Paged list (5 per page) with prev/next controls and a soft transition. */
+function TokenCarousel({
+  title,
+  icon,
+  tokens,
+  rightLabel,
+  renderRight,
+  empty,
+}: {
+  title: string;
+  icon: React.ReactNode;
+  tokens: TokenRow[];
+  rightLabel: string;
+  renderRight: (tk: TokenRow) => string;
+  empty: string;
+}) {
+  const PAGE = 5;
+  const [page, setPage] = useState(0);
+  const pages = Math.max(1, Math.ceil(tokens.length / PAGE));
+  const safePage = Math.min(page, pages - 1);
+  const slice = tokens.slice(safePage * PAGE, safePage * PAGE + PAGE);
+
+  return (
+    <div className="glass rounded-2xl p-6 card-glow">
+      <div className="flex items-center justify-between gap-2 mb-4">
+        <div className="flex items-center gap-2">
+          {icon}
+          <h3 className="font-display text-lg font-semibold">{title}</h3>
+        </div>
+        {tokens.length > PAGE && (
+          <div className="flex items-center gap-1 rounded-full border border-white/10 bg-white/5 p-1">
+            <button
+              onClick={() => setPage((p) => Math.max(0, Math.min(p, pages - 1) - 1))}
+              disabled={safePage === 0}
+              aria-label="Anterior"
+              className="rounded-full px-2 py-0.5 text-xs text-muted-foreground hover:text-foreground disabled:opacity-30"
+            >
+              ‹
+            </button>
+            <span className="px-1 text-[11px] font-mono tabular-nums text-muted-foreground">
+              {safePage + 1}/{pages}
+            </span>
+            <button
+              onClick={() => setPage((p) => Math.min(pages - 1, p + 1))}
+              disabled={safePage >= pages - 1}
+              aria-label="Siguiente"
+              className="rounded-full px-2 py-0.5 text-xs text-muted-foreground hover:text-foreground disabled:opacity-30"
+            >
+              ›
+            </button>
+          </div>
+        )}
+      </div>
+      {slice.length ? (
+        <ul key={safePage} className="space-y-2 animate-fade-in">
+          {slice.map((tk, i) => (
+            <TokenRowItem
+              key={tk.id}
+              rank={safePage * PAGE + i + 1}
+              token={tk}
+              right={renderRight(tk)}
+              rightLabel={rightLabel}
+            />
+          ))}
+        </ul>
+      ) : (
+        <EmptyHint label={empty} />
+      )}
+    </div>
+  );
+}
+
 function TokenGrid({
+
   title,
   icon,
   tokens,
