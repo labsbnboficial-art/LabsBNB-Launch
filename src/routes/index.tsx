@@ -397,7 +397,80 @@ function TokenRowItem({
   );
 }
 
+/** Paged list (5 per page) with prev/next controls and a soft transition. */
+function TokenCarousel({
+  title,
+  icon,
+  tokens,
+  rightLabel,
+  renderRight,
+  empty,
+}: {
+  title: string;
+  icon: React.ReactNode;
+  tokens: TokenRow[];
+  rightLabel: string;
+  renderRight: (tk: TokenRow) => string;
+  empty: string;
+}) {
+  const PAGE = 5;
+  const [page, setPage] = useState(0);
+  const pages = Math.max(1, Math.ceil(tokens.length / PAGE));
+  const safePage = Math.min(page, pages - 1);
+  const slice = tokens.slice(safePage * PAGE, safePage * PAGE + PAGE);
+
+  return (
+    <div className="glass rounded-2xl p-6 card-glow">
+      <div className="flex items-center justify-between gap-2 mb-4">
+        <div className="flex items-center gap-2">
+          {icon}
+          <h3 className="font-display text-lg font-semibold">{title}</h3>
+        </div>
+        {tokens.length > PAGE && (
+          <div className="flex items-center gap-1 rounded-full border border-white/10 bg-white/5 p-1">
+            <button
+              onClick={() => setPage((p) => Math.max(0, Math.min(p, pages - 1) - 1))}
+              disabled={safePage === 0}
+              aria-label="Anterior"
+              className="rounded-full px-2 py-0.5 text-xs text-muted-foreground hover:text-foreground disabled:opacity-30"
+            >
+              ‹
+            </button>
+            <span className="px-1 text-[11px] font-mono tabular-nums text-muted-foreground">
+              {safePage + 1}/{pages}
+            </span>
+            <button
+              onClick={() => setPage((p) => Math.min(pages - 1, p + 1))}
+              disabled={safePage >= pages - 1}
+              aria-label="Siguiente"
+              className="rounded-full px-2 py-0.5 text-xs text-muted-foreground hover:text-foreground disabled:opacity-30"
+            >
+              ›
+            </button>
+          </div>
+        )}
+      </div>
+      {slice.length ? (
+        <ul key={safePage} className="space-y-2 animate-fade-in">
+          {slice.map((tk, i) => (
+            <TokenRowItem
+              key={tk.id}
+              rank={safePage * PAGE + i + 1}
+              token={tk}
+              right={renderRight(tk)}
+              rightLabel={rightLabel}
+            />
+          ))}
+        </ul>
+      ) : (
+        <EmptyHint label={empty} />
+      )}
+    </div>
+  );
+}
+
 function TokenGrid({
+
   title,
   icon,
   tokens,
