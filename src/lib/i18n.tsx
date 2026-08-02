@@ -12,7 +12,7 @@ const dict = {
     "nav.connect": "Conectar Wallet",
     "nav.disconnect": "Desconectar",
     "hero.badge": "Lanza tu token en BNB Chain sin código",
-    "hero.title": "El Launchpad definitivo del ecosistema LabsBNB",
+    "hero.title": "Tu puerta de entrada a las recompensas y utilidades del ecosistema LabsBNB.",
     "hero.subtitle": "Crea, lanza y comercia tokens con curvas de vinculación virtuales. Sin comisiones por deploy. Liquidez automática al graduar.",
     "hero.cta.create": "Crear token",
     "hero.cta.explore": "Explorar tokens",
