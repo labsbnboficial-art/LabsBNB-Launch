@@ -134,8 +134,7 @@ function LandingPage() {
     () =>
       [...merged]
         .filter((tk) => wei(tk.metrics?.volume24hWei) > 0)
-        .sort((a, b) => wei(b.metrics?.volume24hWei) - wei(a.metrics?.volume24hWei))
-        .slice(0, 5),
+        .sort((a, b) => wei(b.metrics?.volume24hWei) - wei(a.metrics?.volume24hWei)),
     [merged],
   );
 
@@ -143,8 +142,7 @@ function LandingPage() {
     () =>
       [...merged]
         .filter((tk) => (tk.metrics?.progressBps ?? 0) > 0)
-        .sort((a, b) => (b.metrics?.progressBps ?? 0) - (a.metrics?.progressBps ?? 0))
-        .slice(0, 5),
+        .sort((a, b) => (b.metrics?.progressBps ?? 0) - (a.metrics?.progressBps ?? 0)),
     [merged],
   );
 
@@ -152,8 +150,7 @@ function LandingPage() {
     () =>
       [...merged]
         .filter((tk) => tk.metrics && tk.metrics.priceChangeBps !== 0)
-        .sort((a, b) => (b.metrics!.priceChangeBps ?? 0) - (a.metrics!.priceChangeBps ?? 0))
-        .slice(0, 5),
+        .sort((a, b) => (b.metrics!.priceChangeBps ?? 0) - (a.metrics!.priceChangeBps ?? 0)),
     [merged],
   );
 
@@ -161,18 +158,16 @@ function LandingPage() {
     () =>
       [...merged]
         .filter((tk) => wei(tk.metrics?.marketCapWei) > 0)
-        .sort((a, b) => wei(b.metrics?.marketCapWei) - wei(a.metrics?.marketCapWei))
-        .slice(0, 5),
+        .sort((a, b) => wei(b.metrics?.marketCapWei) - wei(a.metrics?.marketCapWei)),
     [merged],
   );
 
-  const recentlyCreated = useMemo(
-    () =>
-      [...merged]
-        .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-        .slice(0, 8),
+  /** Graduated = bonding curve completed on-chain (100%) or flagged in the DB. */
+  const graduatedOnChain = useMemo(
+    () => merged.filter((tk) => (tk.metrics?.progressBps ?? 0) >= 10_000).length,
     [merged],
   );
+
 
   const chainAggregates = useMemo(() => {
     const rows = merged.filter((tk) => tk.metrics);
