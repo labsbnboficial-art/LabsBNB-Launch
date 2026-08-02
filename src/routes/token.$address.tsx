@@ -163,14 +163,11 @@ function TokenPage() {
   const allCandles = useMemo(() => buildCandles(events, tfSeconds), [events, tfSeconds]);
 
   // Zoom / visible range: how many of the most recent candles are drawn.
-  const ZOOM_STEPS = [20, 40, 60, 90, 120, 180, 240, 360] as const;
-  const [zoomIndex, setZoomIndex] = useState(3);
-  const visibleCount = ZOOM_STEPS[zoomIndex];
+  // The chart itself also drives this via wheel / pinch.
+  const [visibleCount, setVisibleCount] = useState(90);
   const zoom = (dir: 1 | -1) =>
-    setZoomIndex((i) => Math.min(ZOOM_STEPS.length - 1, Math.max(0, i - dir)));
-  const candles = useMemo(() => allCandles.slice(-visibleCount), [allCandles, visibleCount]);
-  // Tighter candles when few are shown, thinner ones as the range grows.
-  const barSize = visibleCount <= 40 ? 10 : visibleCount <= 90 ? 6 : visibleCount <= 180 ? 4 : 3;
+    setVisibleCount((n) => Math.min(600, Math.max(15, Math.round(dir === 1 ? n / 1.4 : n * 1.4))));
+
 
   // Keep the chart and the trades list on the same temporal range: when the
   // selected timeframe needs more history than the loaded pages cover, pull
