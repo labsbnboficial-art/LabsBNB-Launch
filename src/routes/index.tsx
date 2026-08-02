@@ -247,7 +247,12 @@ function LandingPage() {
             <StatCard label={t("stats.tokensToday")} value={String(Math.max(s?.todayTokens ?? 0, merged.filter((token) => token.created_at && Date.now() - new Date(token.created_at).getTime() <= 86_400_000).length))} />
             <StatCard label={t("stats.tokensLaunched")} value={String(Math.max(s?.totalTokens ?? 0, merged.length))} />
             <StatCard label={t("stats.users")} value={String(s?.users ?? 0)} />
-            <StatCard label="Tokens" value={String(Math.max(s?.totalTokens ?? 0, merged.length))} />
+            <StatCard
+              label="Tokens graduados"
+              value={String(Math.max(s?.launched ?? 0, graduatedOnChain))}
+              sub="curva completada"
+            />
+
             <StatCard
               label={t("stats.liquidity")}
               value={`${chainAggregates.liquidity.toFixed(3)} BNB`}
