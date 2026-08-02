@@ -187,3 +187,40 @@
 @utility animate-float {
   animation: float-slow 6s ease-in-out infinite;
 }
+
+@keyframes fade-in-soft {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@utility animate-fade-in {
+  animation: fade-in-soft 0.35s ease-out both;
+}
+
+/* Soft blue glow on hover for surface cards. */
+@utility card-glow {
+  transition: box-shadow 0.35s ease, border-color 0.35s ease, transform 0.35s ease;
+  &:hover {
+    border-color: oklch(0.72 0.19 245 / 0.35);
+    box-shadow: 0 0 0 1px oklch(0.72 0.19 245 / 0.14), 0 18px 50px -22px oklch(0.72 0.19 245 / 0.55);
+  }
+}
+
+/* Ambient drifting particles behind the app. */
+@keyframes particle-drift {
+  0% { transform: translate3d(0, 0, 0) scale(1); opacity: 0.25; }
+  50% { opacity: 0.7; }
+  100% { transform: translate3d(var(--dx, 20px), var(--dy, -60px), 0) scale(1.25); opacity: 0.15; }
+}
+@utility animate-particle {
+  animation: particle-drift var(--dur, 18s) ease-in-out infinite alternate;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-particle,
+  .animate-float,
+  .animate-pulse-glow,
+  .animate-fade-in {
+    animation: none !important;
+  }
+}
+
