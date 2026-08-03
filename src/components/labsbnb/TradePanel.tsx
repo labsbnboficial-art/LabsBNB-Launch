@@ -10,6 +10,7 @@ import { readClient, isAddress } from "@/lib/web3/onchain-token";
 import { DEFAULT_CONFIG } from "@/lib/launchpad-config";
 import { ACTIVE_CHAIN_ID } from "@/lib/web3/config";
 import { invalidateTradeCache } from "@/lib/web3/curve-events";
+import { describeTxError, ensureChain } from "@/lib/web3/tx";
 
 
 const SLIPPAGE_BPS = 100n; // 1%
@@ -171,9 +172,7 @@ export function TradePanel({
     if (!amount || Number(amount) <= 0) return toast.error("Introduce un importe.");
     setBusy(true);
     try {
-      if (chainId !== ACTIVE_CHAIN_ID) {
-        await switchChainAsync({ chainId: ACTIVE_CHAIN_ID });
-      }
+      await ensureChain(ACTIVE_CHAIN_ID, chainId, switchChainAsync);
       const wei = parseEther(amount);
       const quoted = quoteQ.data?.out ?? 0n;
       const minOut = (quoted * (10000n - SLIPPAGE_BPS)) / 10000n;
@@ -197,7 +196,6 @@ export function TradePanel({
           functionName: "buy",
           args: buyReq.args as unknown as unknown[],
           value: wei,
-          chainId: ACTIVE_CHAIN_ID,
         });
       } else {
         const allowance = (await client.readContract({
@@ -212,7 +210,6 @@ export function TradePanel({
             abi: TOKEN_ABI as Abi,
             functionName: "approve",
             args: [curve.curve, wei],
-            chainId: ACTIVE_CHAIN_ID,
           });
           await client.waitForTransactionReceipt({ hash: approveHash });
         }
@@ -226,7 +223,6 @@ export function TradePanel({
           abi: CURVE_ABI as Abi,
           functionName: "sell",
           args: [wei, minOut],
-          chainId: ACTIVE_CHAIN_ID,
         });
       }
 
@@ -247,8 +243,8 @@ export function TradePanel({
 
 
     } catch (e) {
-      const raw = e as { shortMessage?: string; message?: string };
-      toast.error(raw.shortMessage || raw.message || "Error desconocido");
+      console.error("[labsbnb] trade failed", e);
+      toast.error(describeTxError(e));
     } finally {
       setBusy(false);
     }

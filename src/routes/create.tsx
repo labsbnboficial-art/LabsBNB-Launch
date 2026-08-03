@@ -19,6 +19,7 @@ import { Switch } from "@/components/ui/switch";
 import { supabase } from "@/integrations/supabase/client";
 import { useSiweSignIn } from "@/lib/use-siwe";
 import { useLaunchpadConfig } from "@/lib/launchpad-config";
+import { describeTxError, ensureChain } from "@/lib/web3/tx";
 import { toast } from "sonner";
 import { Rocket, Check, ArrowLeft, ArrowRight, Sparkles, Lock } from "lucide-react";
 
@@ -241,13 +242,7 @@ function CreatePage() {
     setDeployedCurve(null);
     try {
       // 1) Make sure the wallet is on BNB Smart Chain Testnet (97) before signing.
-      if (walletChainId !== chainId) {
-        try {
-          await switchChainAsync({ chainId });
-        } catch {
-          throw new Error("Switch your wallet to BNB Smart Chain Testnet (chain 97) and try again");
-        }
-      }
+      await ensureChain(chainId, walletChainId, switchChainAsync);
 
       // 2) Simulate then send the real createToken() transaction.
       const rawUri = (form.metadata_uri || form.logo_url || form.website || "").trim();
@@ -303,7 +298,6 @@ function CreatePage() {
         abi: FACTORY_ABI as Abi,
         functionName: "createToken",
         args: args as unknown as unknown[],
-        chainId,
       });
       setDeployTx(hash);
       setDeployState("Waiting for confirmation on BNB Testnet…");
@@ -346,7 +340,7 @@ function CreatePage() {
     } catch (e) {
       console.error(e);
       setDeployState("Failed");
-      toast.error((e as Error).message);
+      toast.error(describeTxError(e));
     } finally {
       setSubmitting(false);
     }
@@ -604,7 +598,7 @@ function AdvancedTokenomics({
       setAdv((a) => ({ ...a, paid_tx: hash }));
       toast.success("Payment sent, waiting for confirmation…");
     } catch (e) {
-      toast.error((e as Error).message);
+      toast.error(describeTxError(e));
     }
   }
 

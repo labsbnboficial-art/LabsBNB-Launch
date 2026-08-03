@@ -205,6 +205,7 @@ export const TIMEFRAMES = [
   { id: "1m", label: "1m", seconds: 60 },
   { id: "5m", label: "5m", seconds: 300 },
   { id: "15m", label: "15m", seconds: 900 },
+  { id: "30m", label: "30m", seconds: 1800 },
   { id: "1h", label: "1H", seconds: 3600 },
   { id: "4h", label: "4H", seconds: 14400 },
   { id: "1d", label: "1D", seconds: 86400 },
