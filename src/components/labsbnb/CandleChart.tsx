@@ -165,8 +165,10 @@ export function CandleChart({ candles, visibleCount, onVisibleCountChange, quote
   useEffect(() => {
     const chart = chartRef.current;
     if (!chart || data.length === 0) return;
+    // Keep the logical span equal to the requested candle count even when the
+    // history is shorter, so bars stay thin instead of stretching to fill.
     const to = data.length + 2;
-    chart.timeScale().setVisibleLogicalRange({ from: Math.max(0, to - visibleCount), to });
+    chart.timeScale().setVisibleLogicalRange({ from: to - visibleCount, to });
   }, [visibleCount, data.length]);
 
   // Fullscreen without leaving React's control of the layout.
