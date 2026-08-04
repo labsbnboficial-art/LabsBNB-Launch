@@ -32,7 +32,7 @@ function BoostCard({ address, name, ticker, expiresAt }: { address: string; name
     refetchInterval: 30_000,
     queryFn: () => fetchOnChainToken(address as `0x${string}`),
   });
-  const m = q.data?.metrics ?? null;
+  const m = q.data ?? null;
   const progress = m ? Math.min(100, m.progressBps / 100) : 0;
 
   return (
@@ -55,7 +55,7 @@ function BoostCard({ address, name, ticker, expiresAt }: { address: string; name
       <div className="mt-4 grid grid-cols-2 gap-3 text-xs">
         <div><p className="text-muted-foreground">Market cap</p><p className="font-mono">{fmtBnb(m?.marketCapWei)}</p></div>
         <div><p className="text-muted-foreground">Volumen 24h</p><p className="font-mono">{fmtBnb(m?.volume24hWei)}</p></div>
-        <div><p className="text-muted-foreground">Liquidez</p><p className="font-mono">{fmtBnb(m?.liquidityWei)}</p></div>
+        <div><p className="text-muted-foreground">Liquidez</p><p className="font-mono">{fmtBnb(m?.realLiquidityWei)}</p></div>
         <div><p className="text-muted-foreground">Holders</p><p className="font-mono">{m?.holders ?? "—"}</p></div>
       </div>
 
