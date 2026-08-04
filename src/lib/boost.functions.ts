@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
+import type { PackageRow } from "@/lib/boost.server";
 
 /**
  * 🚀 Impulso — premium promoted slots on the launchpad home.
@@ -38,7 +39,7 @@ export const getBoostState = createServerFn({ method: "GET" }).handler(async () 
         .order("expires_at", { ascending: false })
         .limit(settings.maxSlots),
     ]);
-    const packages = ((pkgs ?? []) as m.PackageRow[]).map((p) => ({
+    const packages = ((pkgs ?? []) as PackageRow[]).map((p) => ({
       id: p.id,
       name: p.name,
       days: p.days,
@@ -84,7 +85,7 @@ export const quoteBoost = createServerFn({ method: "POST" })
         .from("boost_packages").select("*").eq("id", data.packageId).maybeSingle();
       if (!pkg || !pkg.active) throw new Error("Plan no disponible.");
       days = pkg.days;
-      price = m.packagePrice(pkg as m.PackageRow, settings);
+      price = m.packagePrice(pkg as PackageRow, settings);
     } else {
       if (!days) throw new Error("Indica los días de impulso.");
       if (days > settings.maxDays) throw new Error(`Máximo ${settings.maxDays} días por compra.`);
@@ -123,7 +124,7 @@ export const purchaseBoost = createServerFn({ method: "POST" })
       const { data: pkg } = await client.from("boost_packages").select("*").eq("id", data.packageId).maybeSingle();
       if (!pkg || !pkg.active) throw new Error("Plan no disponible.");
       days = pkg.days;
-      price = m.packagePrice(pkg as m.PackageRow, settings);
+      price = m.packagePrice(pkg as PackageRow, settings);
       packageId = pkg.id;
     } else {
       if (!days) throw new Error("Indica los días de impulso.");
@@ -208,7 +209,7 @@ export const adminBoostOverview = createServerFn({ method: "POST" })
       .reduce((a, r) => a + Number(r.total_paid ?? 0), 0);
     return {
       settings,
-      packages: ((pkgs ?? []) as m.PackageRow[]).map((p) => ({ ...p, effectivePrice: m.packagePrice(p, settings) })),
+      packages: ((pkgs ?? []) as PackageRow[]).map((p) => ({ ...p, effectivePrice: m.packagePrice(p, settings) })),
       boosts: rows,
       stats: {
         active: rows.filter((r) => r.status === "active").length,
