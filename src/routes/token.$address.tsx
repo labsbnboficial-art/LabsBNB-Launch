@@ -616,6 +616,46 @@ function TokenPage() {
   );
 }
 
+/** Two-sided pressure bar (buy vs sell) built from real Trade events. */
+function FlowBar({
+  label,
+  unit,
+  buy,
+  sell,
+  digits,
+}: {
+  label: string;
+  unit: string;
+  buy: number;
+  sell: number;
+  digits: number;
+}) {
+  const total = buy + sell;
+  const pct = total > 0 ? (buy / total) * 100 : 50;
+  const fmt = (n: number) => n.toLocaleString(undefined, { maximumFractionDigits: digits, minimumFractionDigits: digits });
+  return (
+    <div className="glass rounded-xl p-3">
+      <div className="flex items-center justify-between text-[10px] uppercase tracking-widest text-muted-foreground">
+        <span>{label}</span>
+        <span className="normal-case tracking-normal">{unit}</span>
+      </div>
+      <div className="mt-1.5 flex items-baseline justify-between font-mono text-xs tabular-nums">
+        <span className="text-success">{fmt(buy)}</span>
+        <span className="text-destructive">{fmt(sell)}</span>
+      </div>
+      <div className="mt-1.5 flex h-1.5 overflow-hidden rounded-full bg-white/5">
+        <div className="h-full bg-success/80" style={{ width: `${pct}%` }} />
+        <div className="h-full bg-destructive/80" style={{ width: `${100 - pct}%` }} />
+      </div>
+      <div className="mt-1 flex justify-between text-[10px] text-muted-foreground">
+        <span>Buy {pct.toFixed(0)}%</span>
+        <span>Sell {(100 - pct).toFixed(0)}%</span>
+      </div>
+    </div>
+  );
+}
+
+
 function StatCard({ icon, label, value, accent }: { icon: React.ReactNode; label: string; value: React.ReactNode; accent?: string }) {
   return (
     <div className="glass rounded-xl p-3">
