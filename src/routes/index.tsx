@@ -11,6 +11,7 @@ import { tokenMediaUrl } from "@/lib/media-url";
 import { Button } from "@/components/ui/button";
 import { ArrowRight, Rocket, Search, Sparkles, TrendingUp, Clock, Flame, LineChart } from "lucide-react";
 import { useMemo, useState } from "react";
+import { BoostSection } from "@/components/labsbnb/BoostSection";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -266,6 +267,8 @@ function LandingPage() {
           </div>
         </div>
       </section>
+
+      <BoostSection />
 
       {/* SEARCH */}
       <section id="tokens" className="mx-auto max-w-7xl px-4 md:px-6 mt-4">
