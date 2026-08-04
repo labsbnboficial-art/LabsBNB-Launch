@@ -2,6 +2,7 @@
 // Payments are plain BNB transfers to the configured treasury wallet and are
 // verified on-chain (receipt status, recipient, amount, sender) before any row
 // is written. Nothing here is simulated.
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { createPublicClient, formatEther, parseEther, type Abi } from "viem";
 import { bscTestnet } from "viem/chains";
 import { testnetTransport } from "@/lib/web3/rpc";
@@ -37,13 +38,18 @@ function str(v: unknown, fallback: string): string {
   return clean || fallback;
 }
 
+/** Untyped service-role client (boost tables live outside generated types). */
+export async function db(): Promise<SupabaseClient> {
+  const { adminClient } = await import("@/integrations/supabase/admin.server");
+  return adminClient as unknown as SupabaseClient;
+}
+
 export function client() {
   return createPublicClient({ chain: bscTestnet, transport: testnetTransport() });
 }
 
 export async function readSettings(): Promise<BoostSettings> {
-  const { adminClient } = await import("@/integrations/supabase/admin.server");
-  const { data } = await adminClient
+  const { data } = await (await db())
     .from("admin_config")
     .select("key,value")
     .in("key", [
@@ -70,8 +76,7 @@ export async function readSettings(): Promise<BoostSettings> {
 
 /** Moves every expired boost to `finished`. Cheap and idempotent. */
 export async function expireBoosts() {
-  const { adminClient } = await import("@/integrations/supabase/admin.server");
-  await adminClient
+  await (await db())
     .from("token_boosts")
     .update({ status: "finished" })
     .eq("status", "active")
