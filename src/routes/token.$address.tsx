@@ -149,14 +149,23 @@ function TokenPage() {
 
   const analytics = useMemo(() => {
     const buys = events.filter((e) => e.isBuy).length;
+    const buyVol = events.filter((e) => e.isBuy).reduce((a, e) => a + Number(e.amountBnb) / 1e18, 0);
+    const sellVol = events.filter((e) => !e.isBuy).reduce((a, e) => a + Number(e.amountBnb) / 1e18, 0);
+    const buyers = new Set(events.filter((e) => e.isBuy).map((e) => e.trader.toLowerCase())).size;
+    const sellers = new Set(events.filter((e) => !e.isBuy).map((e) => e.trader.toLowerCase())).size;
     return {
       buys,
       sells: events.length - buys,
+      buyVol,
+      sellVol,
+      buyers,
+      sellers,
       holders: live?.holders ?? statsQ.data?.holders ?? chain?.holders ?? 0,
       volume24h: Number(live?.volume24hWei ?? statsQ.data?.volume24hWei ?? 0n) / 1e18,
       priceChange: (live?.priceChangeBps ?? Number(statsQ.data?.priceChangeBps ?? 0)) / 100,
     };
   }, [events, statsQ.data, chain, live]);
+
 
   const [timeframe, setTimeframe] = useState<TimeframeId>("15m");
   const tfSeconds = TIMEFRAMES.find((t) => t.id === timeframe)!.seconds;
@@ -380,6 +389,14 @@ function TokenPage() {
           <StatCard icon={<Droplets className="h-3.5 w-3.5" />} label="Liquidity" value={liquidityBnb != null ? `${liquidityBnb.toFixed(3)} BNB` : "—"} />
         </div>
 
+        {/* Buy / sell pressure — DEXTools style */}
+        <div className="mt-3 grid gap-3 md:grid-cols-3">
+          <FlowBar label="Volumen" unit="BNB" buy={analytics.buyVol} sell={analytics.sellVol} digits={4} />
+          <FlowBar label="Operaciones" unit="tx" buy={analytics.buys} sell={analytics.sells} digits={0} />
+          <FlowBar label="Traders" unit="wallets" buy={analytics.buyers} sell={analytics.sellers} digits={0} />
+        </div>
+
+
 
         <div className="mt-6 grid gap-6 lg:grid-cols-3">
           <div className="lg:col-span-2 space-y-6">
@@ -598,6 +615,46 @@ function TokenPage() {
     </AppShell>
   );
 }
+
+/** Two-sided pressure bar (buy vs sell) built from real Trade events. */
+function FlowBar({
+  label,
+  unit,
+  buy,
+  sell,
+  digits,
+}: {
+  label: string;
+  unit: string;
+  buy: number;
+  sell: number;
+  digits: number;
+}) {
+  const total = buy + sell;
+  const pct = total > 0 ? (buy / total) * 100 : 50;
+  const fmt = (n: number) => n.toLocaleString(undefined, { maximumFractionDigits: digits, minimumFractionDigits: digits });
+  return (
+    <div className="glass rounded-xl p-3">
+      <div className="flex items-center justify-between text-[10px] uppercase tracking-widest text-muted-foreground">
+        <span>{label}</span>
+        <span className="normal-case tracking-normal">{unit}</span>
+      </div>
+      <div className="mt-1.5 flex items-baseline justify-between font-mono text-xs tabular-nums">
+        <span className="text-success">{fmt(buy)}</span>
+        <span className="text-destructive">{fmt(sell)}</span>
+      </div>
+      <div className="mt-1.5 flex h-1.5 overflow-hidden rounded-full bg-white/5">
+        <div className="h-full bg-success/80" style={{ width: `${pct}%` }} />
+        <div className="h-full bg-destructive/80" style={{ width: `${100 - pct}%` }} />
+      </div>
+      <div className="mt-1 flex justify-between text-[10px] text-muted-foreground">
+        <span>Buy {pct.toFixed(0)}%</span>
+        <span>Sell {(100 - pct).toFixed(0)}%</span>
+      </div>
+    </div>
+  );
+}
+
 
 function StatCard({ icon, label, value, accent }: { icon: React.ReactNode; label: string; value: React.ReactNode; accent?: string }) {
   return (
