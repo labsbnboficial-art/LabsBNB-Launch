@@ -389,6 +389,14 @@ function TokenPage() {
           <StatCard icon={<Droplets className="h-3.5 w-3.5" />} label="Liquidity" value={liquidityBnb != null ? `${liquidityBnb.toFixed(3)} BNB` : "—"} />
         </div>
 
+        {/* Buy / sell pressure — DEXTools style */}
+        <div className="mt-3 grid gap-3 md:grid-cols-3">
+          <FlowBar label="Volumen" unit="BNB" buy={analytics.buyVol} sell={analytics.sellVol} digits={4} />
+          <FlowBar label="Operaciones" unit="tx" buy={analytics.buys} sell={analytics.sells} digits={0} />
+          <FlowBar label="Traders" unit="wallets" buy={analytics.buyers} sell={analytics.sellers} digits={0} />
+        </div>
+
+
 
         <div className="mt-6 grid gap-6 lg:grid-cols-3">
           <div className="lg:col-span-2 space-y-6">
