@@ -307,6 +307,36 @@ export function TradePanel({
           </div>
         </div>
 
+        <div className="grid grid-cols-4 gap-2">
+          {(side === "buy"
+            ? [
+                { label: "0.01", value: () => "0.01" },
+                { label: "0.05", value: () => "0.05" },
+                { label: "0.1", value: () => "0.1" },
+                { label: "0.5", value: () => "0.5" },
+              ]
+            : [
+                { label: "25%", value: () => fractionOfBalance(balanceQ.data, 25n) },
+                { label: "50%", value: () => fractionOfBalance(balanceQ.data, 50n) },
+                { label: "75%", value: () => fractionOfBalance(balanceQ.data, 75n) },
+                { label: "MAX", value: () => fractionOfBalance(balanceQ.data, 100n) },
+              ]
+          ).map((preset) => (
+            <button
+              key={preset.label}
+              type="button"
+              onClick={() => {
+                const v = preset.value();
+                if (v) setAmount(v);
+              }}
+              className="rounded-lg border border-white/10 bg-white/5 py-1.5 text-[11px] font-mono text-muted-foreground hover:text-foreground hover:bg-white/10"
+            >
+              {preset.label}
+            </button>
+          ))}
+        </div>
+
+
         <div className="rounded-xl border border-white/10 bg-white/5 p-3">
           <div className="text-[10px] uppercase tracking-widest text-muted-foreground">You receive (est.)</div>
           <div className="flex items-center justify-between mt-1">
