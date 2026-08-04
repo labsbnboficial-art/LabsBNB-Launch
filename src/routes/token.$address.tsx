@@ -149,14 +149,23 @@ function TokenPage() {
 
   const analytics = useMemo(() => {
     const buys = events.filter((e) => e.isBuy).length;
+    const buyVol = events.filter((e) => e.isBuy).reduce((a, e) => a + Number(e.amountBnb) / 1e18, 0);
+    const sellVol = events.filter((e) => !e.isBuy).reduce((a, e) => a + Number(e.amountBnb) / 1e18, 0);
+    const buyers = new Set(events.filter((e) => e.isBuy).map((e) => e.trader.toLowerCase())).size;
+    const sellers = new Set(events.filter((e) => !e.isBuy).map((e) => e.trader.toLowerCase())).size;
     return {
       buys,
       sells: events.length - buys,
+      buyVol,
+      sellVol,
+      buyers,
+      sellers,
       holders: live?.holders ?? statsQ.data?.holders ?? chain?.holders ?? 0,
       volume24h: Number(live?.volume24hWei ?? statsQ.data?.volume24hWei ?? 0n) / 1e18,
       priceChange: (live?.priceChangeBps ?? Number(statsQ.data?.priceChangeBps ?? 0)) / 100,
     };
   }, [events, statsQ.data, chain, live]);
+
 
   const [timeframe, setTimeframe] = useState<TimeframeId>("15m");
   const tfSeconds = TIMEFRAMES.find((t) => t.id === timeframe)!.seconds;
