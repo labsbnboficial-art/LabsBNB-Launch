@@ -15,6 +15,13 @@ import { describeTxError, ensureChain } from "@/lib/web3/tx";
 
 const SLIPPAGE_BPS = 100n; // 1%
 
+/** Percentage of the wallet balance, as a decimal string ready for the input. */
+function fractionOfBalance(balance: bigint | undefined, pct: bigint): string {
+  if (!balance) return "";
+  return formatEther((balance * pct) / 100n);
+}
+
+
 /**
  * Runs `simulateContract` + `estimateContractGas` before every write and logs
  * chain id, contract, gas and the real revert reason when it fails.
