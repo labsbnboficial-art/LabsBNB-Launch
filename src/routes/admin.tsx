@@ -10,7 +10,8 @@ import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { useI18n } from "@/lib/i18n";
-import { Shield, Lock, KeyRound, LogOut, ScrollText, Settings2 } from "lucide-react";
+import { Shield, Lock, KeyRound, LogOut, ScrollText, Settings2, Rocket } from "lucide-react";
+import { AdminBoostTab } from "@/components/labsbnb/AdminBoostTab";
 import {
   adminAuthStatus,
   adminBootstrap,
