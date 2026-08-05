@@ -37,6 +37,15 @@ export const Route = createFileRoute("/create")({
 
 const CATEGORIES = ["Meme", "AI", "DeFi", "GameFi", "Utility", "Community", "Other"];
 
+/** Accepts absolute URLs and app-relative upload paths ("/api/public/..."). */
+const mediaUrl = z
+  .string()
+  .trim()
+  .max(500)
+  .refine((v) => v === "" || v.startsWith("/") || /^(https?:\/\/|ipfs:\/\/|data:image\/)/.test(v), "URL de imagen inválida")
+  .optional()
+  .or(z.literal(""));
+
 const step1Schema = z.object({
   name: z.string().trim().min(2).max(48),
   ticker: z.string().trim().min(2).max(10).regex(/^[A-Z0-9]+$/, "A-Z 0-9 only"),
