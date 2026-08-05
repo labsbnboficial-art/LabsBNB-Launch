@@ -487,11 +487,15 @@ function AdminBody({
       <Tabs defaultValue="config">
         <TabsList>
           <TabsTrigger value="config"><Settings2 className="mr-2 h-4 w-4" />Configuración</TabsTrigger>
+          <TabsTrigger value="boost"><Rocket className="mr-2 h-4 w-4" />🚀 Impulso</TabsTrigger>
           <TabsTrigger value="account"><KeyRound className="mr-2 h-4 w-4" />Cuenta y seguridad</TabsTrigger>
           <TabsTrigger value="audit"><ScrollText className="mr-2 h-4 w-4" />Auditoría</TabsTrigger>
         </TabsList>
         <TabsContent value="config" className="mt-6">
           <ConfigEditor csrf={csrf} cfg={cfgQ.data ?? {}} onSaved={() => cfgQ.refetch()} />
+        </TabsContent>
+        <TabsContent value="boost" className="mt-6">
+          <AdminBoostTab csrf={csrf} />
         </TabsContent>
         <TabsContent value="account" className="mt-6">
           <AccountSettings csrf={csrf} username={username} email={email} totpEnabled={totpEnabled} onChanged={onSignedOut} />
@@ -500,6 +504,7 @@ function AdminBody({
           <AuditLog csrf={csrf} />
         </TabsContent>
       </Tabs>
+
     </div>
   );
 }
