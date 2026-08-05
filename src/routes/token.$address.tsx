@@ -340,11 +340,19 @@ function TokenPage() {
               <SocialLinks values={socialValues} />
             </div>
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
+            {isCreator && isAddress(tk.contract_address ?? "") && (
+              <BoostPurchaseModal
+                token={(tk.contract_address as string) as `0x${string}`}
+                name={tk.name}
+                ticker={tk.ticker}
+              />
+            )}
             <Button variant="outline" className="border-white/10 bg-white/5" onClick={() => { navigator.share?.({ url: location.href }).catch(() => {}); }}>
               <Share2 className="h-4 w-4 mr-1.5" /> {t("token.share")}
             </Button>
           </div>
+
         </div>
 
 
