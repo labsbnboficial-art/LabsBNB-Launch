@@ -26,6 +26,8 @@ import { fetchTopHolders } from "@/lib/web3/holders";
 import { Textarea } from "@/components/ui/textarea";
 import { uploadTokenMedia } from "@/lib/media.functions";
 import { tokenMediaUrl } from "@/lib/media-url";
+import { BoostPurchaseModal } from "@/components/labsbnb/BoostPurchaseModal";
+
 
 
 
