@@ -26,6 +26,8 @@ import { fetchTopHolders } from "@/lib/web3/holders";
 import { Textarea } from "@/components/ui/textarea";
 import { uploadTokenMedia } from "@/lib/media.functions";
 import { tokenMediaUrl } from "@/lib/media-url";
+import { BoostPurchaseModal } from "@/components/labsbnb/BoostPurchaseModal";
+
 
 
 
@@ -66,13 +68,17 @@ function TokenPage() {
       } catch (e) {
         console.error("[token] database lookup failed, falling back on-chain", e);
       }
-      // 2) Fall back to the blockchain so a deployed token is never "lost".
+      // 2) ALWAYS read the chain too: the database row may exist without a
+      // `bonding_curves` record, and without the curve address every live
+      // metric (price, liquidity, trades, chart) stays empty.
+      const target = (isAddress(address)
+        ? address
+        : ((row?.["contract_address"] as string | undefined) ?? "")) as string;
       let chain: OnChainToken | null = null;
-      if (!row && isAddress(address)) {
-        chain = await fetchOnChainToken(address);
-      }
+      if (isAddress(target)) chain = await fetchOnChainToken(target);
       if (!row && !chain) throw notFound();
       return { row, chain };
+
     },
   });
 
@@ -336,11 +342,19 @@ function TokenPage() {
               <SocialLinks values={socialValues} />
             </div>
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
+            {isCreator && isAddress(tk.contract_address ?? "") && (
+              <BoostPurchaseModal
+                token={(tk.contract_address as string) as `0x${string}`}
+                name={tk.name}
+                ticker={tk.ticker}
+              />
+            )}
             <Button variant="outline" className="border-white/10 bg-white/5" onClick={() => { navigator.share?.({ url: location.href }).catch(() => {}); }}>
               <Share2 className="h-4 w-4 mr-1.5" /> {t("token.share")}
             </Button>
           </div>
+
         </div>
 
 
