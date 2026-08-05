@@ -66,13 +66,17 @@ function TokenPage() {
       } catch (e) {
         console.error("[token] database lookup failed, falling back on-chain", e);
       }
-      // 2) Fall back to the blockchain so a deployed token is never "lost".
+      // 2) ALWAYS read the chain too: the database row may exist without a
+      // `bonding_curves` record, and without the curve address every live
+      // metric (price, liquidity, trades, chart) stays empty.
+      const target = (isAddress(address)
+        ? address
+        : ((row?.["contract_address"] as string | undefined) ?? "")) as string;
       let chain: OnChainToken | null = null;
-      if (!row && isAddress(address)) {
-        chain = await fetchOnChainToken(address);
-      }
+      if (isAddress(target)) chain = await fetchOnChainToken(target);
       if (!row && !chain) throw notFound();
       return { row, chain };
+
     },
   });
 
