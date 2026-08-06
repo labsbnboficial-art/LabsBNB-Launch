@@ -38,8 +38,8 @@ export const web3Config = createConfig({
   ],
   transports: {
     [bscTestnet.id]: testnetTransport({ batch: true }),
-    [bsc.id]: mainnetTransport({ batch: true }),
   },
+
   ssr: true,
 });
 
