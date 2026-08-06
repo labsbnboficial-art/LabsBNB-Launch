@@ -10,8 +10,9 @@ import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { useI18n } from "@/lib/i18n";
-import { Shield, Lock, KeyRound, LogOut, ScrollText, Settings2, Rocket } from "lucide-react";
+import { Shield, Lock, KeyRound, LogOut, ScrollText, Settings2, Rocket, Wallet } from "lucide-react";
 import { AdminBoostTab } from "@/components/labsbnb/AdminBoostTab";
+import { AdminFeesTab } from "@/components/labsbnb/AdminFeesTab";
 import {
   adminAuthStatus,
   adminBootstrap,
@@ -488,12 +489,16 @@ function AdminBody({
       <Tabs defaultValue="config">
         <TabsList>
           <TabsTrigger value="config"><Settings2 className="mr-2 h-4 w-4" />Configuración</TabsTrigger>
+          <TabsTrigger value="fees"><Wallet className="mr-2 h-4 w-4" />Fees</TabsTrigger>
           <TabsTrigger value="boost"><Rocket className="mr-2 h-4 w-4" />🚀 Impulso</TabsTrigger>
           <TabsTrigger value="account"><KeyRound className="mr-2 h-4 w-4" />Cuenta y seguridad</TabsTrigger>
           <TabsTrigger value="audit"><ScrollText className="mr-2 h-4 w-4" />Auditoría</TabsTrigger>
         </TabsList>
         <TabsContent value="config" className="mt-6">
           <ConfigEditor csrf={csrf} cfg={cfgQ.data ?? {}} onSaved={() => cfgQ.refetch()} />
+        </TabsContent>
+        <TabsContent value="fees" className="mt-6">
+          <AdminFeesTab csrf={csrf} cfg={cfgQ.data ?? {}} onSaved={() => cfgQ.refetch()} />
         </TabsContent>
         <TabsContent value="boost" className="mt-6">
           <AdminBoostTab csrf={csrf} />
@@ -626,7 +631,17 @@ function AuditLog({ csrf }: { csrf: string }) {
 
 /* --------------------------------- config --------------------------------- */
 
-type FieldSpec = { key: string; label: string; type?: "text" | "number" | "bool"; help?: string; mono?: boolean };
+type FieldSpec = {
+  key: string;
+  label: string;
+  type?: "text" | "number" | "bool";
+  help?: string;
+  mono?: boolean;
+  /** Value hardcoded in the smart contract: editable only with a new deploy. */
+  locked?: string;
+  /** Display-only value shown when locked. */
+  fixed?: string;
+};
 
 const CONTRACT_FIELDS: FieldSpec[] = [
   { key: "factory_address", label: "Factory address", mono: true, help: "LabsBNBFactory desplegado en BNB Chain." },
@@ -635,21 +650,22 @@ const CONTRACT_FIELDS: FieldSpec[] = [
 ];
 
 const FEE_FIELDS: FieldSpec[] = [
-  { key: "fee_wallet", label: "Fee wallet", mono: true },
-  { key: "buy_fee_bps", label: "Buy fee (bps)", type: "number" },
-  { key: "sell_fee_bps", label: "Sell fee (bps)", type: "number" },
-  { key: "fee_bps", label: "Legacy fee (bps)", type: "number" },
-  { key: "creation_fee_bnb", label: "Creation fee (wei BNB)", mono: true },
+  { key: "fee_wallet", label: "Fee wallet (referencia UI — la real vive en el Factory)", mono: true },
+  { key: "creation_fee_bnb", label: "Creation fee (wei BNB)", mono: true, help: "Cobro off-chain en el formulario de creación." },
+  { key: "buy_fee_bps", label: "Buy fee (bps)", type: "number", locked: "El contrato usa un único feeBps del Factory. Edítalo en la pestaña Fees.", fixed: "Factory.feeBps" },
+  { key: "sell_fee_bps", label: "Sell fee (bps)", type: "number", locked: "El contrato usa un único feeBps del Factory. Edítalo en la pestaña Fees.", fixed: "Factory.feeBps" },
+  { key: "fee_bps", label: "Protocol fee (bps)", type: "number", locked: "Se aplica on-chain: cámbialo con setFee() en la pestaña Fees.", fixed: "Factory.feeBps" },
 ];
 
 const CURVE_FIELDS: FieldSpec[] = [
-  { key: "curve_target_bnb", label: "Curve target (wei BNB)", mono: true },
-  { key: "burn_pct", label: "% Burn on graduation", type: "number" },
-  { key: "liquidity_pct", label: "% Liquidity to Pancake", type: "number" },
-  { key: "lp_pct", label: "% LP kept", type: "number" },
-  { key: "staking_pct", label: "% Staking allocation", type: "number" },
-  { key: "reward_pct", label: "% Reward pool (default)", type: "number" },
-  { key: "staking_cost_bnb", label: "Staking activation cost (wei BNB)", mono: true },
+  { key: "curve_target_bnb", label: "Bonding curve goal / Migration threshold", locked: "MIGRATION_THRESHOLD es una constante de BondingCurve.sol.", fixed: "24 BNB" },
+  { key: "virtual_liquidity", label: "Virtual liquidity", locked: "VIRTUAL_BNB / VIRTUAL_TOKENS son constantes del contrato.", fixed: "1.6 BNB · 800.000.000 tokens" },
+  { key: "graduation_threshold", label: "Graduation threshold", locked: "Se alcanza cuando bnbCollected ≥ MIGRATION_THRESHOLD.", fixed: "24 BNB" },
+  { key: "lp_allocation", label: "LP allocation", locked: "LP_ALLOC es una constante del contrato.", fixed: "200.000.000 tokens (20%)" },
+  { key: "burn_allocation", label: "Burn allocation", locked: "La curva no quema supply en la migración.", fixed: "0%" },
+  { key: "creator_fee", label: "Creator fee", locked: "CREATOR_FEE_BPS es una constante del contrato.", fixed: "0,20%" },
+  { key: "referral_fee", label: "Referral fee", locked: "REFERRAL_FEE_BPS es una constante del contrato.", fixed: "0,10%" },
+  { key: "trading_fee", label: "Trading fee (protocolo)", locked: "Editable on-chain con Factory.setFee() desde la pestaña Fees.", fixed: "Factory.feeBps" },
 ];
 
 const ADVANCED_FIELDS: FieldSpec[] = [
@@ -711,7 +727,7 @@ function ConfigEditor({ csrf, cfg, onSaved }: { csrf: string; cfg: Record<string
   async function save() {
     setBusy(true);
     try {
-      const entries = ALL_FIELDS.map((f) => {
+      const entries = ALL_FIELDS.filter((f) => !f.locked).map((f) => {
         let value: number | string | boolean | null = values[f.key];
         if (f.type === "bool") value = values[f.key] === "true";
         else if (value === "" || value == null) value = null;
@@ -733,8 +749,13 @@ function ConfigEditor({ csrf, cfg, onSaved }: { csrf: string; cfg: Record<string
     <div className="space-y-6">
       <Section title="Smart contract" fields={CONTRACT_FIELDS} values={values} setValues={setValues} />
       <Section title="Labs Missions" fields={MISSIONS_FIELDS} values={values} setValues={setValues} />
-      <Section title="Fees" fields={FEE_FIELDS} values={values} setValues={setValues} />
-      <Section title="Bonding curve & tokenomics" fields={CURVE_FIELDS} values={values} setValues={setValues} />
+      <Section title="Fees (off-chain / interfaz)" fields={FEE_FIELDS} values={values} setValues={setValues} />
+      <Section
+        title="Bonding curve & tokenomics (parámetros del contrato)"
+        fields={CURVE_FIELDS}
+        values={values}
+        setValues={setValues}
+      />
       <Section title="Advanced tokenomics (paid unlock)" fields={ADVANCED_FIELDS} values={values} setValues={setValues} />
       <Section title="AntiBot" fields={ANTIBOT_FIELDS} values={values} setValues={setValues} />
       <Section title="Admin" fields={ADMIN_FIELDS} values={values} setValues={setValues} />
@@ -769,6 +790,13 @@ function Section({
                   onCheckedChange={(c) => setValues((v) => ({ ...v, [f.key]: c ? "true" : "false" }))}
                 />
               </div>
+            ) : f.locked ? (
+              <div className="mt-1 flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.02] px-3 py-2">
+                <span className="font-mono text-sm text-muted-foreground">{f.fixed ?? values[f.key] ?? "—"}</span>
+                <span className="ml-auto rounded-full border border-amber-400/30 px-2 py-0.5 text-[10px] uppercase tracking-widest text-amber-300">
+                  Constante del contrato
+                </span>
+              </div>
             ) : (
               <Input
                 type={f.type === "number" ? "number" : "text"}
@@ -777,7 +805,7 @@ function Section({
                 className={f.mono ? "font-mono" : ""}
               />
             )}
-            {f.help && <p className="mt-1 text-[11px] text-muted-foreground">{f.help}</p>}
+            {(f.help || f.locked) && <p className="mt-1 text-[11px] text-muted-foreground">{f.help ?? f.locked}</p>}
           </div>
         ))}
       </div>

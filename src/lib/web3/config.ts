@@ -1,6 +1,6 @@
 import { createConfig } from "wagmi";
-import { testnetTransport, mainnetTransport, TESTNET_RPC_URLS } from "./rpc";
-import { bsc, bscTestnet } from "wagmi/chains";
+import { testnetTransport, TESTNET_RPC_URLS } from "./rpc";
+import { bscTestnet } from "wagmi/chains";
 import { injected, walletConnect, coinbaseWallet } from "wagmi/connectors";
 
 /**
@@ -22,8 +22,11 @@ const appMeta = {
 /** Testing phase: BNB Smart Chain Testnet (97) is the default/primary chain. */
 export const BSC_TESTNET_RPC = TESTNET_RPC_URLS[0]!;
 
+// NOTE: only BNB Smart Chain Testnet is registered. Trust Wallet / WalletConnect
+// default to the FIRST chain announced in the session proposal, so listing
+// Ethereum or BSC mainnet here made Trust connect on chain 1.
 export const web3Config = createConfig({
-  chains: [bscTestnet, bsc],
+  chains: [bscTestnet],
   connectors: [
     walletConnect({
       projectId: WC_PROJECT_ID,
@@ -35,8 +38,8 @@ export const web3Config = createConfig({
   ],
   transports: {
     [bscTestnet.id]: testnetTransport({ batch: true }),
-    [bsc.id]: mainnetTransport({ batch: true }),
   },
+
   ssr: true,
 });
 
@@ -44,3 +47,4 @@ export const BSC_TESTNET_CHAIN_ID = bscTestnet.id;
 /** Active chain for the whole app during the testing phase. */
 export const ACTIVE_CHAIN_ID = bscTestnet.id;
 export const BSC_CHAIN_ID = bscTestnet.id;
+export const ACTIVE_CHAIN = bscTestnet;
