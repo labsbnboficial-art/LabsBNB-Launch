@@ -41,10 +41,10 @@ export function ParticleField({ count = 28 }: { count?: number }) {
           style={{
             left: `${p.left}%`,
             top: `${p.top}%`,
-            width: p.size,
-            height: p.size,
+            width: `${p.size}px`,
+            height: `${p.size}px`,
             background: p.cyan ? "var(--accent)" : "var(--primary)",
-            boxShadow: `0 0 ${p.size * 4}px currentColor`,
+            boxShadow: `0 0 ${Number((p.size * 4).toFixed(3))}px currentColor`,
             color: p.cyan ? "var(--accent)" : "var(--primary)",
             animationDelay: `${p.delay}s`,
             ["--dur" as string]: `${p.dur}s`,
