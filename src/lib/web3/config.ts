@@ -22,8 +22,11 @@ const appMeta = {
 /** Testing phase: BNB Smart Chain Testnet (97) is the default/primary chain. */
 export const BSC_TESTNET_RPC = TESTNET_RPC_URLS[0]!;
 
+// NOTE: only BNB Smart Chain Testnet is registered. Trust Wallet / WalletConnect
+// default to the FIRST chain announced in the session proposal, so listing
+// Ethereum or BSC mainnet here made Trust connect on chain 1.
 export const web3Config = createConfig({
-  chains: [bscTestnet, bsc],
+  chains: [bscTestnet],
   connectors: [
     walletConnect({
       projectId: WC_PROJECT_ID,
