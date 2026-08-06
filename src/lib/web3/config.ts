@@ -1,6 +1,6 @@
 import { createConfig } from "wagmi";
-import { testnetTransport, mainnetTransport, TESTNET_RPC_URLS } from "./rpc";
-import { bsc, bscTestnet } from "wagmi/chains";
+import { testnetTransport, TESTNET_RPC_URLS } from "./rpc";
+import { bscTestnet } from "wagmi/chains";
 import { injected, walletConnect, coinbaseWallet } from "wagmi/connectors";
 
 /**
@@ -47,3 +47,4 @@ export const BSC_TESTNET_CHAIN_ID = bscTestnet.id;
 /** Active chain for the whole app during the testing phase. */
 export const ACTIVE_CHAIN_ID = bscTestnet.id;
 export const BSC_CHAIN_ID = bscTestnet.id;
+export const ACTIVE_CHAIN = bscTestnet;
