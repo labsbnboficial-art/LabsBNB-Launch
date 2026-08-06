@@ -18,6 +18,46 @@ export function chainName(id: number) {
   return CHAIN_NAMES[id] ?? `chain ${id}`;
 }
 
+/** EIP-3085 payload so wallets that don't know chain 97 (Trust Wallet) can add it. */
+export const BSC_TESTNET_PARAMS = {
+  chainId: "0x61",
+  chainName: "BNB Smart Chain Testnet",
+  nativeCurrency: { name: "tBNB", symbol: "tBNB", decimals: 18 },
+  rpcUrls: [
+    "https://bsc-prebsc-dataseed.bnbchain.org",
+    "https://data-seed-prebsc-1-s1.binance.org:8545",
+  ],
+  blockExplorerUrls: ["https://testnet.bscscan.com"],
+} as const;
+
+type Eip1193 = { request: (args: { method: string; params?: unknown[] }) => Promise<unknown> };
+
+function injectedProvider(): Eip1193 | null {
+  if (typeof window === "undefined") return null;
+  const w = window as unknown as { ethereum?: Eip1193 };
+  return w.ethereum ?? null;
+}
+
+/** Last-resort switch/add through the raw EIP-1193 provider (Trust Wallet path). */
+async function rawSwitch(target: number): Promise<void> {
+  const provider = injectedProvider();
+  if (!provider) return;
+  const hex = `0x${target.toString(16)}`;
+  try {
+    await provider.request({ method: "wallet_switchEthereumChain", params: [{ chainId: hex }] });
+  } catch (e) {
+    const code = (e as { code?: number }).code;
+    if (code === 4902 || code === -32603 || code === -32602) {
+      await provider.request({
+        method: "wallet_addEthereumChain",
+        params: [target === 97 ? BSC_TESTNET_PARAMS : { chainId: hex }],
+      });
+      return;
+    }
+    throw e;
+  }
+}
+
 /**
  * Ensures the connected wallet sits on `target`.
  * Never throws for a rejected/unsupported switch request on its own: it
@@ -36,6 +76,14 @@ export async function ensureChain(
   } catch (e) {
     switchError = e;
     console.warn("[labsbnb] switchChain failed", describeTxError(e));
+    // Trust Wallet / WalletConnect often reject wagmi's switch but accept the
+    // raw request, and need the network to be added first.
+    try {
+      await rawSwitch(target);
+      switchError = null;
+    } catch (e2) {
+      console.warn("[labsbnb] wallet_addEthereumChain failed", describeTxError(e2));
+    }
   }
 
   const after = reread ? await reread() : undefined;
@@ -48,6 +96,7 @@ export async function ensureChain(
       `Cámbiala manualmente en la wallet y vuelve a intentarlo. Detalle: ${describeTxError(switchError)}`,
   );
 }
+
 
 type AnyErr = {
   code?: number | string;
