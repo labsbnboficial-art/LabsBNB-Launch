@@ -12,6 +12,7 @@ import { toast } from "sonner";
 import { useI18n } from "@/lib/i18n";
 import { Shield, Lock, KeyRound, LogOut, ScrollText, Settings2, Rocket } from "lucide-react";
 import { AdminBoostTab } from "@/components/labsbnb/AdminBoostTab";
+import { AdminFeesTab } from "@/components/labsbnb/AdminFeesTab";
 import {
   adminAuthStatus,
   adminBootstrap,
@@ -488,12 +489,16 @@ function AdminBody({
       <Tabs defaultValue="config">
         <TabsList>
           <TabsTrigger value="config"><Settings2 className="mr-2 h-4 w-4" />Configuración</TabsTrigger>
+          <TabsTrigger value="fees"><Wallet className="mr-2 h-4 w-4" />Fees</TabsTrigger>
           <TabsTrigger value="boost"><Rocket className="mr-2 h-4 w-4" />🚀 Impulso</TabsTrigger>
           <TabsTrigger value="account"><KeyRound className="mr-2 h-4 w-4" />Cuenta y seguridad</TabsTrigger>
           <TabsTrigger value="audit"><ScrollText className="mr-2 h-4 w-4" />Auditoría</TabsTrigger>
         </TabsList>
         <TabsContent value="config" className="mt-6">
           <ConfigEditor csrf={csrf} cfg={cfgQ.data ?? {}} onSaved={() => cfgQ.refetch()} />
+        </TabsContent>
+        <TabsContent value="fees" className="mt-6">
+          <AdminFeesTab csrf={csrf} cfg={cfgQ.data ?? {}} onSaved={() => cfgQ.refetch()} />
         </TabsContent>
         <TabsContent value="boost" className="mt-6">
           <AdminBoostTab csrf={csrf} />
@@ -733,7 +738,7 @@ function ConfigEditor({ csrf, cfg, onSaved }: { csrf: string; cfg: Record<string
     <div className="space-y-6">
       <Section title="Smart contract" fields={CONTRACT_FIELDS} values={values} setValues={setValues} />
       <Section title="Labs Missions" fields={MISSIONS_FIELDS} values={values} setValues={setValues} />
-      <Section title="Fees" fields={FEE_FIELDS} values={values} setValues={setValues} />
+      <Section title="Fees (off-chain / interfaz)" fields={FEE_FIELDS} values={values} setValues={setValues} />
       <Section title="Bonding curve & tokenomics" fields={CURVE_FIELDS} values={values} setValues={setValues} />
       <Section title="Advanced tokenomics (paid unlock)" fields={ADVANCED_FIELDS} values={values} setValues={setValues} />
       <Section title="AntiBot" fields={ANTIBOT_FIELDS} values={values} setValues={setValues} />
