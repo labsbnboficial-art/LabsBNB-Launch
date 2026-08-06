@@ -10,18 +10,22 @@ export function ParticleField({ count = 28 }: { count?: number }) {
     () =>
       Array.from({ length: count }, (_, i) => {
         // Deterministic pseudo-random so SSR and client markup match.
+        // Values are rounded: raw floats serialise differently on server and
+        // client (Math.sin precision) and caused a hydration mismatch.
         const r = (n: number) => ((Math.sin(i * 12.9898 + n * 78.233) * 43758.5453) % 1 + 1) % 1;
+        const round = (v: number, d = 3) => Number(v.toFixed(d));
         return {
           id: i,
-          left: r(1) * 100,
-          top: r(2) * 100,
-          size: 1.5 + r(3) * 3.5,
-          dur: 14 + r(4) * 20,
-          delay: -r(5) * 20,
-          dx: (r(6) - 0.5) * 120,
-          dy: -(30 + r(7) * 120),
+          left: round(r(1) * 100),
+          top: round(r(2) * 100),
+          size: round(1.5 + r(3) * 3.5),
+          dur: round(14 + r(4) * 20),
+          delay: round(-r(5) * 20),
+          dx: round((r(6) - 0.5) * 120),
+          dy: round(-(30 + r(7) * 120)),
           cyan: r(8) > 0.55,
         };
+
       }),
     [count],
   );
