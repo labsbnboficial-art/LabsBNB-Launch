@@ -62,6 +62,7 @@ export function AdminFeesTab({ csrf, cfg, onSaved }: {
 
   const factory = String(cfg["factory_address"] ?? "") || undefined;
   const [walletInput, setWalletInput] = useState(String(cfg["fee_wallet"] ?? ""));
+  const [bpsInput, setBpsInput] = useState(String(cfg["fee_bps"] ?? "50"));
   const [busy, setBusy] = useState(false);
 
   const q = useQuery({
@@ -87,6 +88,30 @@ export function AdminFeesTab({ csrf, cfg, onSaved }: {
       onSaved();
     } catch (e) {
       toast.error((e as Error).message);
+    } finally { setBusy(false); }
+  }
+
+  async function syncFeeBps() {
+    if (!d) return;
+    const bps = Number(bpsInput);
+    if (!Number.isInteger(bps) || bps < 0 || bps > 500) return toast.error("El fee debe ser un entero entre 0 y 500 bps.");
+    setBusy(true);
+    try {
+      await ensureChain(ACTIVE_CHAIN_ID, chainId, switchChainAsync, async () =>
+        Number(await readClient().getChainId()),
+      );
+      const hash = await writeContractAsync({
+        address: d.factory as `0x${string}`,
+        abi: FACTORY_ABI,
+        functionName: "setFee",
+        args: [bps],
+      });
+      await saveFn({ data: { csrf, entries: [{ key: "fee_bps", value: bps, is_public: true }] } });
+      toast.success(`setFee enviado: ${hash.slice(0, 12)}…`);
+      onSaved();
+      setTimeout(() => q.refetch(), 6000);
+    } catch (e) {
+      toast.error(describeTxError(e));
     } finally { setBusy(false); }
   }
 
@@ -190,6 +215,23 @@ export function AdminFeesTab({ csrf, cfg, onSaved }: {
             Aplicar on-chain (setFeeWallet)
           </Button>
         </div>
+        <div className="mt-6">
+          <Label className="text-xs uppercase tracking-widest text-muted-foreground">
+            Comisión del protocolo (bps · máx. 500 = 5%)
+          </Label>
+          <div className="mt-1 flex gap-2">
+            <Input
+              type="number"
+              value={bpsInput}
+              onChange={(e) => setBpsInput(e.target.value)}
+              className="max-w-[160px] font-mono"
+            />
+            <Button onClick={syncFeeBps} disabled={busy || !isOwner} variant="outline">
+              Aplicar on-chain (setFee)
+            </Button>
+          </div>
+        </div>
+
         <p className="mt-2 text-[11px] text-muted-foreground">
           El valor que realmente usan las curvas es el del contrato Factory
           {d ? ` (owner ${d.owner.slice(0, 10)}…)` : ""}. Conecta la wallet owner para poder aplicarlo on-chain;
