@@ -313,10 +313,8 @@ function LandingPage() {
             renderRight={(tk) => `${((tk.metrics?.progressBps ?? 0) / 100).toFixed(2)}%`}
             empty={chainTokens.isLoading ? "Leyendo la blockchain…" : "Ninguna curva ha avanzado todavía."}
           />
-
-
-        <div className="grid gap-8 md:grid-cols-2">
           <TokenCarousel
+
             title="Top gainers 24h"
             icon={<TrendingUp className="h-4 w-4 text-success" />}
             tokens={topGainers}
