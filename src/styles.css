@@ -226,3 +226,26 @@
   }
 }
 
+
+/* Soft cyan glow for hero cards, CTAs and stats. */
+@utility glow-soft {
+  box-shadow: 0 0 0 1px oklch(0.68 0.19 246 / 0.16), 0 18px 46px -24px oklch(0.68 0.19 246 / 0.6);
+}
+
+/* -----------------------------------------------------------------------
+   WalletConnect / Reown modal
+   Radix overlays (dialog, dropdown) trap focus and lock body pointer events,
+   which made the QR modal unclickable in Chrome / Opera / Brave. These rules
+   keep the wallet modal on top and interactive at all times.
+   -------------------------------------------------------------------- */
+w3m-modal,
+wcm-modal,
+appkit-modal {
+  position: relative;
+  z-index: 2147483000 !important;
+  pointer-events: auto !important;
+}
+body:has(w3m-modal[open]),
+body:has(wcm-modal[open]) {
+  pointer-events: auto !important;
+}
