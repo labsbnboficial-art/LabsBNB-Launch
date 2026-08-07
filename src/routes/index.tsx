@@ -298,21 +298,13 @@ function LandingPage() {
         <TokenGrid
           title={t("section.latest")}
           icon={<Clock className="h-4 w-4" />}
-          tokens={filtered.slice(0, 12)}
+          tokens={filtered}
           bnbUsd={bnbUsd}
           loading={dbTokens.isLoading && chainTokens.isLoading}
           emptyLabel={q ? "Sin coincidencias para tu búsqueda." : t("empty.noTokens")}
         />
 
         <div className="grid gap-8 md:grid-cols-2">
-          <TokenCarousel
-            title={t("section.trending")}
-            icon={<Flame className="h-4 w-4 text-accent" />}
-            tokens={trending}
-            rightLabel="vol 24h"
-            renderRight={(tk) => `${wei(tk.metrics?.volume24hWei).toFixed(3)} BNB`}
-            empty={chainTokens.isLoading ? "Leyendo la blockchain…" : "Todavía no hay volumen en las últimas 24h."}
-          />
           <TokenCarousel
             title={t("section.nearGraduation")}
             icon={<TrendingUp className="h-4 w-4 text-accent" />}
@@ -321,7 +313,7 @@ function LandingPage() {
             renderRight={(tk) => `${((tk.metrics?.progressBps ?? 0) / 100).toFixed(2)}%`}
             empty={chainTokens.isLoading ? "Leyendo la blockchain…" : "Ninguna curva ha avanzado todavía."}
           />
-        </div>
+
 
         <div className="grid gap-8 md:grid-cols-2">
           <TokenCarousel
