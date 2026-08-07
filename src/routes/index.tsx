@@ -463,7 +463,6 @@ function TokenCarousel({
 }
 
 function TokenGrid({
-
   title,
   icon,
   tokens,
@@ -478,11 +477,42 @@ function TokenGrid({
   emptyLabel: string;
   bnbUsd: number;
 }) {
+  const PAGE = 5;
+  const [page, setPage] = useState(0);
+  const pages = Math.max(1, Math.ceil(tokens.length / PAGE));
+  const safePage = Math.min(page, pages - 1);
+  const slice = tokens.slice(safePage * PAGE, safePage * PAGE + PAGE);
+
   return (
     <div>
-      <div className="flex items-center gap-2 mb-4">
-        <span className="text-accent">{icon}</span>
-        <h3 className="font-display text-lg font-semibold">{title}</h3>
+      <div className="flex items-center justify-between gap-2 mb-4">
+        <div className="flex items-center gap-2">
+          <span className="text-accent">{icon}</span>
+          <h3 className="font-display text-lg font-semibold">{title}</h3>
+        </div>
+        {!loading && tokens.length > PAGE && (
+          <div className="flex items-center gap-2">
+            <span className="text-[11px] font-mono tabular-nums text-muted-foreground">
+              {safePage + 1}/{pages}
+            </span>
+            <button
+              type="button"
+              onClick={() => setPage((p) => Math.max(0, Math.min(p, pages - 1) - 1))}
+              disabled={safePage === 0}
+              className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs hover:border-accent/40 disabled:opacity-30"
+            >
+              ‹ Prev
+            </button>
+            <button
+              type="button"
+              onClick={() => setPage((p) => Math.min(pages - 1, p + 1))}
+              disabled={safePage >= pages - 1}
+              className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs hover:border-accent/40 disabled:opacity-30"
+            >
+              Next ›
+            </button>
+          </div>
+        )}
       </div>
       {loading ? (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -493,8 +523,9 @@ function TokenGrid({
       ) : tokens.length === 0 ? (
         <EmptyHint label={emptyLabel} />
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {tokens.map((tk) => {
+        <div key={safePage} className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 animate-fade-in">
+          {slice.map((tk) => {
+
             const m = tk.metrics;
             const change = (m?.priceChangeBps ?? 0) / 100;
             const progress = Math.min(100, (m?.progressBps ?? 0) / 100);
