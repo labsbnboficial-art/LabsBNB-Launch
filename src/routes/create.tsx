@@ -92,8 +92,12 @@ type AdvancedState = {
   burn_pct: number;
   staking_pct: number;
   reward_pct: number;
+  staking_wallet: string;
+  reward_wallet: string;
   paid_tx: string | null;
 };
+
+const EVM_ADDRESS = /^0x[a-fA-F0-9]{40}$/;
 
 const initialAdvanced: AdvancedState = {
   enabled: false,
@@ -101,8 +105,11 @@ const initialAdvanced: AdvancedState = {
   burn_pct: 10,
   staking_pct: 20,
   reward_pct: 10,
+  staking_wallet: "",
+  reward_wallet: "",
   paid_tx: null,
 };
+
 
 const initial: FormState = {
   name: "", ticker: "", description: "", logo_url: "", banner_url: "", metadata_uri: "",
