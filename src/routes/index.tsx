@@ -9,7 +9,7 @@ import { formatPrice } from "@/lib/web3/live-price";
 import { tokenMediaUrl } from "@/lib/media-url";
 
 import { Button } from "@/components/ui/button";
-import { ArrowRight, Rocket, Search, Sparkles, TrendingUp, Clock, Flame, LineChart } from "lucide-react";
+import { ArrowRight, Rocket, Search, Sparkles, TrendingUp, Clock, LineChart } from "lucide-react";
 import { useMemo, useState } from "react";
 import { BoostSection } from "@/components/labsbnb/BoostSection";
 
