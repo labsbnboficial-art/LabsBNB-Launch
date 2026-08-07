@@ -314,8 +314,8 @@ function LandingPage() {
             empty={chainTokens.isLoading ? "Leyendo la blockchain…" : "Ninguna curva ha avanzado todavía."}
           />
           <TokenCarousel
-
             title="Top gainers 24h"
+
             icon={<TrendingUp className="h-4 w-4 text-success" />}
             tokens={topGainers}
             rightLabel="cambio 24h"
