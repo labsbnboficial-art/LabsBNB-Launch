@@ -618,16 +618,29 @@ function AdvancedTokenomics({
   }, [feeWei]);
   const total = adv.lp_pct + adv.burn_pct + adv.staking_pct + adv.reward_pct;
   const { sendTransactionAsync, isPending } = useSendTransaction();
+  const { switchChainAsync } = useSwitchChain();
+  const walletChainId = useChainId();
   const [txHash, setTxHash] = useState<`0x${string}` | undefined>(undefined);
   const { isLoading: confirming, isSuccess } = useWaitForTransactionReceipt({ hash: txHash });
 
+  // The service is only unlocked once the receipt confirms on-chain.
+  useEffect(() => {
+    if (isSuccess && txHash) {
+      setAdv((a) => (a.paid_tx === txHash ? a : { ...a, paid_tx: txHash }));
+      toast.success("Pago confirmado on-chain. Advanced tokenomics desbloqueado.");
+    }
+  }, [isSuccess, txHash, setAdv]);
+
   async function pay() {
     try {
+      // Trust Wallet / WalletConnect reject wagmi's implicit `chainId` switch
+      // with -32002, so we switch (and add the network) explicitly first and
+      // then send the transfer without forcing a second switch.
+      await ensureChain(97, walletChainId, switchChainAsync);
       const value = parseUnits(String(feeBnb || 0), 18);
-      const hash = await sendTransactionAsync({ to: adminWallet, value, chainId: 97 });
+      const hash = await sendTransactionAsync({ to: adminWallet, value });
       setTxHash(hash);
-      setAdv((a) => ({ ...a, paid_tx: hash }));
-      toast.success("Payment sent, waiting for confirmation…");
+      toast.success("Pago enviado, esperando confirmación…");
     } catch (e) {
       toast.error(describeTxError(e));
     }
@@ -636,6 +649,7 @@ function AdvancedTokenomics({
   const paid = Boolean(adv.paid_tx);
   const setPct = (k: keyof AdvancedState, v: number) =>
     setAdv((a) => ({ ...a, [k]: Math.max(0, Math.min(100, Math.floor(v || 0))) }));
+
 
   return (
     <div className="rounded-xl border border-primary/30 bg-primary/5 p-5">
