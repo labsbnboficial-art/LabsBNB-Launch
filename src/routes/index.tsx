@@ -9,7 +9,7 @@ import { formatPrice } from "@/lib/web3/live-price";
 import { tokenMediaUrl } from "@/lib/media-url";
 
 import { Button } from "@/components/ui/button";
-import { ArrowRight, Rocket, Search, Sparkles, TrendingUp, Clock, Flame, LineChart } from "lucide-react";
+import { ArrowRight, Rocket, Search, Sparkles, TrendingUp, Clock, LineChart } from "lucide-react";
 import { useMemo, useState } from "react";
 import { BoostSection } from "@/components/labsbnb/BoostSection";
 
@@ -131,13 +131,6 @@ function LandingPage() {
     );
   }, [merged, q]);
 
-  const trending = useMemo(
-    () =>
-      [...merged]
-        .filter((tk) => wei(tk.metrics?.volume24hWei) > 0)
-        .sort((a, b) => wei(b.metrics?.volume24hWei) - wei(a.metrics?.volume24hWei)),
-    [merged],
-  );
 
   const nearGraduation = useMemo(
     () =>
@@ -298,21 +291,13 @@ function LandingPage() {
         <TokenGrid
           title={t("section.latest")}
           icon={<Clock className="h-4 w-4" />}
-          tokens={filtered.slice(0, 12)}
+          tokens={filtered}
           bnbUsd={bnbUsd}
           loading={dbTokens.isLoading && chainTokens.isLoading}
           emptyLabel={q ? "Sin coincidencias para tu búsqueda." : t("empty.noTokens")}
         />
 
         <div className="grid gap-8 md:grid-cols-2">
-          <TokenCarousel
-            title={t("section.trending")}
-            icon={<Flame className="h-4 w-4 text-accent" />}
-            tokens={trending}
-            rightLabel="vol 24h"
-            renderRight={(tk) => `${wei(tk.metrics?.volume24hWei).toFixed(3)} BNB`}
-            empty={chainTokens.isLoading ? "Leyendo la blockchain…" : "Todavía no hay volumen en las últimas 24h."}
-          />
           <TokenCarousel
             title={t("section.nearGraduation")}
             icon={<TrendingUp className="h-4 w-4 text-accent" />}
@@ -321,11 +306,9 @@ function LandingPage() {
             renderRight={(tk) => `${((tk.metrics?.progressBps ?? 0) / 100).toFixed(2)}%`}
             empty={chainTokens.isLoading ? "Leyendo la blockchain…" : "Ninguna curva ha avanzado todavía."}
           />
-        </div>
-
-        <div className="grid gap-8 md:grid-cols-2">
           <TokenCarousel
             title="Top gainers 24h"
+
             icon={<TrendingUp className="h-4 w-4 text-success" />}
             tokens={topGainers}
             rightLabel="cambio 24h"
@@ -473,7 +456,6 @@ function TokenCarousel({
 }
 
 function TokenGrid({
-
   title,
   icon,
   tokens,
@@ -488,11 +470,42 @@ function TokenGrid({
   emptyLabel: string;
   bnbUsd: number;
 }) {
+  const PAGE = 5;
+  const [page, setPage] = useState(0);
+  const pages = Math.max(1, Math.ceil(tokens.length / PAGE));
+  const safePage = Math.min(page, pages - 1);
+  const slice = tokens.slice(safePage * PAGE, safePage * PAGE + PAGE);
+
   return (
     <div>
-      <div className="flex items-center gap-2 mb-4">
-        <span className="text-accent">{icon}</span>
-        <h3 className="font-display text-lg font-semibold">{title}</h3>
+      <div className="flex items-center justify-between gap-2 mb-4">
+        <div className="flex items-center gap-2">
+          <span className="text-accent">{icon}</span>
+          <h3 className="font-display text-lg font-semibold">{title}</h3>
+        </div>
+        {!loading && tokens.length > PAGE && (
+          <div className="flex items-center gap-2">
+            <span className="text-[11px] font-mono tabular-nums text-muted-foreground">
+              {safePage + 1}/{pages}
+            </span>
+            <button
+              type="button"
+              onClick={() => setPage((p) => Math.max(0, Math.min(p, pages - 1) - 1))}
+              disabled={safePage === 0}
+              className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs hover:border-accent/40 disabled:opacity-30"
+            >
+              ‹ Prev
+            </button>
+            <button
+              type="button"
+              onClick={() => setPage((p) => Math.min(pages - 1, p + 1))}
+              disabled={safePage >= pages - 1}
+              className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs hover:border-accent/40 disabled:opacity-30"
+            >
+              Next ›
+            </button>
+          </div>
+        )}
       </div>
       {loading ? (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -503,8 +516,9 @@ function TokenGrid({
       ) : tokens.length === 0 ? (
         <EmptyHint label={emptyLabel} />
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {tokens.map((tk) => {
+        <div key={safePage} className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 animate-fade-in">
+          {slice.map((tk) => {
+
             const m = tk.metrics;
             const change = (m?.priceChangeBps ?? 0) / 100;
             const progress = Math.min(100, (m?.progressBps ?? 0) / 100);

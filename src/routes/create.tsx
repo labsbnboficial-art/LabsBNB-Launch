@@ -3,7 +3,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { uploadTokenMedia } from "@/lib/media.functions";
 import { saveTokenProfile } from "@/lib/tokens.functions";
 import { SOCIAL_FIELDS, normalizeSocial, type SocialKey } from "@/lib/social";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { z } from "zod";
 import { useAccount, useSendTransaction, useWaitForTransactionReceipt, useWriteContract, useSwitchChain, usePublicClient, useChainId } from "wagmi";
@@ -92,8 +92,12 @@ type AdvancedState = {
   burn_pct: number;
   staking_pct: number;
   reward_pct: number;
+  staking_wallet: string;
+  reward_wallet: string;
   paid_tx: string | null;
 };
+
+const EVM_ADDRESS = /^0x[a-fA-F0-9]{40}$/;
 
 const initialAdvanced: AdvancedState = {
   enabled: false,
@@ -101,8 +105,11 @@ const initialAdvanced: AdvancedState = {
   burn_pct: 10,
   staking_pct: 20,
   reward_pct: 10,
+  staking_wallet: "",
+  reward_wallet: "",
   paid_tx: null,
 };
+
 
 const initial: FormState = {
   name: "", ticker: "", description: "", logo_url: "", banner_url: "", metadata_uri: "",
@@ -214,6 +221,11 @@ function CreatePage() {
               burn_pct: adv.burn_pct,
               staking_pct: adv.staking_pct,
               reward_pct: adv.reward_pct,
+              staking_wallet: adv.staking_wallet || null,
+              reward_wallet: adv.reward_wallet || null,
+              // Allocations stay reserved on the curve; they are only sent to
+              // these wallets after the bonding curve graduates.
+              distribution_status: "pending_graduation",
               payment_tx: adv.paid_tx,
               payment_wallet: cfg?.admin_wallet ?? null,
               payment_amount_wei: cfg?.advanced_creation_fee_bnb ?? null,
@@ -246,7 +258,14 @@ function CreatePage() {
     if (adv.enabled) {
       const total = adv.lp_pct + adv.burn_pct + adv.staking_pct + adv.reward_pct;
       if (total !== 100) { toast.error(`Advanced % must sum to 100 (current: ${total})`); return; }
+      if (adv.staking_pct > 0 && !EVM_ADDRESS.test(adv.staking_wallet.trim())) {
+        toast.error("Staking wallet: introduce una dirección BNB (EVM) válida."); return;
+      }
+      if (adv.reward_pct > 0 && !EVM_ADDRESS.test(adv.reward_wallet.trim())) {
+        toast.error("Reward wallet: introduce una dirección BNB (EVM) válida."); return;
+      }
     }
+
     if (!factory) { toast.error("Factory address not configured"); return; }
     setSubmitting(true);
     setDeployTx(null);
@@ -599,16 +618,29 @@ function AdvancedTokenomics({
   }, [feeWei]);
   const total = adv.lp_pct + adv.burn_pct + adv.staking_pct + adv.reward_pct;
   const { sendTransactionAsync, isPending } = useSendTransaction();
+  const { switchChainAsync } = useSwitchChain();
+  const walletChainId = useChainId();
   const [txHash, setTxHash] = useState<`0x${string}` | undefined>(undefined);
   const { isLoading: confirming, isSuccess } = useWaitForTransactionReceipt({ hash: txHash });
 
+  // The service is only unlocked once the receipt confirms on-chain.
+  useEffect(() => {
+    if (isSuccess && txHash) {
+      setAdv((a) => (a.paid_tx === txHash ? a : { ...a, paid_tx: txHash }));
+      toast.success("Pago confirmado on-chain. Advanced tokenomics desbloqueado.");
+    }
+  }, [isSuccess, txHash, setAdv]);
+
   async function pay() {
     try {
+      // Trust Wallet / WalletConnect reject wagmi's implicit `chainId` switch
+      // with -32002, so we switch (and add the network) explicitly first and
+      // then send the transfer without forcing a second switch.
+      await ensureChain(97, walletChainId, switchChainAsync);
       const value = parseUnits(String(feeBnb || 0), 18);
-      const hash = await sendTransactionAsync({ to: adminWallet, value, chainId: 97 });
+      const hash = await sendTransactionAsync({ to: adminWallet, value });
       setTxHash(hash);
-      setAdv((a) => ({ ...a, paid_tx: hash }));
-      toast.success("Payment sent, waiting for confirmation…");
+      toast.success("Pago enviado, esperando confirmación…");
     } catch (e) {
       toast.error(describeTxError(e));
     }
@@ -617,6 +649,7 @@ function AdvancedTokenomics({
   const paid = Boolean(adv.paid_tx);
   const setPct = (k: keyof AdvancedState, v: number) =>
     setAdv((a) => ({ ...a, [k]: Math.max(0, Math.min(100, Math.floor(v || 0))) }));
+
 
   return (
     <div className="rounded-xl border border-primary/30 bg-primary/5 p-5">
@@ -680,6 +713,48 @@ function AdvancedTokenomics({
           <div className={`text-xs ${total === 100 ? "text-accent" : "text-destructive"}`}>
             Total: {total}% {total === 100 ? "✓" : "(must equal 100)"}
           </div>
+
+          <div className="grid gap-3 md:grid-cols-2">
+            {([
+              ["staking_wallet", "Staking wallet", adv.staking_pct] as const,
+              ["reward_wallet", "Reward wallet", adv.reward_pct] as const,
+            ]).map(([key, label, pct]) => {
+              const value = adv[key];
+              const invalid = pct > 0 && value.trim() !== "" && !EVM_ADDRESS.test(value.trim());
+              return (
+                <div key={key}>
+                  <Label className="text-xs uppercase tracking-widest text-muted-foreground mb-1.5 block">
+                    {label} · {pct}%
+                  </Label>
+                  <Input
+                    placeholder="0x…"
+                    spellCheck={false}
+                    value={value}
+                    disabled={!paid || pct === 0}
+                    onChange={(e) => setAdv((a) => ({ ...a, [key]: e.target.value.trim() }))}
+                    className={invalid ? "border-destructive" : ""}
+                  />
+                  <p className={`mt-1 text-[11px] ${invalid ? "text-destructive" : "text-muted-foreground"}`}>
+                    {invalid
+                      ? "Dirección EVM inválida (0x + 40 caracteres hex)."
+                      : key === "staking_wallet"
+                        ? "Recibirá la asignación destinada a Staking."
+                        : "Recibirá la asignación destinada a Rewards."}
+                  </p>
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="rounded-lg border border-accent/25 bg-accent/5 p-3 text-[11px] leading-relaxed text-muted-foreground">
+            <span className="font-semibold text-accent">Cuándo se envían los tokens:</span> durante la bonding curve
+            las asignaciones de Staking y Reward quedan <span className="font-mono">reservadas</span> y solo se
+            muestran como porcentaje. La distribución a estas wallets se ejecuta al graduar la curva (migración a
+            PancakeSwap). El contrato <span className="font-mono">BondingCurve</span> desplegado no expone todavía
+            una función de distribución post-graduación, por lo que el estado quedará como{" "}
+            <span className="font-mono">pending_graduation</span> hasta redeployar el contrato con ese método.
+          </div>
+
         </div>
       )}
     </div>
