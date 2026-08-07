@@ -221,6 +221,11 @@ function CreatePage() {
               burn_pct: adv.burn_pct,
               staking_pct: adv.staking_pct,
               reward_pct: adv.reward_pct,
+              staking_wallet: adv.staking_wallet || null,
+              reward_wallet: adv.reward_wallet || null,
+              // Allocations stay reserved on the curve; they are only sent to
+              // these wallets after the bonding curve graduates.
+              distribution_status: "pending_graduation",
               payment_tx: adv.paid_tx,
               payment_wallet: cfg?.admin_wallet ?? null,
               payment_amount_wei: cfg?.advanced_creation_fee_bnb ?? null,
