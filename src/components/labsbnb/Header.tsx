@@ -157,30 +157,9 @@ export function Header() {
               {shortAddr(address)}
             </Button>
           ) : (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  disabled={isPending}
-                  className="h-9 brand-gradient text-primary-foreground font-medium hover:opacity-90 glow-primary"
-                >
-                  <Wallet className="h-3.5 w-3.5 mr-1.5" />
-                  {t("nav.connect")}
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56 glass-strong">
-                {connectors.map((c) => (
-                  <DropdownMenuItem
-                    key={c.uid}
-                    onClick={() => connect({ connector: c })}
-                    className="cursor-pointer"
-                  >
-                    <Wallet className="h-3.5 w-3.5 mr-2" />
-                    {c.name}
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <ConnectMenu />
           )}
+
         </div>
       </div>
     </header>
