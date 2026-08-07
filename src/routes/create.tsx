@@ -258,7 +258,14 @@ function CreatePage() {
     if (adv.enabled) {
       const total = adv.lp_pct + adv.burn_pct + adv.staking_pct + adv.reward_pct;
       if (total !== 100) { toast.error(`Advanced % must sum to 100 (current: ${total})`); return; }
+      if (adv.staking_pct > 0 && !EVM_ADDRESS.test(adv.staking_wallet.trim())) {
+        toast.error("Staking wallet: introduce una dirección BNB (EVM) válida."); return;
+      }
+      if (adv.reward_pct > 0 && !EVM_ADDRESS.test(adv.reward_wallet.trim())) {
+        toast.error("Reward wallet: introduce una dirección BNB (EVM) válida."); return;
+      }
     }
+
     if (!factory) { toast.error("Factory address not configured"); return; }
     setSubmitting(true);
     setDeployTx(null);
