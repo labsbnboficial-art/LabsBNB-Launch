@@ -131,13 +131,6 @@ function LandingPage() {
     );
   }, [merged, q]);
 
-  const trending = useMemo(
-    () =>
-      [...merged]
-        .filter((tk) => wei(tk.metrics?.volume24hWei) > 0)
-        .sort((a, b) => wei(b.metrics?.volume24hWei) - wei(a.metrics?.volume24hWei)),
-    [merged],
-  );
 
   const nearGraduation = useMemo(
     () =>
