@@ -3,7 +3,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { uploadTokenMedia } from "@/lib/media.functions";
 import { saveTokenProfile } from "@/lib/tokens.functions";
 import { SOCIAL_FIELDS, normalizeSocial, type SocialKey } from "@/lib/social";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { z } from "zod";
 import { useAccount, useSendTransaction, useWaitForTransactionReceipt, useWriteContract, useSwitchChain, usePublicClient, useChainId } from "wagmi";
