@@ -713,6 +713,48 @@ function AdvancedTokenomics({
           <div className={`text-xs ${total === 100 ? "text-accent" : "text-destructive"}`}>
             Total: {total}% {total === 100 ? "✓" : "(must equal 100)"}
           </div>
+
+          <div className="grid gap-3 md:grid-cols-2">
+            {([
+              ["staking_wallet", "Staking wallet", adv.staking_pct] as const,
+              ["reward_wallet", "Reward wallet", adv.reward_pct] as const,
+            ]).map(([key, label, pct]) => {
+              const value = adv[key];
+              const invalid = pct > 0 && value.trim() !== "" && !EVM_ADDRESS.test(value.trim());
+              return (
+                <div key={key}>
+                  <Label className="text-xs uppercase tracking-widest text-muted-foreground mb-1.5 block">
+                    {label} · {pct}%
+                  </Label>
+                  <Input
+                    placeholder="0x…"
+                    spellCheck={false}
+                    value={value}
+                    disabled={!paid || pct === 0}
+                    onChange={(e) => setAdv((a) => ({ ...a, [key]: e.target.value.trim() }))}
+                    className={invalid ? "border-destructive" : ""}
+                  />
+                  <p className={`mt-1 text-[11px] ${invalid ? "text-destructive" : "text-muted-foreground"}`}>
+                    {invalid
+                      ? "Dirección EVM inválida (0x + 40 caracteres hex)."
+                      : key === "staking_wallet"
+                        ? "Recibirá la asignación destinada a Staking."
+                        : "Recibirá la asignación destinada a Rewards."}
+                  </p>
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="rounded-lg border border-accent/25 bg-accent/5 p-3 text-[11px] leading-relaxed text-muted-foreground">
+            <span className="font-semibold text-accent">Cuándo se envían los tokens:</span> durante la bonding curve
+            las asignaciones de Staking y Reward quedan <span className="font-mono">reservadas</span> y solo se
+            muestran como porcentaje. La distribución a estas wallets se ejecuta al graduar la curva (migración a
+            PancakeSwap). El contrato <span className="font-mono">BondingCurve</span> desplegado no expone todavía
+            una función de distribución post-graduación, por lo que el estado quedará como{" "}
+            <span className="font-mono">pending_graduation</span> hasta redeployar el contrato con ese método.
+          </div>
+
         </div>
       )}
     </div>
