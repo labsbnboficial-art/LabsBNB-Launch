@@ -613,14 +613,20 @@ function AdvancedTokenomics({
   feeWei: string;
   adminWallet: `0x${string}`;
 }) {
-  const feeBnb = useMemo(() => {
-    try { return Number(BigInt(feeWei)) / 1e18; } catch { return 0; }
+  // Keep the fee as wei (bigint) end-to-end: converting through a float first
+  // loses precision and can hand the wallet a bogus `value`.
+  const feeWeiBig = useMemo(() => {
+    try { return BigInt(feeWei || "0"); } catch { return 0n; }
   }, [feeWei]);
+  const feeBnb = useMemo(() => Number(feeWeiBig) / 1e18, [feeWeiBig]);
   const total = adv.lp_pct + adv.burn_pct + adv.staking_pct + adv.reward_pct;
   const { sendTransactionAsync, isPending } = useSendTransaction();
   const { switchChainAsync } = useSwitchChain();
   const walletChainId = useChainId();
+  const { address, connector } = useAccount();
+  const publicClient = usePublicClient({ chainId: ACTIVE_CHAIN_ID });
   const [txHash, setTxHash] = useState<`0x${string}` | undefined>(undefined);
+  const [busy, setBusy] = useState(false);
   const { isLoading: confirming, isSuccess } = useWaitForTransactionReceipt({ hash: txHash });
 
   // The service is only unlocked once the receipt confirms on-chain.
@@ -631,18 +637,64 @@ function AdvancedTokenomics({
     }
   }, [isSuccess, txHash, setAdv]);
 
+  /**
+   * Connect → check chain → check balance → estimate gas → send → receipt.
+   * Nothing is unlocked before the receipt confirms (see the effect above).
+   */
   async function pay() {
+    const ctx = {
+      action: "advanced-tokenomics-unlock",
+      chainId: ACTIVE_CHAIN_ID,
+      walletChainId,
+      account: address,
+      to: adminWallet,
+      value: feeWeiBig,
+      connector: connector?.name,
+      rpcUrl: BSC_TESTNET_RPC,
+    };
+    setBusy(true);
     try {
-      // Trust Wallet / WalletConnect reject wagmi's implicit `chainId` switch
-      // with -32002, so we switch (and add the network) explicitly first and
-      // then send the transfer without forcing a second switch.
-      await ensureChain(97, walletChainId, switchChainAsync);
-      const value = parseUnits(String(feeBnb || 0), 18);
-      const hash = await sendTransactionAsync({ to: adminWallet, value });
+      if (!address) throw new Error("Conecta la wallet antes de pagar.");
+      if (feeWeiBig <= 0n) throw new Error("La comisión configurada es 0. Revísala en el panel de admin.");
+
+      // 1) Network — re-read from the connector itself, not from wagmi's cache.
+      await ensureChain(ACTIVE_CHAIN_ID, walletChainId, switchChainAsync, () => connector?.getChainId());
+      const live = await connector?.getChainId();
+      if (live !== undefined && live !== ACTIVE_CHAIN_ID) {
+        throw new Error(
+          `Tu wallet sigue en chain ${live}. Cambia manualmente a BNB Smart Chain Testnet (97) y reintenta.`,
+        );
+      }
+
+      // 2) Balance must cover value + gas.
+      let gas: bigint | undefined;
+      if (publicClient) {
+        const balance = await publicClient.getBalance({ address });
+        gas = await publicClient.estimateGas({ account: address, to: adminWallet, value: feeWeiBig });
+        const gasPrice = await publicClient.getGasPrice();
+        const cost = feeWeiBig + gas * gasPrice;
+        if (balance < cost) {
+          throw new Error(
+            `Insufficient tBNB for payment + gas (tienes ${(Number(balance) / 1e18).toFixed(5)} tBNB, ` +
+              `necesitas ~${(Number(cost) / 1e18).toFixed(5)} tBNB).`,
+          );
+        }
+      }
+
+      // 3) Send. `gas` comes from the real estimate (+25% headroom), never an
+      //    arbitrary large limit; Trust Wallet rejects transactions with no gas
+      //    field on some WalletConnect sessions.
+      const hash = await sendTransactionAsync({
+        to: adminWallet,
+        value: feeWeiBig,
+        ...(gas ? { gas: (gas * 125n) / 100n } : {}),
+      });
       setTxHash(hash);
       toast.success("Pago enviado, esperando confirmación…");
     } catch (e) {
-      toast.error(describeTxError(e));
+      toast.error(describeTxErrorVerbose(e, ctx), { duration: 12_000 });
+    } finally {
+      setBusy(false);
     }
   }
 
