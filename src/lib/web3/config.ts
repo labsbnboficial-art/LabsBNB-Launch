@@ -40,7 +40,7 @@ export const web3Config = createConfig({
     coinbaseWallet({
       appName: appMeta.name,
       appLogoUrl: appMeta.icons[0],
-      preference: "all",
+      preference: { options: "all" },
     }),
   ],
   transports: {
