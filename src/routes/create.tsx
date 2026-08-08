@@ -19,7 +19,8 @@ import { Switch } from "@/components/ui/switch";
 import { supabase } from "@/integrations/supabase/client";
 import { useSiweSignIn } from "@/lib/use-siwe";
 import { useLaunchpadConfig } from "@/lib/launchpad-config";
-import { describeTxError, ensureChain } from "@/lib/web3/tx";
+import { describeTxError, describeTxErrorVerbose, ensureChain } from "@/lib/web3/tx";
+import { ACTIVE_CHAIN_ID, BSC_TESTNET_RPC } from "@/lib/web3/config";
 import { toast } from "sonner";
 import { Rocket, Check, ArrowLeft, ArrowRight, Sparkles, Lock } from "lucide-react";
 
