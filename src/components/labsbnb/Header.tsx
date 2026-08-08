@@ -7,6 +7,7 @@ import { useI18n } from "@/lib/i18n";
 import { useAuth } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
 import { describeTxError } from "@/lib/web3/tx";
+import { ACTIVE_CHAIN_ID } from "@/lib/web3/config";
 import { Button } from "@/components/ui/button";
 import { Wallet, Rocket, Trophy, User, Globe, Search, Bell, Sparkles } from "lucide-react";
 import { RiskDisclaimer } from "@/components/labsbnb/RiskDisclaimer";
