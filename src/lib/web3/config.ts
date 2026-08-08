@@ -34,7 +34,14 @@ export const web3Config = createConfig({
       showQrModal: true,
     }),
     injected({ shimDisconnect: true }),
-    coinbaseWallet({ appName: appMeta.name }),
+    // `preference: "all"` keeps both the Coinbase extension and the mobile /
+    // smart-wallet popup available. Requires @coinbase/wallet-sdk v4, which is
+    // an optional peer of @wagmi/connectors and must stay installed.
+    coinbaseWallet({
+      appName: appMeta.name,
+      appLogoUrl: appMeta.icons[0],
+      preference: "all",
+    }),
   ],
   transports: {
     [bscTestnet.id]: testnetTransport({ batch: true }),
