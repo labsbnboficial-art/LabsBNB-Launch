@@ -50,13 +50,25 @@ function ConnectMenu() {
     try {
       await connectAsync({ connector });
     } catch (e) {
+      // Full technical detail to the console only; the toast stays generic.
+      console.error("[labsbnb] connect failed", {
+        connector: connector.name,
+        id: connector.id,
+        chainId: ACTIVE_CHAIN_ID,
+        error: e,
+        cause: (e as { cause?: unknown })?.cause,
+      });
       const msg = describeTxError(e);
       if (!/cancelada|rejected/i.test(msg)) toast.error(msg);
     }
   }
 
-  const label = (name: string) =>
-    /walletconnect/i.test(name) ? "WalletConnect (Trust, Binance, OKX…)" : name;
+  const label = (name: string) => {
+    if (/walletconnect/i.test(name)) return "WalletConnect (Trust, Binance, OKX…)";
+    if (/^injected$/i.test(name)) return "MetaMask / Wallet del navegador";
+    return name;
+  };
+
 
   return (
     <div className="relative" ref={ref}>
