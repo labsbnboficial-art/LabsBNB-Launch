@@ -142,3 +142,123 @@ export function describeTxError(error: unknown): string {
   }
   return e.shortMessage || e.details || e.message || "Error desconocido.";
 }
+
+// ---------------------------------------------------------------------------
+// Full-fidelity RPC diagnostics.
+//
+// Trust Wallet / WalletConnect frequently answer with `{ code: -32603 }` and no
+// message, which viem prints as "An unknown RPC error occurred". That string is
+// useless on its own, so we walk the whole `cause` chain, dump every field to
+// the console together with the exact request context, and surface the deepest
+// real message we can find in the UI.
+// ---------------------------------------------------------------------------
+
+export type TxContext = {
+  action: string;
+  chainId?: number;
+  walletChainId?: number;
+  account?: string;
+  to?: string;
+  contract?: string;
+  functionName?: string;
+  args?: unknown;
+  value?: bigint;
+  gas?: bigint;
+  rpcUrl?: string;
+  connector?: string;
+};
+
+type ErrLike = Record<string, unknown>;
+
+function causeChain(error: unknown, depth = 8): ErrLike[] {
+  const out: ErrLike[] = [];
+  let cur: unknown = error;
+  while (cur && typeof cur === "object" && out.length < depth) {
+    const e = cur as ErrLike;
+    out.push({
+      name: e["name"],
+      message: e["message"],
+      shortMessage: e["shortMessage"],
+      details: e["details"],
+      code: e["code"],
+      data: e["data"],
+      reason: e["reason"],
+      metaMessages: e["metaMessages"],
+      version: e["version"],
+    });
+    cur = e["cause"];
+  }
+  return out;
+}
+
+/** Console dump of the untouched provider error plus the request context. */
+export function logTxError(error: unknown, ctx: TxContext) {
+  const chain = causeChain(error);
+  // eslint-disable-next-line no-console
+  console.group?.(`[labsbnb] tx failed — ${ctx.action}`);
+  // eslint-disable-next-line no-console
+  console.error("raw error", error);
+  // eslint-disable-next-line no-console
+  console.error("cause chain", chain);
+  // eslint-disable-next-line no-console
+  console.error("context", {
+    ...ctx,
+    value: ctx.value?.toString(),
+    gas: ctx.gas?.toString(),
+  });
+  // eslint-disable-next-line no-console
+  console.groupEnd?.();
+  return chain;
+}
+
+/** Deepest human-usable text found anywhere in the error chain. */
+function deepestMessage(error: unknown): string {
+  const parts: string[] = [];
+  for (const e of causeChain(error)) {
+    for (const key of ["shortMessage", "details", "reason", "message"] as const) {
+      const v = e[key];
+      if (typeof v === "string" && v.trim() && !parts.includes(v)) parts.push(v.trim());
+    }
+    const data = e["data"];
+    if (typeof data === "string" && data.startsWith("0x") && data.length > 2) parts.push(`data ${data}`);
+    const meta = e["metaMessages"];
+    if (Array.isArray(meta)) for (const m of meta) if (typeof m === "string") parts.push(m);
+  }
+  return parts.join(" | ");
+}
+
+function firstCode(error: unknown): number | string | undefined {
+  for (const e of causeChain(error)) {
+    const c = e["code"];
+    if (typeof c === "number" || typeof c === "string") return c;
+  }
+  return undefined;
+}
+
+/**
+ * Human message + the untouched technical detail appended, so nothing is ever
+ * hidden behind a generic string. Also logs the full error to the console.
+ */
+export function describeTxErrorVerbose(error: unknown, ctx: TxContext): string {
+  logTxError(error, ctx);
+  const friendly = describeTxError(error);
+  const code = firstCode(error);
+  const deep = deepestMessage(error);
+
+  // viem's placeholder when the wallet returns -32603 with no payload.
+  const opaque = /unknown rpc error/i.test(deep) || (!deep && code === -32603);
+  if (opaque) {
+    return (
+      `La wallet devolvió un error RPC sin detalle (code ${String(code ?? "-32603")}). ` +
+      `Suele ocurrir en Trust Wallet cuando la sesión WalletConnect quedó en otra red: ` +
+      `abre Trust → Settings → WalletConnect, cierra la sesión de LabsBNB, ` +
+      `selecciona BNB Smart Chain Testnet (97) y vuelve a conectar. ` +
+      `Contexto: ${ctx.action}, chain ${ctx.chainId} (wallet ${ctx.walletChainId ?? "?"}), ` +
+      `to ${ctx.to ?? ctx.contract ?? "?"}, value ${ctx.value?.toString() ?? "0"} wei` +
+      (ctx.gas ? `, gas ${ctx.gas.toString()}` : "")
+    );
+  }
+
+  const technical = [code != null ? `code ${code}` : null, deep || null].filter(Boolean).join(" — ");
+  return technical && !friendly.includes(technical) ? `${friendly} [${technical}]` : friendly;
+}
