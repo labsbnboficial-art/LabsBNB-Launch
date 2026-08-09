@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { useI18n } from "@/lib/i18n";
 import { useAuth } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
-import { describeTxError } from "@/lib/web3/tx";
+import { describeTxError, describeWalletError } from "@/lib/web3/tx";
 import { ACTIVE_CHAIN_ID } from "@/lib/web3/config";
 import { Button } from "@/components/ui/button";
 import { Wallet, Rocket, Trophy, User, Globe, Search, Bell, Sparkles } from "lucide-react";
@@ -51,13 +51,12 @@ function ConnectMenu() {
     try {
       await connectAsync({ connector });
     } catch (e) {
-      // Full technical detail to the console only; the toast stays generic.
-      console.error("[labsbnb] connect failed", {
-        connector: connector.name,
-        id: connector.id,
+      // Full cause chain (code + message + cause) goes to the console; the
+      // toast stays short. Never swallow the real reason, never auto-fallback
+      // to another wallet.
+      describeWalletError(e, {
+        connector: `${connector.name} (${connector.id})`,
         chainId: ACTIVE_CHAIN_ID,
-        error: e,
-        cause: (e as { cause?: unknown })?.cause,
       });
       const msg = describeTxError(e);
       if (!/cancelada|rejected/i.test(msg)) toast.error(msg);
