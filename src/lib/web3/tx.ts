@@ -86,9 +86,21 @@ export async function ensureChain(
     }
   }
 
-  const after = reread ? await reread() : undefined;
-  if (after === target) return;
-  // Give the wallet a moment: several mobile wallets resolve the switch late.
+  // Never trust the RPC answer alone: re-read the chain from the wallet.
+  // Some mobile wallets resolve the switch late, so poll briefly.
+  let after: number | undefined;
+  for (let i = 0; i < 4 && reread; i++) {
+    after = await reread();
+    if (after === target) return;
+    await new Promise((r) => setTimeout(r, 400));
+  }
+  if (after !== undefined && after !== target) {
+    throw new Error(
+      `Tu wallet sigue en ${chainName(after)} (chain ID ${after}). Cámbiala a ${chainName(target)} (${target}) y reintenta.`,
+    );
+  }
+  // Chain unknown (WalletConnect sessions may not expose it): only accept when
+  // the switch request itself did not fail.
   if (switchError === null) return;
 
   throw new Error(
@@ -96,6 +108,7 @@ export async function ensureChain(
       `Cámbiala manualmente en la wallet y vuelve a intentarlo. Detalle: ${describeTxError(switchError)}`,
   );
 }
+
 
 
 type AnyErr = {
@@ -261,4 +274,68 @@ export function describeTxErrorVerbose(error: unknown, ctx: TxContext): string {
 
   const technical = [code != null ? `code ${code}` : null, deep || null].filter(Boolean).join(" — ");
   return technical && !friendly.includes(technical) ? `${friendly} [${technical}]` : friendly;
+}
+
+// ---------------------------------------------------------------------------
+// Centralised wallet/RPC diagnostics (single source of truth — components must
+// not re-implement cause-chain parsing).
+// ---------------------------------------------------------------------------
+
+export type WalletErrorInfo = {
+  name?: unknown;
+  code?: number | string;
+  message: string;
+  shortMessage?: unknown;
+  details?: unknown;
+  chain: ErrLike[];
+  friendly: string;
+};
+
+/** Structured view of any wallet/connector error: walks the whole cause chain. */
+export function describeWalletError(
+  error: unknown,
+  ctx: { connector?: string; chainId?: number; account?: string } = {},
+): WalletErrorInfo {
+  const chain = causeChain(error);
+  const head = chain[0] ?? {};
+  const info: WalletErrorInfo = {
+    name: head["name"],
+    code: firstCode(error),
+    message: deepestMessage(error) || String(error),
+    shortMessage: head["shortMessage"],
+    details: head["details"],
+    chain,
+    friendly: describeTxError(error),
+  };
+  // eslint-disable-next-line no-console
+  console.error("[WALLET_ERROR]", { ...ctx, ...info, raw: error });
+  return info;
+}
+
+/** Same walk, framed for JSON-RPC failures during a transaction. */
+export function describeRpcError(error: unknown, ctx: TxContext): string {
+  return describeTxErrorVerbose(error, ctx);
+}
+
+/** Reads the chain id from the *wallet* (connector provider), never from a
+ * public RPC — a public client always answers 97 and hides a wrong network. */
+export async function walletChainId(connector?: {
+  getChainId?: () => Promise<number>;
+  getProvider?: () => Promise<unknown>;
+}): Promise<number | undefined> {
+  try {
+    if (connector?.getChainId) return Number(await connector.getChainId());
+  } catch (e) {
+    console.warn("[WALLET] connector.getChainId failed", e);
+  }
+  try {
+    const provider = (await connector?.getProvider?.()) as Eip1193 | undefined;
+    const p = provider ?? injectedProvider();
+    if (!p) return undefined;
+    const hex = (await p.request({ method: "eth_chainId" })) as string;
+    return Number.parseInt(hex, 16);
+  } catch (e) {
+    console.warn("[WALLET] eth_chainId failed", e);
+    return undefined;
+  }
 }

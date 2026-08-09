@@ -4,13 +4,13 @@
 import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAccount, useSendTransaction, useSwitchChain } from "wagmi";
-import { parseEther } from "viem";
+import { formatEther, parseEther } from "viem";
 import { toast } from "sonner";
 import { useServerFn } from "@tanstack/react-start";
 import { getBoostState, purchaseBoost } from "@/lib/boost.functions";
 import { readClient } from "@/lib/web3/onchain-token";
 import { ACTIVE_CHAIN_ID } from "@/lib/web3/config";
-import { describeTxError, ensureChain } from "@/lib/web3/tx";
+import { describeRpcError, describeWalletError, ensureChain, walletChainId } from "@/lib/web3/tx";
 import { BSC_TESTNET } from "@/lib/web3/abis";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -33,7 +33,7 @@ export function BoostPurchaseModal({ token, name, ticker }: Props) {
   const [busy, setBusy] = useState(false);
   const [step, setStep] = useState<string>("");
 
-  const { address: wallet, chainId } = useAccount();
+  const { address: wallet, chainId, connector } = useAccount();
   const { switchChainAsync } = useSwitchChain();
   const { sendTransactionAsync } = useSendTransaction();
   const queryClient = useQueryClient();
@@ -66,20 +66,73 @@ export function BoostPurchaseModal({ token, name, ticker }: Props) {
     if (!days || price <= 0) return toast.error("Selecciona un plan o indica los días.");
     if (invalidDays) return toast.error(`Máximo ${maxDays} días por compra.`);
 
+    const tag = "[IMPULSO_TX]";
+    const to = settings.wallet as `0x${string}`;
+    // Price in wei straight from the configured per-day price: never round-trip
+    // through a JS float when building `value`.
+    const value = planId
+      ? parseEther(String(price))
+      : parseEther(String(settings.pricePerDayBnb)) * BigInt(days);
+
     setBusy(true);
     try {
-      setStep("Comprobando la red…");
-      await ensureChain(ACTIVE_CHAIN_ID, chainId, switchChainAsync, async () =>
-        Number(await readClient().getChainId()),
-      );
-
-      setStep("Firma el pago en tu wallet…");
-      const txHash = await sendTransactionAsync({
-        to: settings.wallet as `0x${string}`,
-        value: parseEther(price.toFixed(8)),
+      console.info(tag, {
+        connector: connector?.name,
+        chainId,
+        account: wallet,
+        receiver: to,
+        value: value.toString(),
+        days,
+        planId,
       });
 
-      setStep("Verificando el pago on-chain…");
+      setStep("Comprobando la red…");
+      // The chain must be re-read from the WALLET (a public client always
+      // answers 97 and would hide a wrong network).
+      await ensureChain(ACTIVE_CHAIN_ID, chainId, switchChainAsync, () => walletChainId(connector));
+      const onChain = await walletChainId(connector);
+      console.info(tag, "chainId after switch =", onChain);
+      if (onChain !== undefined && onChain !== ACTIVE_CHAIN_ID) {
+        throw new Error(`Tu wallet está en la red ${onChain}. Cambia a BNB Smart Chain Testnet (97).`);
+      }
+
+      setStep("Comprobando saldo y gas…");
+      const rpc = readClient();
+      const [balance, gasPrice] = await Promise.all([
+        rpc.getBalance({ address: wallet as `0x${string}` }),
+        rpc.getGasPrice(),
+      ]);
+      let gas = 21_000n;
+      try {
+        gas = await rpc.estimateGas({ account: wallet as `0x${string}`, to, value });
+      } catch (e) {
+        console.warn(tag, "estimateGas failed, using 21000", e);
+      }
+      const cost = value + gas * gasPrice;
+      console.info(tag, {
+        balance: balance.toString(),
+        gas: gas.toString(),
+        gasPrice: gasPrice.toString(),
+        totalCost: cost.toString(),
+      });
+      if (balance < cost) {
+        throw new Error(
+          `Saldo insuficiente para cubrir el pago y el gas. Necesitas ~${formatEther(cost)} tBNB y tienes ${formatEther(balance)}.`,
+        );
+      }
+
+      setStep("Firma el pago en tu wallet…");
+      const txHash = await sendTransactionAsync({ to, value, gas: (gas * 125n) / 100n });
+      console.info(tag, "txHash =", txHash);
+
+      setStep("Esperando confirmación on-chain…");
+      const receipt = await rpc.waitForTransactionReceipt({ hash: txHash, timeout: 180_000 });
+      console.info(tag, "receipt", { status: receipt.status, block: receipt.blockNumber?.toString() });
+      if (receipt.status !== "success") {
+        throw new Error(`La transacción ${txHash} falló on-chain. No se registró ningún impulso.`);
+      }
+
+      setStep("Registrando el impulso…");
       const res = await buyFn({
         data: {
           token,
@@ -97,7 +150,23 @@ export function BoostPurchaseModal({ token, name, ticker }: Props) {
       queryClient.invalidateQueries({ queryKey: ["boost-state"] });
       setOpen(false);
     } catch (e) {
-      toast.error(describeTxError(e));
+      const info = describeWalletError(e, {
+        connector: connector?.name,
+        chainId,
+        account: wallet,
+      });
+      console.error("[IMPULSO_TX_ERROR]", { code: info.code, message: info.message, cause: info.chain });
+      toast.error(
+        describeRpcError(e, {
+          action: "Impulso payment",
+          chainId: ACTIVE_CHAIN_ID,
+          walletChainId: chainId,
+          account: wallet,
+          to,
+          value,
+          connector: connector?.name,
+        }),
+      );
     } finally {
       setBusy(false);
       setStep("");
