@@ -86,9 +86,21 @@ export async function ensureChain(
     }
   }
 
-  const after = reread ? await reread() : undefined;
-  if (after === target) return;
-  // Give the wallet a moment: several mobile wallets resolve the switch late.
+  // Never trust the RPC answer alone: re-read the chain from the wallet.
+  // Some mobile wallets resolve the switch late, so poll briefly.
+  let after: number | undefined;
+  for (let i = 0; i < 4 && reread; i++) {
+    after = await reread();
+    if (after === target) return;
+    await new Promise((r) => setTimeout(r, 400));
+  }
+  if (after !== undefined && after !== target) {
+    throw new Error(
+      `Tu wallet sigue en ${chainName(after)} (chain ID ${after}). Cámbiala a ${chainName(target)} (${target}) y reintenta.`,
+    );
+  }
+  // Chain unknown (WalletConnect sessions may not expose it): only accept when
+  // the switch request itself did not fail.
   if (switchError === null) return;
 
   throw new Error(
@@ -96,6 +108,7 @@ export async function ensureChain(
       `Cámbiala manualmente en la wallet y vuelve a intentarlo. Detalle: ${describeTxError(switchError)}`,
   );
 }
+
 
 
 type AnyErr = {
