@@ -25,6 +25,7 @@ import { updateTokenMeta } from "@/lib/token-meta.functions";
 import { fetchTopHolders } from "@/lib/web3/holders";
 import { Textarea } from "@/components/ui/textarea";
 import { uploadTokenMedia } from "@/lib/media.functions";
+import { uploadTokenImage } from "@/lib/image-upload";
 import { tokenMediaUrl } from "@/lib/media-url";
 import { BoostPurchaseModal } from "@/components/labsbnb/BoostPurchaseModal";
 
@@ -867,13 +868,8 @@ function TokenInformation({
     setUploading(kind);
     try {
       await ensureSession();
-      if (!/^image\/(png|jpeg|jpg|webp|gif)$/i.test(file.type)) throw new Error("Usa una imagen PNG, JPG, WEBP o GIF.");
-      if (file.size > 4 * 1024 * 1024) throw new Error("La imagen supera los 4 MB.");
-      const bytes = new Uint8Array(await file.arrayBuffer());
-      let binary = "";
-      for (let i = 0; i < bytes.length; i += 0x8000) binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
-      const result = await uploadMedia({ data: { kind, contentType: file.type, data: btoa(binary) } });
-      set(kind === "logo" ? "logo_url" : "banner_url", result.url);
+      const url = await uploadTokenImage(uploadMedia, kind, file);
+      set(kind === "logo" ? "logo_url" : "banner_url", url);
       toast.success("Imagen subida");
     } catch (error) {
       toast.error((error as Error).message);

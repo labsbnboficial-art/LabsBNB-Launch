@@ -1,6 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { uploadTokenMedia } from "@/lib/media.functions";
+import { uploadTokenImage } from "@/lib/image-upload";
 import { saveTokenProfile } from "@/lib/tokens.functions";
 import { SOCIAL_FIELDS, normalizeSocial, type SocialKey } from "@/lib/social";
 import { useEffect, useMemo, useState } from "react";
@@ -819,28 +820,6 @@ function AdvancedTokenomics({
  * files, which used to fail silently on Android/iOS) and re-encodes it to a
  * format every browser can display, then uploads it through the server.
  */
-async function prepareImage(file: File): Promise<{ contentType: string; base64: string }> {
-  const bitmap = await createImageBitmap(file).catch(() => null);
-  if (!bitmap) throw new Error("No pudimos leer la imagen. Usa PNG, JPG o WEBP.");
-  const MAX = 1024;
-  const scale = Math.min(1, MAX / Math.max(bitmap.width, bitmap.height));
-  const canvas = document.createElement("canvas");
-  canvas.width = Math.max(1, Math.round(bitmap.width * scale));
-  canvas.height = Math.max(1, Math.round(bitmap.height * scale));
-  const ctx = canvas.getContext("2d");
-  if (!ctx) throw new Error("Canvas no disponible en este navegador.");
-  ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
-  bitmap.close?.();
-
-  const type = file.type === "image/png" ? "image/png" : "image/jpeg";
-  const blob: Blob | null = await new Promise((r) => canvas.toBlob(r, type, 0.9));
-  if (!blob) throw new Error("No pudimos procesar la imagen.");
-  const buf = new Uint8Array(await blob.arrayBuffer());
-  let bin = "";
-  for (let i = 0; i < buf.length; i += 0x8000) bin += String.fromCharCode(...buf.subarray(i, i + 0x8000));
-  return { contentType: type, base64: btoa(bin) };
-}
-
 function FileUploader({ value, onChange, kind }: { value?: string; onChange: (url: string) => void; kind: "logo" | "banner" }) {
   const [busy, setBusy] = useState(false);
   const upload = useServerFn(uploadTokenMedia);
@@ -851,9 +830,8 @@ function FileUploader({ value, onChange, kind }: { value?: string; onChange: (ur
     setBusy(true);
     try {
       await ensureSession();
-      const { contentType, base64 } = await prepareImage(file);
-      const res = await upload({ data: { kind, contentType, data: base64 } });
-      onChange(res.url);
+      const url = await uploadTokenImage(upload, kind, file);
+      onChange(url);
       toast.success("Imagen subida");
     } catch (err) { toast.error((err as Error).message); }
     finally { setBusy(false); e.target.value = ""; }
