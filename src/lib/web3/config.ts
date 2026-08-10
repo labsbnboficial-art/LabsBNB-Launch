@@ -43,6 +43,9 @@ export const web3Config = createConfig({
       preference: { options: "all" },
     }),
   ],
+  // EIP-6963: wagmi adds one connector per announced wallet, so each browser
+  // wallet keeps its own provider instead of everyone sharing window.ethereum.
+  multiInjectedProviderDiscovery: true,
   transports: {
     [bscTestnet.id]: testnetTransport({ batch: true }),
   },
