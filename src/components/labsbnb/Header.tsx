@@ -8,6 +8,12 @@ import { useAuth } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
 import { describeTxError, describeWalletError } from "@/lib/web3/tx";
 import { ACTIVE_CHAIN_ID } from "@/lib/web3/config";
+import {
+  hasLegacyInjected,
+  listDiscoveredProviders,
+  subscribeProviders,
+  waitForInjectedProvider,
+} from "@/lib/web3/providers";
 import { Button } from "@/components/ui/button";
 import { Wallet, Rocket, Trophy, User, Globe, Search, Bell, Sparkles } from "lucide-react";
 import { RiskDisclaimer } from "@/components/labsbnb/RiskDisclaimer";
@@ -29,7 +35,20 @@ function ConnectMenu() {
   const { t } = useI18n();
   const { connectAsync, connectors, isPending } = useConnect();
   const [open, setOpen] = useState(false);
+  const [phase, setPhase] = useState<"detecting" | "ready">("detecting");
+  const [, force] = useState(0);
   const ref = useRef<HTMLDivElement>(null);
+
+  // EIP-6963 discovery runs on mount; wallets that announce late still show up.
+  useEffect(() => {
+    const unsub = subscribeProviders(() => force((n) => n + 1));
+    let alive = true;
+    void waitForInjectedProvider(1500).then(() => alive && setPhase("ready"));
+    return () => {
+      alive = false;
+      unsub();
+    };
+  }, []);
 
   useEffect(() => {
     if (!open) return;
@@ -40,6 +59,17 @@ function ConnectMenu() {
     return () => document.removeEventListener("mousedown", onDown);
   }, [open]);
 
+  const discovered = listDiscoveredProviders();
+
+  // Never show the generic `injected` entry alongside the EIP-6963 ones (it
+  // would resolve to a different provider than the wallet the user picked),
+  // and never show it at all when no browser provider exists.
+  const visible = connectors.filter((c) => {
+    if (c.id !== "injected") return true;
+    if (discovered.length > 0) return false;
+    return hasLegacyInjected() || phase === "detecting";
+  });
+
   async function pick(connectorId: string) {
     const connector = connectors.find((c) => c.uid === connectorId);
     if (!connector) return;
@@ -48,6 +78,32 @@ function ConnectMenu() {
     await new Promise((r) => setTimeout(r, 0));
     // Safety net against any stale scroll-lock left by another overlay.
     document.body.style.pointerEvents = "";
+
+    // Case A vs the rest: for browser wallets, make sure a provider actually
+    // exists before wagmi throws the opaque "Provider not found".
+    if (connector.type === "injected") {
+      const ok = (await waitForInjectedProvider(1500)) && Boolean(await connector.getProvider().catch(() => null));
+      if (!ok) {
+        console.warn("[WALLET_PROVIDER_ERROR] no provider", {
+          connector: `${connector.name} (${connector.id})`,
+          eip6963Providers: listDiscoveredProviders().map((p) => p.rdns),
+          injectedAvailable: hasLegacyInjected(),
+        });
+        toast.error(
+          "No se detectó una wallet compatible en este navegador. Instala MetaMask o conecta con WalletConnect.",
+        );
+        return;
+      }
+    }
+
+    // eslint-disable-next-line no-console
+    console.info("[WALLET_PROVIDER] selected", {
+      connector: `${connector.name} (${connector.id})`,
+      type: connector.type,
+      injectedAvailable: hasLegacyInjected(),
+      eip6963Providers: listDiscoveredProviders().map((p) => p.rdns),
+    });
+
     try {
       await connectAsync({ connector });
     } catch (e) {
@@ -59,6 +115,10 @@ function ConnectMenu() {
         chainId: ACTIVE_CHAIN_ID,
       });
       const msg = describeTxError(e);
+      if (/provider not found/i.test(msg)) {
+        toast.error("No se detectó una wallet compatible en este navegador.");
+        return;
+      }
       if (!/cancelada|rejected/i.test(msg)) toast.error(msg);
     }
   }
@@ -88,7 +148,7 @@ function ConnectMenu() {
           role="menu"
           className="absolute right-0 z-[100] mt-2 w-64 overflow-hidden rounded-xl glass-strong p-1 animate-fade-in"
         >
-          {connectors.map((c) => (
+          {visible.map((c) => (
             <button
               key={c.uid}
               type="button"
@@ -100,6 +160,9 @@ function ConnectMenu() {
               {label(c.name)}
             </button>
           ))}
+          {phase === "detecting" && (
+            <div className="px-3 py-2 text-xs text-muted-foreground">Detectando wallets…</div>
+          )}
         </div>
       )}
     </div>
