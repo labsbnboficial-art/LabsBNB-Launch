@@ -346,7 +346,7 @@ function TokenRowItem({
         className="flex items-center gap-3 rounded-xl border border-white/5 bg-white/5 px-3 py-2.5 hover:border-accent/40 transition"
       >
         <span className="w-4 text-xs font-mono text-muted-foreground">{rank}</span>
-        <TokenAvatar token={token} size="h-8 w-8" />
+        <TokenAvatar token={token} className="h-8 w-8" rounded="rounded-lg" />
         <div className="min-w-0 flex-1">
           <div className="truncate text-sm font-medium">{token.name}</div>
           <div className="font-mono text-[11px] text-muted-foreground">${token.ticker}</div>
