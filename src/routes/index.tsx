@@ -245,7 +245,61 @@ function LandingPage() {
         </div>
       </section>
 
+      {/* KING OF THE HILL */}
+      <section className="mx-auto mt-10 max-w-7xl px-4 md:px-6">
+        <KingOfTheHill
+          tokens={merged}
+          bnbUsd={bnbUsd}
+          loading={chainTokens.isLoading && !chainTokens.data}
+        />
+      </section>
+
+      {/* NEW LAUNCHES */}
+      <section className="mx-auto mt-10 max-w-7xl px-4 md:px-6">
+        <div className="mb-3 flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <Zap className="h-4 w-4 text-accent" />
+            <h3 className="font-display text-lg font-semibold">New launches</h3>
+          </div>
+          <a href="#tokens" className="text-xs text-muted-foreground hover:text-foreground">
+            View all →
+          </a>
+        </div>
+        {newLaunches.length ? (
+          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+            {newLaunches.map((tk) => (
+              <Link
+                key={tk.id}
+                to="/token/$address"
+                params={{ address: tk.contract_address ?? tk.id }}
+                className="glass card-glow grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-xl px-3 py-2.5"
+              >
+                <TokenAvatar token={tk} className="h-9 w-9" rounded="rounded-lg" />
+                <div className="min-w-0">
+                  <div className="truncate text-sm font-medium">{tk.name}</div>
+                  <div className="font-mono text-[10px] text-muted-foreground">
+                    ${tk.ticker} · {timeAgo(tk.created_at)}
+                  </div>
+                </div>
+                <div className="text-right">
+                  <div className="font-mono text-xs tabular-nums">
+                    {tk.metrics ? (bnbUsd ? fmtUsd(wei(tk.metrics.marketCapWei) * bnbUsd) : `${wei(tk.metrics.marketCapWei).toFixed(3)} BNB`) : "N/A"}
+                  </div>
+                  <div className="font-mono text-[10px] text-muted-foreground">
+                    {tk.metrics ? `${(tk.metrics.progressBps / 100).toFixed(1)}% curve` : "N/A"}
+                  </div>
+                </div>
+              </Link>
+            ))}
+          </div>
+        ) : (
+          <EmptyHint label={chainTokens.isLoading ? "Leyendo la blockchain…" : t("empty.noTokens")} />
+        )}
+      </section>
+
       <BoostSection />
+
+
 
       {/* SEARCH */}
       <section id="tokens" className="mx-auto max-w-7xl px-4 md:px-6 mt-4">
