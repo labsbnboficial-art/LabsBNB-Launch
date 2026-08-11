@@ -324,15 +324,8 @@ function EmptyHint({ label }: { label: string }) {
   );
 }
 
-function TokenAvatar({ token, size = "h-10 w-10" }: { token: TokenRow; size?: string }) {
-  return token.logo_url ? (
-    <img src={token.logo_url} alt={`${token.name} logo`} className={`${size} rounded-full object-cover`} />
-  ) : (
-    <div className={`${size} rounded-full brand-gradient grid place-items-center font-bold text-sm text-primary-foreground`}>
-      {token.ticker[0]}
-    </div>
-  );
-}
+
+
 
 function TokenRowItem({
   token,
