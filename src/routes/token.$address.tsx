@@ -16,6 +16,8 @@ import { useSiweSignIn } from "@/lib/use-siwe";
 import { fetchOnChainToken, isAddress, type OnChainToken } from "@/lib/web3/onchain-token";
 import { fetchTradePage, fetchCurveStats, buildCandles, TIMEFRAMES, type TimeframeId } from "@/lib/web3/curve-events";
 import { fetchLivePrice, formatPrice } from "@/lib/web3/live-price";
+import { computeAth, distanceFromAth, formatAthDate } from "@/lib/web3/ath";
+
 import { BSC_TESTNET } from "@/lib/web3/abis";
 import { CandleChart } from "@/components/labsbnb/CandleChart";
 import { TradePanel } from "@/components/labsbnb/TradePanel";
