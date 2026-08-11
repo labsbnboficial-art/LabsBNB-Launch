@@ -89,9 +89,14 @@
   --deep: oklch(0.17 0.045 254);
   --electric: oklch(0.68 0.19 246);
   --cyan-glow: oklch(0.84 0.13 196);
+  /* Premium tier only (King of the Hill / ATH) */
+  --gold: oklch(0.83 0.14 85);
+  --surface: oklch(0.22 0.05 254);
+  --surface-elevated: oklch(0.26 0.055 253);
 
   /* Gradients */
   --gradient-hero: radial-gradient(1200px 620px at 18% -5%, oklch(0.68 0.19 246 / 0.34), transparent 62%),
+
                    radial-gradient(900px 520px at 100% 10%, oklch(0.84 0.13 196 / 0.26), transparent 62%),
                    radial-gradient(700px 420px at 55% 105%, oklch(0.74 0.15 178 / 0.18), transparent 65%),
                    linear-gradient(180deg, oklch(0.22 0.055 254) 0%, oklch(0.155 0.042 254) 100%);
@@ -235,6 +240,55 @@
 @utility glow-soft {
   box-shadow: 0 0 0 1px oklch(0.68 0.19 246 / 0.16), 0 18px 46px -24px oklch(0.68 0.19 246 / 0.6);
 }
+
+/* ---------------------- Premium tier: King of the Hill ------------------- */
+
+@utility king-surface {
+  background:
+    radial-gradient(900px 420px at 12% -20%, oklch(0.83 0.14 85 / 0.16), transparent 62%),
+    radial-gradient(700px 380px at 100% 0%, oklch(0.68 0.19 246 / 0.2), transparent 65%),
+    linear-gradient(180deg, oklch(0.26 0.055 253 / 0.7), oklch(0.19 0.045 254 / 0.6));
+  border: 1px solid oklch(0.83 0.14 85 / 0.32);
+  box-shadow:
+    0 0 0 1px oklch(0.83 0.14 85 / 0.1),
+    0 26px 70px -34px oklch(0.83 0.14 85 / 0.55);
+  backdrop-filter: blur(18px) saturate(135%);
+}
+
+@utility gold-glow {
+  box-shadow: 0 0 22px oklch(0.83 0.14 85 / 0.35), 0 0 60px oklch(0.83 0.14 85 / 0.16);
+}
+
+@utility text-gold {
+  color: var(--gold);
+}
+
+@keyframes crown-hover {
+  0%, 100% { transform: translateY(0) rotate(-4deg); }
+  50% { transform: translateY(-4px) rotate(4deg); }
+}
+@utility animate-crown {
+  animation: crown-hover 4.5s ease-in-out infinite;
+  will-change: transform;
+}
+
+@keyframes king-sheen {
+  0% { transform: translate3d(-30%, 0, 0); opacity: 0; }
+  40% { opacity: 0.35; }
+  100% { transform: translate3d(130%, 0, 0); opacity: 0; }
+}
+@utility animate-king-sheen {
+  animation: king-sheen 7s ease-in-out infinite;
+  will-change: transform, opacity;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-crown,
+  .animate-king-sheen {
+    animation: none !important;
+  }
+}
+
 
 /* -----------------------------------------------------------------------
    WalletConnect / Reown modal
