@@ -88,6 +88,8 @@ function LandingPage() {
         ticker: db?.ticker || c.ticker,
         logo_url: tokenMediaUrl(db?.logo_url) ?? tokenMediaUrl(c.metadataURI),
         contract_address: c.address,
+        curve: c.curve,
+
         status: db?.status ?? "on-chain",
         created_at: db?.created_at ?? new Date(0).toISOString(),
         category: db?.category ?? null,
