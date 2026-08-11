@@ -44,6 +44,10 @@
   --color-cyan-glow: var(--cyan-glow);
   --color-electric: var(--electric);
   --color-deep: var(--deep);
+  --color-gold: var(--gold);
+  --color-surface: var(--surface);
+  --color-surface-elevated: var(--surface-elevated);
+
 
   --font-display: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
