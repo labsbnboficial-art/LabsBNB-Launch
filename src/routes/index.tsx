@@ -115,6 +115,15 @@ function LandingPage() {
     );
   }, [merged, q]);
 
+  /** Most recently created tokens (real created_at / factory index order). */
+  const newLaunches = useMemo(
+    () =>
+      [...merged]
+        .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+        .slice(0, 6),
+    [merged],
+  );
+
 
   const nearGraduation = useMemo(
     () =>
