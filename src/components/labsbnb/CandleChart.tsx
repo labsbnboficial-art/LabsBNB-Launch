@@ -79,7 +79,17 @@ export function CandleChart({ candles, visibleCount, onVisibleCountChange, quote
         horzLines: { color: "rgba(148,163,184,0.08)" },
       },
       rightPriceScale: { borderColor: "rgba(148,163,184,0.15)", scaleMargins: { top: 0.08, bottom: 0.28 } },
-      timeScale: { borderColor: "rgba(148,163,184,0.15)", timeVisible: true, secondsVisible: false, rightOffset: 3 },
+      // Tight professional spacing: candles sit close together like a real
+      // trading terminal instead of isolated blocks with wide gaps.
+      timeScale: {
+        borderColor: "rgba(148,163,184,0.15)",
+        timeVisible: true,
+        secondsVisible: false,
+        rightOffset: 2,
+        barSpacing: 5,
+        minBarSpacing: 0.4,
+      },
+
       crosshair: {
         mode: CrosshairMode.Normal,
         vertLine: { color: "rgba(56,189,248,0.5)", labelBackgroundColor: "#0ea5e9" },

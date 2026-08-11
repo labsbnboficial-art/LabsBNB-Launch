@@ -4,14 +4,15 @@ import { useI18n } from "@/lib/i18n";
 import { AppShell } from "@/components/labsbnb/AppShell";
 import { useBnbPrice } from "@/lib/web3/useLabsBnbPrice";
 import { supabase } from "@/integrations/supabase/client";
-import { fetchFactoryTokens, type CurveMetrics, type FactoryToken } from "@/lib/web3/onchain-token";
-import { formatPrice } from "@/lib/web3/live-price";
+import { fetchFactoryTokens, type FactoryToken } from "@/lib/web3/onchain-token";
 import { tokenMediaUrl } from "@/lib/media-url";
 
 import { Button } from "@/components/ui/button";
-import { ArrowRight, Rocket, Search, Sparkles, TrendingUp, Clock, LineChart } from "lucide-react";
+import { ArrowRight, Rocket, Search, Sparkles, TrendingUp, Clock, LineChart, Zap } from "lucide-react";
 import { useMemo, useState } from "react";
 import { BoostSection } from "@/components/labsbnb/BoostSection";
+import { KingOfTheHill } from "@/components/labsbnb/KingOfTheHill";
+import { TokenCard, TokenAvatar, fmtUsd, wei, timeAgo, type TokenView } from "@/components/labsbnb/TokenCard";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -35,27 +36,8 @@ function StatCard({ label, value, sub }: { label: string; value: string; sub?: s
   );
 }
 
-function fmtUsd(n?: number) {
-  if (n == null || Number.isNaN(n)) return "—";
-  if (n >= 1e9) return `$${(n / 1e9).toFixed(2)}B`;
-  if (n >= 1e6) return `$${(n / 1e6).toFixed(2)}M`;
-  if (n >= 1e3) return `$${(n / 1e3).toFixed(1)}k`;
-  return `$${n.toFixed(2)}`;
-}
+type TokenRow = TokenView;
 
-const wei = (v?: string | null) => (v ? Number(v) / 1e18 : 0);
-
-type TokenRow = {
-  id: string;
-  name: string;
-  ticker: string;
-  logo_url: string | null;
-  contract_address: string | null;
-  status: string;
-  created_at: string;
-  category: string | null;
-  metrics: CurveMetrics | null;
-};
 
 function LandingPage() {
   const { t } = useI18n();
@@ -106,6 +88,8 @@ function LandingPage() {
         ticker: db?.ticker || c.ticker,
         logo_url: tokenMediaUrl(db?.logo_url) ?? tokenMediaUrl(c.metadataURI),
         contract_address: c.address,
+        curve: c.curve,
+
         status: db?.status ?? "on-chain",
         created_at: db?.created_at ?? new Date(0).toISOString(),
         category: db?.category ?? null,
@@ -130,6 +114,15 @@ function LandingPage() {
         (tk.contract_address ?? "").toLowerCase().includes(needle),
     );
   }, [merged, q]);
+
+  /** Most recently created tokens (real created_at / factory index order). */
+  const newLaunches = useMemo(
+    () =>
+      [...merged]
+        .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+        .slice(0, 6),
+    [merged],
+  );
 
 
   const nearGraduation = useMemo(
@@ -261,7 +254,61 @@ function LandingPage() {
         </div>
       </section>
 
+      {/* KING OF THE HILL */}
+      <section className="mx-auto mt-10 max-w-7xl px-4 md:px-6">
+        <KingOfTheHill
+          tokens={merged}
+          bnbUsd={bnbUsd}
+          loading={chainTokens.isLoading && !chainTokens.data}
+        />
+      </section>
+
+      {/* NEW LAUNCHES */}
+      <section className="mx-auto mt-10 max-w-7xl px-4 md:px-6">
+        <div className="mb-3 flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <Zap className="h-4 w-4 text-accent" />
+            <h3 className="font-display text-lg font-semibold">New launches</h3>
+          </div>
+          <a href="#tokens" className="text-xs text-muted-foreground hover:text-foreground">
+            View all →
+          </a>
+        </div>
+        {newLaunches.length ? (
+          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+            {newLaunches.map((tk) => (
+              <Link
+                key={tk.id}
+                to="/token/$address"
+                params={{ address: tk.contract_address ?? tk.id }}
+                className="glass card-glow grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-xl px-3 py-2.5"
+              >
+                <TokenAvatar token={tk} className="h-9 w-9" rounded="rounded-lg" />
+                <div className="min-w-0">
+                  <div className="truncate text-sm font-medium">{tk.name}</div>
+                  <div className="font-mono text-[10px] text-muted-foreground">
+                    ${tk.ticker} · {timeAgo(tk.created_at)}
+                  </div>
+                </div>
+                <div className="text-right">
+                  <div className="font-mono text-xs tabular-nums">
+                    {tk.metrics ? (bnbUsd ? fmtUsd(wei(tk.metrics.marketCapWei) * bnbUsd) : `${wei(tk.metrics.marketCapWei).toFixed(3)} BNB`) : "N/A"}
+                  </div>
+                  <div className="font-mono text-[10px] text-muted-foreground">
+                    {tk.metrics ? `${(tk.metrics.progressBps / 100).toFixed(1)}% curve` : "N/A"}
+                  </div>
+                </div>
+              </Link>
+            ))}
+          </div>
+        ) : (
+          <EmptyHint label={chainTokens.isLoading ? "Leyendo la blockchain…" : t("empty.noTokens")} />
+        )}
+      </section>
+
       <BoostSection />
+
+
 
       {/* SEARCH */}
       <section id="tokens" className="mx-auto max-w-7xl px-4 md:px-6 mt-4">
@@ -340,15 +387,8 @@ function EmptyHint({ label }: { label: string }) {
   );
 }
 
-function TokenAvatar({ token, size = "h-10 w-10" }: { token: TokenRow; size?: string }) {
-  return token.logo_url ? (
-    <img src={token.logo_url} alt={`${token.name} logo`} className={`${size} rounded-full object-cover`} />
-  ) : (
-    <div className={`${size} rounded-full brand-gradient grid place-items-center font-bold text-sm text-primary-foreground`}>
-      {token.ticker[0]}
-    </div>
-  );
-}
+
+
 
 function TokenRowItem({
   token,
@@ -369,7 +409,7 @@ function TokenRowItem({
         className="flex items-center gap-3 rounded-xl border border-white/5 bg-white/5 px-3 py-2.5 hover:border-accent/40 transition"
       >
         <span className="w-4 text-xs font-mono text-muted-foreground">{rank}</span>
-        <TokenAvatar token={token} size="h-8 w-8" />
+        <TokenAvatar token={token} className="h-8 w-8" rounded="rounded-lg" />
         <div className="min-w-0 flex-1">
           <div className="truncate text-sm font-medium">{token.name}</div>
           <div className="font-mono text-[11px] text-muted-foreground">${token.ticker}</div>
@@ -517,74 +557,12 @@ function TokenGrid({
         <EmptyHint label={emptyLabel} />
       ) : (
         <div key={safePage} className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 animate-fade-in">
-          {slice.map((tk) => {
-
-            const m = tk.metrics;
-            const change = (m?.priceChangeBps ?? 0) / 100;
-            const progress = Math.min(100, (m?.progressBps ?? 0) / 100);
-            const mcapBnb = wei(m?.marketCapWei);
-            return (
-              <Link
-                key={tk.id}
-                to="/token/$address"
-                params={{ address: tk.contract_address ?? tk.id }}
-                className="glass rounded-2xl p-4 hover:border-accent/40 transition group flex flex-col"
-              >
-                <div className="flex items-center gap-3">
-                  <TokenAvatar token={tk} />
-                  <div className="min-w-0">
-                    <div className="font-semibold truncate">{tk.name}</div>
-                    <div className="text-xs text-muted-foreground font-mono">${tk.ticker}</div>
-                  </div>
-                </div>
-
-                <div className="mt-3 grid grid-cols-2 gap-2 text-[11px]">
-                  <div>
-                    <div className="uppercase tracking-wider text-muted-foreground">Price</div>
-                    <div className="font-mono tabular-nums">{m ? `${formatPrice(m.priceWei)} BNB` : "—"}</div>
-                  </div>
-                  <div>
-                    <div className="uppercase tracking-wider text-muted-foreground">Market cap</div>
-                    <div className="font-mono">
-                      {m ? (bnbUsd ? fmtUsd(mcapBnb * bnbUsd) : `${mcapBnb.toFixed(3)} BNB`) : "—"}
-                    </div>
-                  </div>
-                  <div>
-                    <div className="uppercase tracking-wider text-muted-foreground">24h</div>
-                    <div className={`font-mono ${change >= 0 ? "text-success" : "text-destructive"}`}>
-                      {m ? `${change >= 0 ? "+" : ""}${change.toFixed(2)}%` : "—"}
-                    </div>
-                  </div>
-                  <div>
-                    <div className="uppercase tracking-wider text-muted-foreground">Vol 24h</div>
-                    <div className="font-mono">{m ? `${wei(m.volume24hWei).toFixed(3)}` : "—"}</div>
-                  </div>
-                </div>
-
-                <div className="mt-3">
-                  <div className="flex items-center justify-between text-[10px] uppercase tracking-wider text-muted-foreground">
-                    <span>Bonding curve</span>
-                    <span className="font-mono text-foreground">{progress.toFixed(2)}%</span>
-                  </div>
-                  <div className="mt-1 h-1.5 rounded-full bg-white/5 overflow-hidden">
-                    <div className="h-full brand-gradient" style={{ width: `${Math.max(progress, 1)}%` }} />
-                  </div>
-                </div>
-
-                <div className="mt-4 flex items-center justify-between gap-2">
-                  <span className="rounded-full bg-white/5 px-2 py-0.5 text-[10px] text-muted-foreground uppercase tracking-wider">
-                    {tk.status}
-                  </span>
-                  <span className="inline-flex items-center gap-1.5 rounded-full brand-gradient px-3 py-1 text-[11px] font-medium text-primary-foreground">
-                    <LineChart className="h-3 w-3" />
-                    Ver gráfico / Comprar
-                  </span>
-                </div>
-              </Link>
-            );
-          })}
+          {slice.map((tk) => (
+            <TokenCard key={tk.id} token={tk} bnbUsd={bnbUsd} />
+          ))}
         </div>
       )}
+
     </div>
   );
 }

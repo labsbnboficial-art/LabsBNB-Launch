@@ -8,7 +8,7 @@ import { AppShell } from "@/components/labsbnb/AppShell";
 import { useI18n } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Copy, Share2, ArrowLeftRight, ExternalLink, Users, Flame, Droplets, TrendingUp, MessageSquare, AlertTriangle } from "lucide-react";
+import { Copy, Share2, ArrowLeftRight, ExternalLink, Users, Flame, Droplets, TrendingUp, MessageSquare, AlertTriangle, Crown } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/lib/auth";
 import { useAccount } from "wagmi";
@@ -16,6 +16,8 @@ import { useSiweSignIn } from "@/lib/use-siwe";
 import { fetchOnChainToken, isAddress, type OnChainToken } from "@/lib/web3/onchain-token";
 import { fetchTradePage, fetchCurveStats, buildCandles, TIMEFRAMES, type TimeframeId } from "@/lib/web3/curve-events";
 import { fetchLivePrice, formatPrice } from "@/lib/web3/live-price";
+import { computeAth, distanceFromAth, formatAthDate } from "@/lib/web3/ath";
+
 import { BSC_TESTNET } from "@/lib/web3/abis";
 import { CandleChart } from "@/components/labsbnb/CandleChart";
 import { TradePanel } from "@/components/labsbnb/TradePanel";
@@ -172,6 +174,10 @@ function TokenPage() {
       priceChange: (live?.priceChangeBps ?? Number(statsQ.data?.priceChangeBps ?? 0)) / 100,
     };
   }, [events, statsQ.data, chain, live]);
+
+  // ATH computed from the real Trade(...) history loaded above.
+  const ath = useMemo(() => computeAth(events), [events]);
+  const fromAth = distanceFromAth(live?.priceWei ?? null, ath?.priceWei ?? null);
 
 
   const [timeframe, setTimeframe] = useState<TimeframeId>("15m");
@@ -380,11 +386,18 @@ function TokenPage() {
             </div>
           </div>
           <div className="text-right text-xs text-muted-foreground">
-            <div>Market cap · <span className="font-mono text-foreground">{marketCapBnb != null ? `${marketCapBnb.toFixed(4)} BNB` : "—"}</span></div>
-            <div>Liquidez · <span className="font-mono text-foreground">{liquidityBnb != null ? `${liquidityBnb.toFixed(4)} BNB` : "—"}</span></div>
+            <div>Market cap · <span className="font-mono text-foreground">{marketCapBnb != null ? `${marketCapBnb.toFixed(4)} BNB` : "N/A"}</span></div>
+            <div>Liquidez · <span className="font-mono text-foreground">{liquidityBnb != null ? `${liquidityBnb.toFixed(4)} BNB` : "N/A"}</span></div>
+            <div className="mt-1 inline-flex flex-col items-end rounded-xl border border-[oklch(0.83_0.14_85_/_0.3)] bg-[oklch(0.83_0.14_85_/_0.07)] px-3 py-1.5">
+              <span className="text-[9px] uppercase tracking-[0.16em] text-gold">ATH</span>
+              <span className="font-mono text-sm text-gold">{ath ? `${formatPrice(ath.priceWei)} BNB` : "N/A"}</span>
+              <span className="font-mono text-[10px]">
+                {fromAth == null ? "N/A" : `${fromAth >= 0 ? "+" : ""}${fromAth.toFixed(1)}% from ATH`}
+              </span>
+            </div>
             {live?.migrated && live.pair && (
               <a
-                className="mt-1 inline-flex items-center gap-1 hover:text-foreground"
+                className="mt-1 flex items-center justify-end gap-1 hover:text-foreground"
                 href={`${BSC_TESTNET.explorer}/address/${live.pair}`}
                 target="_blank"
                 rel="noreferrer"
@@ -394,6 +407,24 @@ function TokenPage() {
             )}
           </div>
         </div>
+
+        {/* ATH — computed from the real Trade(...) history */}
+        <div className="mt-3 grid grid-cols-2 gap-3 md:grid-cols-4">
+          <StatCard icon={<Crown className="h-3.5 w-3.5" />} label="ATH price" value={ath ? `${formatPrice(ath.priceWei)} BNB` : "N/A"} accent="text-gold" />
+          <StatCard icon={<Crown className="h-3.5 w-3.5" />} label="ATH date" value={formatAthDate(ath?.timestamp)} />
+          <StatCard
+            icon={<TrendingUp className="h-3.5 w-3.5" />}
+            label="Distance from ATH"
+            value={fromAth == null ? "N/A" : `${fromAth >= 0 ? "+" : ""}${fromAth.toFixed(2)}%`}
+            accent={fromAth != null && fromAth < 0 ? "text-destructive" : "text-success"}
+          />
+          <StatCard
+            icon={<Flame className="h-3.5 w-3.5" />}
+            label="ATH market cap"
+            value={ath && ath.marketCapWei > 0n ? `${(Number(ath.marketCapWei) / 1e18).toFixed(4)} BNB` : "N/A"}
+          />
+        </div>
+
 
         {/* Analytics strip */}
         <div className="mt-4 grid grid-cols-2 md:grid-cols-5 gap-3">
