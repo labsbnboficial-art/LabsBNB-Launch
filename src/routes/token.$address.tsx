@@ -175,6 +175,10 @@ function TokenPage() {
     };
   }, [events, statsQ.data, chain, live]);
 
+  // ATH computed from the real Trade(...) history loaded above.
+  const ath = useMemo(() => computeAth(events), [events]);
+  const fromAth = distanceFromAth(live?.priceWei ?? null, ath?.priceWei ?? null);
+
 
   const [timeframe, setTimeframe] = useState<TimeframeId>("15m");
   const tfSeconds = TIMEFRAMES.find((t) => t.id === timeframe)!.seconds;
