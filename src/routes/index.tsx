@@ -4,14 +4,15 @@ import { useI18n } from "@/lib/i18n";
 import { AppShell } from "@/components/labsbnb/AppShell";
 import { useBnbPrice } from "@/lib/web3/useLabsBnbPrice";
 import { supabase } from "@/integrations/supabase/client";
-import { fetchFactoryTokens, type CurveMetrics, type FactoryToken } from "@/lib/web3/onchain-token";
-import { formatPrice } from "@/lib/web3/live-price";
+import { fetchFactoryTokens, type FactoryToken } from "@/lib/web3/onchain-token";
 import { tokenMediaUrl } from "@/lib/media-url";
 
 import { Button } from "@/components/ui/button";
-import { ArrowRight, Rocket, Search, Sparkles, TrendingUp, Clock, LineChart } from "lucide-react";
+import { ArrowRight, Rocket, Search, Sparkles, TrendingUp, Clock, LineChart, Zap } from "lucide-react";
 import { useMemo, useState } from "react";
 import { BoostSection } from "@/components/labsbnb/BoostSection";
+import { KingOfTheHill } from "@/components/labsbnb/KingOfTheHill";
+import { TokenCard, TokenAvatar, fmtUsd, wei, timeAgo, type TokenView } from "@/components/labsbnb/TokenCard";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -35,27 +36,8 @@ function StatCard({ label, value, sub }: { label: string; value: string; sub?: s
   );
 }
 
-function fmtUsd(n?: number) {
-  if (n == null || Number.isNaN(n)) return "—";
-  if (n >= 1e9) return `$${(n / 1e9).toFixed(2)}B`;
-  if (n >= 1e6) return `$${(n / 1e6).toFixed(2)}M`;
-  if (n >= 1e3) return `$${(n / 1e3).toFixed(1)}k`;
-  return `$${n.toFixed(2)}`;
-}
+type TokenRow = TokenView;
 
-const wei = (v?: string | null) => (v ? Number(v) / 1e18 : 0);
-
-type TokenRow = {
-  id: string;
-  name: string;
-  ticker: string;
-  logo_url: string | null;
-  contract_address: string | null;
-  status: string;
-  created_at: string;
-  category: string | null;
-  metrics: CurveMetrics | null;
-};
 
 function LandingPage() {
   const { t } = useI18n();
