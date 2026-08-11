@@ -494,74 +494,12 @@ function TokenGrid({
         <EmptyHint label={emptyLabel} />
       ) : (
         <div key={safePage} className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 animate-fade-in">
-          {slice.map((tk) => {
-
-            const m = tk.metrics;
-            const change = (m?.priceChangeBps ?? 0) / 100;
-            const progress = Math.min(100, (m?.progressBps ?? 0) / 100);
-            const mcapBnb = wei(m?.marketCapWei);
-            return (
-              <Link
-                key={tk.id}
-                to="/token/$address"
-                params={{ address: tk.contract_address ?? tk.id }}
-                className="glass rounded-2xl p-4 hover:border-accent/40 transition group flex flex-col"
-              >
-                <div className="flex items-center gap-3">
-                  <TokenAvatar token={tk} />
-                  <div className="min-w-0">
-                    <div className="font-semibold truncate">{tk.name}</div>
-                    <div className="text-xs text-muted-foreground font-mono">${tk.ticker}</div>
-                  </div>
-                </div>
-
-                <div className="mt-3 grid grid-cols-2 gap-2 text-[11px]">
-                  <div>
-                    <div className="uppercase tracking-wider text-muted-foreground">Price</div>
-                    <div className="font-mono tabular-nums">{m ? `${formatPrice(m.priceWei)} BNB` : "—"}</div>
-                  </div>
-                  <div>
-                    <div className="uppercase tracking-wider text-muted-foreground">Market cap</div>
-                    <div className="font-mono">
-                      {m ? (bnbUsd ? fmtUsd(mcapBnb * bnbUsd) : `${mcapBnb.toFixed(3)} BNB`) : "—"}
-                    </div>
-                  </div>
-                  <div>
-                    <div className="uppercase tracking-wider text-muted-foreground">24h</div>
-                    <div className={`font-mono ${change >= 0 ? "text-success" : "text-destructive"}`}>
-                      {m ? `${change >= 0 ? "+" : ""}${change.toFixed(2)}%` : "—"}
-                    </div>
-                  </div>
-                  <div>
-                    <div className="uppercase tracking-wider text-muted-foreground">Vol 24h</div>
-                    <div className="font-mono">{m ? `${wei(m.volume24hWei).toFixed(3)}` : "—"}</div>
-                  </div>
-                </div>
-
-                <div className="mt-3">
-                  <div className="flex items-center justify-between text-[10px] uppercase tracking-wider text-muted-foreground">
-                    <span>Bonding curve</span>
-                    <span className="font-mono text-foreground">{progress.toFixed(2)}%</span>
-                  </div>
-                  <div className="mt-1 h-1.5 rounded-full bg-white/5 overflow-hidden">
-                    <div className="h-full brand-gradient" style={{ width: `${Math.max(progress, 1)}%` }} />
-                  </div>
-                </div>
-
-                <div className="mt-4 flex items-center justify-between gap-2">
-                  <span className="rounded-full bg-white/5 px-2 py-0.5 text-[10px] text-muted-foreground uppercase tracking-wider">
-                    {tk.status}
-                  </span>
-                  <span className="inline-flex items-center gap-1.5 rounded-full brand-gradient px-3 py-1 text-[11px] font-medium text-primary-foreground">
-                    <LineChart className="h-3 w-3" />
-                    Ver gráfico / Comprar
-                  </span>
-                </div>
-              </Link>
-            );
-          })}
+          {slice.map((tk) => (
+            <TokenCard key={tk.id} token={tk} bnbUsd={bnbUsd} />
+          ))}
         </div>
       )}
+
     </div>
   );
 }
