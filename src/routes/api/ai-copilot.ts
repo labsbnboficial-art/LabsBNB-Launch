@@ -79,7 +79,11 @@ export const Route = createFileRoute("/api/ai-copilot")({
           for (let step = 0; step < MAX_STEPS; step += 1) {
             const res = await fetch(GATEWAY, {
               method: "POST",
-              headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
+              headers: {
+                "Content-Type": "application/json",
+                "Lovable-API-Key": key,
+                "X-Lovable-AIG-SDK": "fetch",
+              },
               body: JSON.stringify({ model: MODEL, messages, tools: TOOL_SCHEMAS }),
             });
 
