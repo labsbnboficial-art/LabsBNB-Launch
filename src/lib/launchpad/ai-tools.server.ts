@@ -6,7 +6,7 @@
 // so the model can answer "no data" instead of inventing one.
 import { getTokenMarketData, listMarketTokens, selectors } from "./market-data";
 import { fetchTradeEvents, buildCandles, TIMEFRAMES } from "@/lib/web3/curve-events";
-import { fetchHolders } from "@/lib/web3/holders";
+import { fetchTopHolders } from "@/lib/web3/holders";
 import type { TokenMarketData } from "./types";
 
 const compact = (t: TokenMarketData) => ({
@@ -146,9 +146,8 @@ export async function runTool(name: string, args: Record<string, unknown>): Prom
     }
     case "getTokenHolders": {
       const address = String(args.address ?? "");
-      const curve = await curveOf(address);
-      const holders = await fetchHolders(address as `0x${string}`, curve ?? undefined);
-      return holders.slice(0, 10);
+      const result = await fetchTopHolders(address as `0x${string}`, 10);
+      return result;
     }
     case "listTokens": {
       const limit = Math.min(Number(args.limit ?? 5) || 5, 10);
