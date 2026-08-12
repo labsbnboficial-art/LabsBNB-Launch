@@ -15,7 +15,8 @@ import {
   type ISeriesApi,
   type UTCTimestamp,
 } from "lightweight-charts";
-import { Maximize2, Minimize2 } from "lucide-react";
+import { Maximize2, Minimize2, RotateCcw, ZoomIn, ZoomOut } from "lucide-react";
+import { createPriceLine } from "./chart-lines";
 import type { Candle } from "@/lib/web3/curve-events";
 
 type Props = {
@@ -23,6 +24,8 @@ type Props = {
   visibleCount: number;
   onVisibleCountChange: (n: number) => void;
   quoteSymbol?: string;
+  /** Real all-time-high price (BNB per token) drawn as a gold reference line. */
+  athPrice?: number | null;
 };
 
 const UP = "#22c55e";
@@ -37,7 +40,15 @@ function priceFormat(candles: Candle[]) {
   return { type: "price" as const, precision: digits, minMove: Number(`1e-${digits}`) };
 }
 
-export function CandleChart({ candles, visibleCount, onVisibleCountChange, quoteSymbol = "BNB" }: Props) {
+const COUNT_PRESETS = [50, 100, 200, 500];
+
+export function CandleChart({
+  candles,
+  visibleCount,
+  onVisibleCountChange,
+  quoteSymbol = "BNB",
+  athPrice = null,
+}: Props) {
   const wrapRef = useRef<HTMLDivElement | null>(null);
   const hostRef = useRef<HTMLDivElement | null>(null);
   const chartRef = useRef<IChartApi | null>(null);
@@ -158,6 +169,22 @@ export function CandleChart({ candles, visibleCount, onVisibleCountChange, quote
     );
   }, [data, candles]);
 
+  // Gold ATH reference line — drawn only when a real ATH exists.
+  useEffect(() => {
+    const series = candleRef.current;
+    if (!series) return;
+    const line = createPriceLine(series, athPrice);
+    return () => {
+      if (line) {
+        try {
+          series.removePriceLine(line);
+        } catch {
+          /* series already disposed */
+        }
+      }
+    };
+  }, [athPrice, data.length]);
+
   // Crosshair legend (OHLC + volume of the hovered candle).
   useEffect(() => {
     const chart = chartRef.current;
@@ -211,17 +238,65 @@ export function CandleChart({ candles, visibleCount, onVisibleCountChange, quote
         <span>
           Vol {shown ? shown.volume.toFixed(4) : "—"} {quoteSymbol}
         </span>
+        <span>Trades {shown ? shown.trades : "—"}</span>
         <span>{shown ? new Date(shown.time).toLocaleString() : ""}</span>
+        <div className="ml-auto flex items-center gap-1">
+          {COUNT_PRESETS.map((n) => (
+            <button
+              key={n}
+              type="button"
+              onClick={() => onVisibleCountChange(n)}
+              className={`rounded-md border px-1.5 py-0.5 text-[10px] transition-colors ${
+                visibleCount === n
+                  ? "border-primary/50 bg-primary/15 text-foreground"
+                  : "border-white/10 bg-white/5 hover:text-foreground"
+              }`}
+            >
+              {n}
+            </button>
+          ))}
+          <button
+            type="button"
+            aria-label="Zoom in"
+            onClick={() => onVisibleCountChange(Math.max(MIN_VISIBLE, Math.round(visibleCount * 0.7)))}
+            className="rounded-md border border-white/10 bg-white/5 p-1.5 hover:text-foreground"
+          >
+            <ZoomIn className="h-3.5 w-3.5" />
+          </button>
+          <button
+            type="button"
+            aria-label="Zoom out"
+            onClick={() => onVisibleCountChange(Math.min(MAX_VISIBLE, Math.round(visibleCount * 1.4)))}
+            className="rounded-md border border-white/10 bg-white/5 p-1.5 hover:text-foreground"
+          >
+            <ZoomOut className="h-3.5 w-3.5" />
+          </button>
+          <button
+            type="button"
+            aria-label="Reset zoom"
+            onClick={() => onVisibleCountChange(100)}
+            className="rounded-md border border-white/10 bg-white/5 p-1.5 hover:text-foreground"
+          >
+            <RotateCcw className="h-3.5 w-3.5" />
+          </button>
+        </div>
         <button
           type="button"
           onClick={() => setFull((v) => !v)}
           aria-label={full ? "Salir de pantalla completa" : "Pantalla completa"}
-          className="ml-auto rounded-md border border-white/10 bg-white/5 p-1.5 text-muted-foreground hover:text-foreground"
+          className="rounded-md border border-white/10 bg-white/5 p-1.5 text-muted-foreground hover:text-foreground"
         >
           {full ? <Minimize2 className="h-3.5 w-3.5" /> : <Maximize2 className="h-3.5 w-3.5" />}
         </button>
       </div>
-      <div ref={hostRef} className={full ? "min-h-0 flex-1" : "h-[360px] w-full"} />
+      <div className="relative">
+        <div ref={hostRef} className={full ? "min-h-0 flex-1" : "h-[360px] w-full"} />
+        {data.length === 0 && (
+          <div className="pointer-events-none absolute inset-0 flex items-center justify-center px-6 text-center text-xs text-muted-foreground">
+            No hay suficientes operaciones para construir este intervalo.
+          </div>
+        )}
+      </div>
     </div>
   );
 }
