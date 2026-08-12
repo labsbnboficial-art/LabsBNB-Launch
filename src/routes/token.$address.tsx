@@ -487,7 +487,12 @@ function TokenPage() {
               {eventsError ? (
                 <ChainError error={eventsError} onRetry={() => eventsQ.refetch()} />
               ) : allCandles.length > 0 ? (
-                <CandleChart candles={allCandles} visibleCount={visibleCount} onVisibleCountChange={setVisibleCount} />
+                <CandleChart
+                  candles={allCandles}
+                  visibleCount={visibleCount}
+                  onVisibleCountChange={setVisibleCount}
+                  athPrice={ath ? Number(ath.priceWei) / 1e18 : null}
+                />
 
               ) : (
                 <div className="h-64 rounded-xl border border-dashed border-white/10 grid place-items-center text-sm text-muted-foreground">

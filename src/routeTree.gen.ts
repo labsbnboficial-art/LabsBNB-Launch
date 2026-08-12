@@ -21,6 +21,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as TokenAddressRouteImport } from './routes/token.$address'
 import { Route as CampaignsNewRouteImport } from './routes/campaigns.new'
 import { Route as CampaignsIdRouteImport } from './routes/campaigns.$id'
+import { Route as ApiAiCopilotRouteImport } from './routes/api/ai-copilot'
 import { Route as ApiPublicTokenMediaRouteImport } from './routes/api/public/token-media'
 
 const RankingRoute = RankingRouteImport.update({
@@ -83,6 +84,11 @@ const CampaignsIdRoute = CampaignsIdRouteImport.update({
   path: '/campaigns/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiAiCopilotRoute = ApiAiCopilotRouteImport.update({
+  id: '/api/ai-copilot',
+  path: '/api/ai-copilot',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicTokenMediaRoute = ApiPublicTokenMediaRouteImport.update({
   id: '/api/public/token-media',
   path: '/api/public/token-media',
@@ -99,6 +105,7 @@ export interface FileRoutesByFullPath {
   '/notifications': typeof NotificationsRoute
   '/profile': typeof ProfileRoute
   '/ranking': typeof RankingRoute
+  '/api/ai-copilot': typeof ApiAiCopilotRoute
   '/campaigns/$id': typeof CampaignsIdRoute
   '/campaigns/new': typeof CampaignsNewRoute
   '/token/$address': typeof TokenAddressRoute
@@ -114,6 +121,7 @@ export interface FileRoutesByTo {
   '/notifications': typeof NotificationsRoute
   '/profile': typeof ProfileRoute
   '/ranking': typeof RankingRoute
+  '/api/ai-copilot': typeof ApiAiCopilotRoute
   '/campaigns/$id': typeof CampaignsIdRoute
   '/campaigns/new': typeof CampaignsNewRoute
   '/token/$address': typeof TokenAddressRoute
@@ -130,6 +138,7 @@ export interface FileRoutesById {
   '/notifications': typeof NotificationsRoute
   '/profile': typeof ProfileRoute
   '/ranking': typeof RankingRoute
+  '/api/ai-copilot': typeof ApiAiCopilotRoute
   '/campaigns/$id': typeof CampaignsIdRoute
   '/campaigns/new': typeof CampaignsNewRoute
   '/token/$address': typeof TokenAddressRoute
@@ -147,6 +156,7 @@ export interface FileRouteTypes {
     | '/notifications'
     | '/profile'
     | '/ranking'
+    | '/api/ai-copilot'
     | '/campaigns/$id'
     | '/campaigns/new'
     | '/token/$address'
@@ -162,6 +172,7 @@ export interface FileRouteTypes {
     | '/notifications'
     | '/profile'
     | '/ranking'
+    | '/api/ai-copilot'
     | '/campaigns/$id'
     | '/campaigns/new'
     | '/token/$address'
@@ -177,6 +188,7 @@ export interface FileRouteTypes {
     | '/notifications'
     | '/profile'
     | '/ranking'
+    | '/api/ai-copilot'
     | '/campaigns/$id'
     | '/campaigns/new'
     | '/token/$address'
@@ -193,6 +205,7 @@ export interface RootRouteChildren {
   NotificationsRoute: typeof NotificationsRoute
   ProfileRoute: typeof ProfileRoute
   RankingRoute: typeof RankingRoute
+  ApiAiCopilotRoute: typeof ApiAiCopilotRoute
   CampaignsIdRoute: typeof CampaignsIdRoute
   CampaignsNewRoute: typeof CampaignsNewRoute
   TokenAddressRoute: typeof TokenAddressRoute
@@ -285,6 +298,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CampaignsIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/ai-copilot': {
+      id: '/api/ai-copilot'
+      path: '/api/ai-copilot'
+      fullPath: '/api/ai-copilot'
+      preLoaderRoute: typeof ApiAiCopilotRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/token-media': {
       id: '/api/public/token-media'
       path: '/api/public/token-media'
@@ -305,6 +325,7 @@ const rootRouteChildren: RootRouteChildren = {
   NotificationsRoute: NotificationsRoute,
   ProfileRoute: ProfileRoute,
   RankingRoute: RankingRoute,
+  ApiAiCopilotRoute: ApiAiCopilotRoute,
   CampaignsIdRoute: CampaignsIdRoute,
   CampaignsNewRoute: CampaignsNewRoute,
   TokenAddressRoute: TokenAddressRoute,
@@ -313,3 +334,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
