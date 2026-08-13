@@ -491,6 +491,7 @@ function AdminBody({
           <TabsTrigger value="config"><Settings2 className="mr-2 h-4 w-4" />Configuración</TabsTrigger>
           <TabsTrigger value="fees"><Wallet className="mr-2 h-4 w-4" />Fees</TabsTrigger>
           <TabsTrigger value="boost"><Rocket className="mr-2 h-4 w-4" />🚀 Impulso</TabsTrigger>
+          <TabsTrigger value="telegram"><Send className="mr-2 h-4 w-4" />Telegram Signals</TabsTrigger>
           <TabsTrigger value="account"><KeyRound className="mr-2 h-4 w-4" />Cuenta y seguridad</TabsTrigger>
           <TabsTrigger value="audit"><ScrollText className="mr-2 h-4 w-4" />Auditoría</TabsTrigger>
         </TabsList>
@@ -503,6 +504,10 @@ function AdminBody({
         <TabsContent value="boost" className="mt-6">
           <AdminBoostTab csrf={csrf} />
         </TabsContent>
+        <TabsContent value="telegram" className="mt-6">
+          <AdminTelegramTab csrf={csrf} />
+        </TabsContent>
+
         <TabsContent value="account" className="mt-6">
           <AccountSettings csrf={csrf} username={username} email={email} totpEnabled={totpEnabled} onChanged={onSignedOut} />
         </TabsContent>
