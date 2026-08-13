@@ -109,13 +109,19 @@ export async function resolveChannel(chat?: string): Promise<ChatInfo> {
 
 export async function sendTelegramMessage(
   text: string,
-  opts: { chat?: string; parseMode?: "HTML" | "MarkdownV2"; disablePreview?: boolean } = {},
+  opts: {
+    chat?: string;
+    parseMode?: "HTML" | "MarkdownV2";
+    disablePreview?: boolean;
+    buttons?: { text: string; url: string }[][];
+  } = {},
 ): Promise<{ message_id: number }> {
   return callTelegram<{ message_id: number }>("sendMessage", {
     chat_id: opts.chat ?? channelId(),
     text,
     parse_mode: opts.parseMode ?? "HTML",
     disable_web_page_preview: opts.disablePreview ?? false,
+    ...(opts.buttons?.length ? { reply_markup: { inline_keyboard: opts.buttons } } : {}),
   });
 }
 
