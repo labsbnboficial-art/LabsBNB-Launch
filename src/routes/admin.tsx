@@ -10,9 +10,10 @@ import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { useI18n } from "@/lib/i18n";
-import { Shield, Lock, KeyRound, LogOut, ScrollText, Settings2, Rocket, Wallet } from "lucide-react";
+import { Shield, Lock, KeyRound, LogOut, ScrollText, Settings2, Rocket, Wallet, Send } from "lucide-react";
 import { AdminBoostTab } from "@/components/labsbnb/AdminBoostTab";
 import { AdminFeesTab } from "@/components/labsbnb/AdminFeesTab";
+import { AdminTelegramTab } from "@/components/labsbnb/AdminTelegramTab";
 import {
   adminAuthStatus,
   adminBootstrap,
@@ -491,6 +492,7 @@ function AdminBody({
           <TabsTrigger value="config"><Settings2 className="mr-2 h-4 w-4" />Configuración</TabsTrigger>
           <TabsTrigger value="fees"><Wallet className="mr-2 h-4 w-4" />Fees</TabsTrigger>
           <TabsTrigger value="boost"><Rocket className="mr-2 h-4 w-4" />🚀 Impulso</TabsTrigger>
+          <TabsTrigger value="telegram"><Send className="mr-2 h-4 w-4" />Telegram Signals</TabsTrigger>
           <TabsTrigger value="account"><KeyRound className="mr-2 h-4 w-4" />Cuenta y seguridad</TabsTrigger>
           <TabsTrigger value="audit"><ScrollText className="mr-2 h-4 w-4" />Auditoría</TabsTrigger>
         </TabsList>
@@ -503,6 +505,10 @@ function AdminBody({
         <TabsContent value="boost" className="mt-6">
           <AdminBoostTab csrf={csrf} />
         </TabsContent>
+        <TabsContent value="telegram" className="mt-6">
+          <AdminTelegramTab csrf={csrf} />
+        </TabsContent>
+
         <TabsContent value="account" className="mt-6">
           <AccountSettings csrf={csrf} username={username} email={email} totpEnabled={totpEnabled} onChanged={onSignedOut} />
         </TabsContent>
