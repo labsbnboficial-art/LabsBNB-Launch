@@ -22,9 +22,12 @@ export function hasBotToken(): boolean {
 
 export class TelegramError extends Error {
   code: number;
-  constructor(message: string, code = 0) {
+  /** Seconds Telegram asks us to wait (only present on 429 responses). */
+  retryAfter: number | null;
+  constructor(message: string, code = 0, retryAfter: number | null = null) {
     super(message);
     this.code = code;
+    this.retryAfter = retryAfter;
   }
 }
 
@@ -58,7 +61,13 @@ export function describeTelegramError(status: number, description: string): stri
   return description || `Error desconocido de Telegram (HTTP ${status}).`;
 }
 
-type TgResponse<T> = { ok: boolean; result?: T; description?: string; error_code?: number };
+type TgResponse<T> = {
+  ok: boolean;
+  result?: T;
+  description?: string;
+  error_code?: number;
+  parameters?: { retry_after?: number };
+};
 
 async function callTelegram<T>(method: string, body: Record<string, unknown>): Promise<T> {
   const token = botToken();
@@ -89,7 +98,8 @@ async function callTelegram<T>(method: string, body: Record<string, unknown>): P
   if (!res.ok || !json.ok) {
     // Never log the token: only the method + safe description.
     console.error(`[telegram] ${method} failed (${res.status}): ${json.description ?? "no description"}`);
-    throw new TelegramError(describeTelegramError(res.status, json.description ?? ""), res.status);
+    const retryAfter = typeof json.parameters?.retry_after === "number" ? json.parameters.retry_after : null;
+    throw new TelegramError(describeTelegramError(res.status, json.description ?? ""), res.status, retryAfter);
   }
   return json.result as T;
 }
