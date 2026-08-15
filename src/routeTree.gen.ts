@@ -23,6 +23,7 @@ import { Route as CampaignsNewRouteImport } from './routes/campaigns.new'
 import { Route as CampaignsIdRouteImport } from './routes/campaigns.$id'
 import { Route as ApiAiCopilotRouteImport } from './routes/api/ai-copilot'
 import { Route as ApiPublicTokenMediaRouteImport } from './routes/api/public/token-media'
+import { Route as ApiPublicSignalsRunRouteImport } from './routes/api/public/signals/run'
 
 const RankingRoute = RankingRouteImport.update({
   id: '/ranking',
@@ -94,6 +95,11 @@ const ApiPublicTokenMediaRoute = ApiPublicTokenMediaRouteImport.update({
   path: '/api/public/token-media',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicSignalsRunRoute = ApiPublicSignalsRunRouteImport.update({
+  id: '/api/public/signals/run',
+  path: '/api/public/signals/run',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -110,6 +116,7 @@ export interface FileRoutesByFullPath {
   '/campaigns/new': typeof CampaignsNewRoute
   '/token/$address': typeof TokenAddressRoute
   '/api/public/token-media': typeof ApiPublicTokenMediaRoute
+  '/api/public/signals/run': typeof ApiPublicSignalsRunRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -126,6 +133,7 @@ export interface FileRoutesByTo {
   '/campaigns/new': typeof CampaignsNewRoute
   '/token/$address': typeof TokenAddressRoute
   '/api/public/token-media': typeof ApiPublicTokenMediaRoute
+  '/api/public/signals/run': typeof ApiPublicSignalsRunRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -143,6 +151,7 @@ export interface FileRoutesById {
   '/campaigns/new': typeof CampaignsNewRoute
   '/token/$address': typeof TokenAddressRoute
   '/api/public/token-media': typeof ApiPublicTokenMediaRoute
+  '/api/public/signals/run': typeof ApiPublicSignalsRunRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -161,6 +170,7 @@ export interface FileRouteTypes {
     | '/campaigns/new'
     | '/token/$address'
     | '/api/public/token-media'
+    | '/api/public/signals/run'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -177,6 +187,7 @@ export interface FileRouteTypes {
     | '/campaigns/new'
     | '/token/$address'
     | '/api/public/token-media'
+    | '/api/public/signals/run'
   id:
     | '__root__'
     | '/'
@@ -193,6 +204,7 @@ export interface FileRouteTypes {
     | '/campaigns/new'
     | '/token/$address'
     | '/api/public/token-media'
+    | '/api/public/signals/run'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -210,6 +222,7 @@ export interface RootRouteChildren {
   CampaignsNewRoute: typeof CampaignsNewRoute
   TokenAddressRoute: typeof TokenAddressRoute
   ApiPublicTokenMediaRoute: typeof ApiPublicTokenMediaRoute
+  ApiPublicSignalsRunRoute: typeof ApiPublicSignalsRunRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -312,6 +325,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicTokenMediaRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/signals/run': {
+      id: '/api/public/signals/run'
+      path: '/api/public/signals/run'
+      fullPath: '/api/public/signals/run'
+      preLoaderRoute: typeof ApiPublicSignalsRunRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -330,6 +350,7 @@ const rootRouteChildren: RootRouteChildren = {
   CampaignsNewRoute: CampaignsNewRoute,
   TokenAddressRoute: TokenAddressRoute,
   ApiPublicTokenMediaRoute: ApiPublicTokenMediaRoute,
+  ApiPublicSignalsRunRoute: ApiPublicSignalsRunRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
