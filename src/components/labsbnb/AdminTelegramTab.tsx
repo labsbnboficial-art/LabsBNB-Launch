@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { getTelegramStatus, testTelegram } from "@/lib/telegram.functions";
+import { AdminSignalsPanel } from "@/components/labsbnb/AdminSignalsPanel";
 import { Send, RefreshCw, Loader2, ExternalLink, AlertTriangle, CheckCircle2 } from "lucide-react";
 
 function Row({ label, value, ok }: { label: string; value: string; ok?: boolean }) {
