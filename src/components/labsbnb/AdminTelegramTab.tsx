@@ -137,6 +137,8 @@ export function AdminTelegramTab({ csrf }: { csrf: string }) {
           </p>
         )}
       </div>
+
+      <AdminSignalsPanel csrf={csrf} />
     </div>
   );
 }
