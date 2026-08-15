@@ -7,7 +7,7 @@
 // data plus `signal_log`, so the same run can be repeated safely (idempotent).
 // There is no polling loop and no setInterval: execution is triggered by the
 // admin button or by an external cron hitting /api/public/signals/run.
-import { listMarketTokens, getTokenMarketData } from "@/lib/launchpad/market-data";
+import { listMarketTokens, getTokenMarketData, selectors } from "@/lib/launchpad/market-data";
 import { fetchTradeEvents, type TradeEvent } from "@/lib/web3/curve-events";
 import type { TokenMarketData } from "@/lib/launchpad/types";
 import type { SignalCandidate, SignalConfig, SignalRunResult, SignalType } from "./signal-types";
@@ -69,11 +69,8 @@ export async function detectCandidates(
   // King of the Hill is a single global winner.
   let kingAddress: string | null = null;
   if (cfg.enabled.KING_OF_THE_HILL) {
-    const eligible = tokens.filter(
-      (x) => x.bondingProgress != null && x.bondingProgress > 0 && x.bondingProgress < 100,
-    );
-    const pool = eligible.length ? eligible : tokens;
-    const king = [...pool].sort((a, b) => (b.bondingProgress ?? 0) - (a.bondingProgress ?? 0))[0];
+    // Same selector the King of the Hill section uses — one source of truth.
+    const king = selectors.king(tokens);
     kingAddress = king ? king.address.toLowerCase() : null;
   }
 
