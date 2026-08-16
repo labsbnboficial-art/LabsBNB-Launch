@@ -50,10 +50,11 @@ async function getLogsRange(curve: `0x${string}`, from: bigint, to: bigint) {
 }
 
 
-function decode(logs: Awaited<ReturnType<typeof getLogsRange>>): TradeEvent[] {
+function decode(logs: Log[]): TradeEvent[] {
   const out: TradeEvent[] = [];
   for (const log of logs) {
-    const a = log.args as {
+    const a = (log as Log & { args?: Record<string, unknown> }).args as {
+
       trader?: `0x${string}`;
       isBuy?: boolean;
       amountBnb?: bigint;
