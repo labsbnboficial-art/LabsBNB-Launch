@@ -36,36 +36,15 @@ const MAX_EMPTY_CHUNKS_PER_PAGE = 36;
 const PARALLEL_CHUNKS = 6; // chunks fetched at once (cached ones resolve instantly)
 const HEAD_MARGIN = 6n; // blocks near the head are not cached (may still reorg)
 
-let preferredRpc: string | null = null;
-
-function clientFor(url: string): PublicClient {
-  return createPublicClient({ chain: bscTestnet, transport: http(url) }) as PublicClient;
-}
-
 /**
- * Runs one getLogs range across the candidate RPCs.
- * Throws the last real error when every endpoint refuses.
+ * Runs one grid range through the safe chunked reader: the range is split into
+ * small windows the public BSC-Testnet RPCs actually accept, merged, deduped
+ * and sorted. Throws the real RPC error when a window cannot be read at all.
  */
 async function getLogsRange(curve: `0x${string}`, from: bigint, to: bigint) {
-  const urls = preferredRpc ? [preferredRpc, ...LOG_RPC_URLS.filter((u) => u !== preferredRpc)] : [...LOG_RPC_URLS];
-  let lastError: unknown = null;
-  for (const url of urls) {
-    try {
-      const logs = await clientFor(url).getLogs({ address: curve, event: TRADE_EVENT, fromBlock: from, toBlock: to });
-      preferredRpc = url;
-      return logs;
-    } catch (e) {
-      lastError = e;
-      console.warn(`[curve-events] getLogs failed on ${url}:`, (e as Error).message);
-      if (preferredRpc === url) preferredRpc = null;
-    }
-  }
-  throw new Error(
-    `Ningún RPC de BSC Testnet aceptó eth_getLogs (${from}-${to}). Último error: ${
-      (lastError as Error)?.message ?? "desconocido"
-    }`,
-  );
+  return getLogsChunked({ address: curve, event: TRADE_EVENT, from, to, label: `Trade ${curve.slice(0, 10)}` });
 }
+
 
 function decode(logs: Awaited<ReturnType<typeof getLogsRange>>): TradeEvent[] {
   const out: TradeEvent[] = [];
