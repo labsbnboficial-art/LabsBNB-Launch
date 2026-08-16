@@ -6,10 +6,10 @@
 // We therefore probe a list of endpoints and stick to the first one that
 // actually returns logs, and we surface the real RPC error instead of
 // silently returning an empty list.
-import { createPublicClient, http, getAbiItem, type Abi, type AbiEvent, type PublicClient } from "viem";
-import { bscTestnet } from "wagmi/chains";
+import { getAbiItem, type Abi, type AbiEvent, type Log } from "viem";
 import { readClient } from "./onchain-token";
-import { CURVE_ABI, LOG_RPC_URLS } from "./abis";
+import { CURVE_ABI } from "./abis";
+import { getLogsChunked } from "./log-range";
 
 /** Event definition taken from the deployed contract ABI (never hand-written). */
 export const TRADE_EVENT = getAbiItem({ abi: CURVE_ABI as Abi, name: "Trade" }) as AbiEvent;
@@ -27,14 +27,18 @@ export type TradeEvent = {
   blockNumber: bigint;
 };
 
-const CHUNK = 9_000n; // largest range every working public RPC accepts
+// Grid used for the in-memory cache. Each grid range is internally split by
+// `getLogsChunked` into windows the public RPCs accept, so this value is a
+// cache granularity, never a raw `eth_getLogs` range.
+const CHUNK = 3_000n;
 const MAX_LOOKBACK = 600_000n; // ~21 days on BSC (3s blocks)
-const MAX_CHUNKS_PER_PAGE = 12; // bounds latency once the page already has trades
+const MAX_CHUNKS_PER_PAGE = 36; // bounds latency once the page already has trades
 // A curve can be idle for days: keep scanning further back while nothing was
 // found yet, otherwise the very first page returns empty and the UI stops.
-const MAX_EMPTY_CHUNKS_PER_PAGE = 36;
-const PARALLEL_CHUNKS = 6; // chunks fetched at once (cached ones resolve instantly)
+const MAX_EMPTY_CHUNKS_PER_PAGE = 108;
+const PARALLEL_CHUNKS = 3; // grid chunks fetched at once (each one is chunked further)
 const HEAD_MARGIN = 6n; // blocks near the head are not cached (may still reorg)
+
 
 /**
  * Runs one grid range through the safe chunked reader: the range is split into
