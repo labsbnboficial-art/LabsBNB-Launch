@@ -248,7 +248,12 @@ function TokenPage() {
     },
   });
 
-
+  // Missions CTA (creator only): needs a database row, so an on-chain-only
+  // token is claimed/created on the fly before opening the campaign builder.
+  const navigate = useNavigate();
+  const ensureRowForMissions = useServerFn(ensureTokenRow);
+  const siweForMissions = useSiweSignIn();
+  const [missionsBusy, setMissionsBusy] = useState(false);
 
 
   if (tokenQ.isLoading) {
