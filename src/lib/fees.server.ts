@@ -13,8 +13,9 @@ export const DEFAULT_FEE_WALLET = "0x60e655Fe39Bc7D17661f226bB44Dcc681cc4e05e";
 
 /** Blocks scanned for on-chain FeeCollected events (BSC ~3s/block → ~7 días). */
 export const LOG_WINDOW_BLOCKS = 200_000n;
-const CHUNK = 4_000n;
-const CONCURRENCY = 6;
+const CHUNK = 1_000n; // public BSC testnet RPCs reject wider eth_getLogs ranges
+const CONCURRENCY = 4;
+
 
 export type FeeKind = "buy" | "sell" | "create" | "advanced" | "boost";
 

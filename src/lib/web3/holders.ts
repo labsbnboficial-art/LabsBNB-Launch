@@ -51,7 +51,12 @@ export async function fetchTopHolders(token: `0x${string}`, top = 10): Promise<H
     const to = from + CHUNK - 1n;
     const logs = await transferLogs(token, from, to > head ? head : to);
     for (const log of logs) {
-      const a = log.args as { from?: `0x${string}`; to?: `0x${string}`; value?: bigint };
+      const a = (log as Log & { args?: Record<string, unknown> }).args as {
+        from?: `0x${string}`;
+        to?: `0x${string}`;
+        value?: bigint;
+      };
+
       const value = a.value ?? 0n;
       if (!value) continue;
       if (a.from && a.from !== ZERO) balances.set(a.from, (balances.get(a.from) ?? 0n) - value);
