@@ -175,7 +175,9 @@ function MissionsPage() {
                 </div>
               </Link>
             ))}
-          </div>
+            </div>
+          </>
+
         ) : (
           <div className="mt-6 grid gap-4 md:grid-cols-2">
             {visible.length === 0 && <p className="text-sm text-muted-foreground">No hay misiones en esta categoría todavía.</p>}
