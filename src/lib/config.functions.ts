@@ -46,11 +46,13 @@ export const saveAdminConfig = createServerFn({ method: "POST" })
   )
   .handler(async ({ data }) => {
     const { client, adminId } = await requireConfigAdmin(data.csrf);
+    const { configUpdatedBy } = await import("@/lib/config.server");
+    const updatedBy = await configUpdatedBy(adminId);
     const rows = data.entries.map((entry) => ({
       key: entry.key,
       value: entry.value,
       is_public: entry.is_public ?? true,
-      updated_by: adminId,
+      updated_by: updatedBy,
     }));
     const { error } = await client.from("admin_config").upsert(rows, { onConflict: "key" });
     if (error) throw new Error(`No se pudo guardar la configuración: ${error.message}`);

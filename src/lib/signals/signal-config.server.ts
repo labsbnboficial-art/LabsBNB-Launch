@@ -124,9 +124,13 @@ export async function loadConfig(): Promise<SignalConfig> {
 
 export async function saveConfig(cfg: SignalConfig, adminId: string | null) {
   const c = await db();
+  const { configUpdatedBy } = await import("@/lib/config.server");
   const { error } = await c
     .from("admin_config")
-    .upsert({ key: CONFIG_KEY, value: cfg, is_public: false, updated_by: adminId }, { onConflict: "key" });
+    .upsert(
+      { key: CONFIG_KEY, value: cfg, is_public: false, updated_by: await configUpdatedBy(adminId) },
+      { onConflict: "key" },
+    );
   if (error) throw new Error(`No se pudo guardar la configuración de señales: ${error.message}`);
 }
 
