@@ -313,6 +313,30 @@ function TokenPage() {
     (!!user && !!dbRow?.creator_id && user.id === dbRow.creator_id) ||
     (!!wallet && !!chain?.creator && wallet.toLowerCase() === chain.creator.toLowerCase());
 
+  async function openMissionBuilder() {
+    setMissionsBusy(true);
+    try {
+      // The campaign builder is keyed by the database token id; sign in and
+      // create/claim the row when the token only exists on-chain.
+      let id = dbRow?.id as string | undefined;
+      if (!id) {
+        await siweForMissions();
+        const r = await ensureRowForMissions({
+          data: {
+            address: (tk.contract_address ?? chain?.address ?? "") as string,
+            name: tk.name,
+            ticker: tk.ticker,
+          },
+        });
+        id = r.id;
+      }
+      navigate({ to: "/campaigns/new", search: { token: id } });
+    } catch (e) {
+      toast.error((e as Error).message || "No se pudo abrir el creador de misiones");
+    } finally {
+      setMissionsBusy(false);
+    }
+  }
 
 
   return (
