@@ -1,44 +1,23 @@
 // Top holders read directly from the blockchain (ERC-20 Transfer logs).
 // No indexer, no database: we scan backwards in grid-aligned chunks until the
 // mint (from = 0x0) shows up, which makes the reconstructed balances exact.
-import { createPublicClient, http, parseAbiItem, type PublicClient } from "viem";
-import { bscTestnet } from "wagmi/chains";
+import { parseAbiItem, type Log } from "viem";
 import { readClient } from "./onchain-token";
-import { LOG_RPC_URLS } from "./abis";
+import { getLogsChunked } from "./log-range";
 
 const TRANSFER_EVENT = parseAbiItem(
   "event Transfer(address indexed from, address indexed to, uint256 value)",
 );
 
 const ZERO = "0x0000000000000000000000000000000000000000";
-const CHUNK = 9_000n;
-const MAX_CHUNKS = 24; // ~216k blocks (~7 days) upper bound
+// Cache/scan granularity: each range is split further into RPC-safe windows.
+const CHUNK = 3_000n;
+const MAX_CHUNKS = 72; // ~216k blocks (~7 days) upper bound
 
-let preferredRpc: string | null = null;
-
-function clientFor(url: string): PublicClient {
-  return createPublicClient({ chain: bscTestnet, transport: http(url) }) as PublicClient;
+async function transferLogs(token: `0x${string}`, from: bigint, to: bigint): Promise<Log[]> {
+  return getLogsChunked({ address: token, event: TRANSFER_EVENT, from, to, label: `Transfer ${token.slice(0, 10)}` });
 }
 
-async function transferLogs(token: `0x${string}`, from: bigint, to: bigint) {
-  const urls = preferredRpc ? [preferredRpc, ...LOG_RPC_URLS.filter((u) => u !== preferredRpc)] : [...LOG_RPC_URLS];
-  let lastError: unknown = null;
-  for (const url of urls) {
-    try {
-      const logs = await clientFor(url).getLogs({ address: token, event: TRANSFER_EVENT, fromBlock: from, toBlock: to });
-      preferredRpc = url;
-      return logs;
-    } catch (e) {
-      lastError = e;
-      if (preferredRpc === url) preferredRpc = null;
-    }
-  }
-  throw new Error(
-    `Ningún RPC aceptó eth_getLogs para Transfer (${from}-${to}). Último error: ${
-      (lastError as Error)?.message ?? "desconocido"
-    }`,
-  );
-}
 
 export type Holder = {
   address: `0x${string}`;

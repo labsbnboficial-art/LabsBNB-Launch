@@ -6,10 +6,10 @@
 // We therefore probe a list of endpoints and stick to the first one that
 // actually returns logs, and we surface the real RPC error instead of
 // silently returning an empty list.
-import { createPublicClient, http, getAbiItem, type Abi, type AbiEvent, type PublicClient } from "viem";
-import { bscTestnet } from "wagmi/chains";
+import { getAbiItem, type Abi, type AbiEvent, type Log } from "viem";
 import { readClient } from "./onchain-token";
-import { CURVE_ABI, LOG_RPC_URLS } from "./abis";
+import { CURVE_ABI } from "./abis";
+import { getLogsChunked } from "./log-range";
 
 /** Event definition taken from the deployed contract ABI (never hand-written). */
 export const TRADE_EVENT = getAbiItem({ abi: CURVE_ABI as Abi, name: "Trade" }) as AbiEvent;
@@ -27,50 +27,34 @@ export type TradeEvent = {
   blockNumber: bigint;
 };
 
-const CHUNK = 9_000n; // largest range every working public RPC accepts
+// Grid used for the in-memory cache. Each grid range is internally split by
+// `getLogsChunked` into windows the public RPCs accept, so this value is a
+// cache granularity, never a raw `eth_getLogs` range.
+const CHUNK = 3_000n;
 const MAX_LOOKBACK = 600_000n; // ~21 days on BSC (3s blocks)
-const MAX_CHUNKS_PER_PAGE = 12; // bounds latency once the page already has trades
+const MAX_CHUNKS_PER_PAGE = 36; // bounds latency once the page already has trades
 // A curve can be idle for days: keep scanning further back while nothing was
 // found yet, otherwise the very first page returns empty and the UI stops.
-const MAX_EMPTY_CHUNKS_PER_PAGE = 36;
-const PARALLEL_CHUNKS = 6; // chunks fetched at once (cached ones resolve instantly)
+const MAX_EMPTY_CHUNKS_PER_PAGE = 108;
+const PARALLEL_CHUNKS = 3; // grid chunks fetched at once (each one is chunked further)
 const HEAD_MARGIN = 6n; // blocks near the head are not cached (may still reorg)
 
-let preferredRpc: string | null = null;
-
-function clientFor(url: string): PublicClient {
-  return createPublicClient({ chain: bscTestnet, transport: http(url) }) as PublicClient;
-}
 
 /**
- * Runs one getLogs range across the candidate RPCs.
- * Throws the last real error when every endpoint refuses.
+ * Runs one grid range through the safe chunked reader: the range is split into
+ * small windows the public BSC-Testnet RPCs actually accept, merged, deduped
+ * and sorted. Throws the real RPC error when a window cannot be read at all.
  */
 async function getLogsRange(curve: `0x${string}`, from: bigint, to: bigint) {
-  const urls = preferredRpc ? [preferredRpc, ...LOG_RPC_URLS.filter((u) => u !== preferredRpc)] : [...LOG_RPC_URLS];
-  let lastError: unknown = null;
-  for (const url of urls) {
-    try {
-      const logs = await clientFor(url).getLogs({ address: curve, event: TRADE_EVENT, fromBlock: from, toBlock: to });
-      preferredRpc = url;
-      return logs;
-    } catch (e) {
-      lastError = e;
-      console.warn(`[curve-events] getLogs failed on ${url}:`, (e as Error).message);
-      if (preferredRpc === url) preferredRpc = null;
-    }
-  }
-  throw new Error(
-    `Ningún RPC de BSC Testnet aceptó eth_getLogs (${from}-${to}). Último error: ${
-      (lastError as Error)?.message ?? "desconocido"
-    }`,
-  );
+  return getLogsChunked({ address: curve, event: TRADE_EVENT, from, to, label: `Trade ${curve.slice(0, 10)}` });
 }
 
-function decode(logs: Awaited<ReturnType<typeof getLogsRange>>): TradeEvent[] {
+
+function decode(logs: Log[]): TradeEvent[] {
   const out: TradeEvent[] = [];
   for (const log of logs) {
-    const a = log.args as {
+    const a = (log as Log & { args?: Record<string, unknown> }).args as {
+
       trader?: `0x${string}`;
       isBuy?: boolean;
       amountBnb?: bigint;
