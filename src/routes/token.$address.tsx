@@ -1,4 +1,4 @@
-import { createFileRoute, Link, notFound } from "@tanstack/react-router";
+import { createFileRoute, Link, notFound, useNavigate } from "@tanstack/react-router";
 import { SOCIAL_FIELDS, type SocialKey } from "@/lib/social";
 import { SocialLinks } from "@/components/labsbnb/SocialLinks";
 import { useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-query";
