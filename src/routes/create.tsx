@@ -279,15 +279,20 @@ function CreatePage() {
 
       // 2) Simulate then send the real createToken() transaction.
       const rawUri = (form.metadata_uri || form.logo_url || form.website || "").trim();
-      // The factory stores the URI verbatim: normalise "labs.com" -> "https://labs.com"
-      // and reject anything that is not a valid ipfs:// or http(s):// resource.
+      // The factory stores the URI verbatim: app-relative media paths (uploaded
+      // logo/banner) become absolute https URLs, "labs.com" -> "https://labs.com",
+      // and anything else that is not ipfs:// or http(s):// is rejected.
+      const origin = typeof window !== "undefined" ? window.location.origin : "";
       const metadataURI = rawUri
         ? /^(ipfs|https?):\/\//i.test(rawUri)
           ? rawUri
-          : /^[\w.-]+\.[a-z]{2,}(\/.*)?$/i.test(rawUri)
-            ? `https://${rawUri}`
-            : ""
+          : rawUri.startsWith("/") && origin
+            ? `${origin}${rawUri}`
+            : /^[\w.-]+\.[a-z]{2,}(\/.*)?$/i.test(rawUri)
+              ? `https://${rawUri}`
+              : ""
         : "";
+
       if (rawUri && !metadataURI) {
         throw new Error(`Invalid metadata URI "${rawUri}". Use ipfs://… or https://…`);
       }
