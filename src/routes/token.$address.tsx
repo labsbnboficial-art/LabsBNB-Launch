@@ -1,4 +1,4 @@
-import { createFileRoute, Link, notFound } from "@tanstack/react-router";
+import { createFileRoute, Link, notFound, useNavigate } from "@tanstack/react-router";
 import { SOCIAL_FIELDS, type SocialKey } from "@/lib/social";
 import { SocialLinks } from "@/components/labsbnb/SocialLinks";
 import { useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -8,7 +8,7 @@ import { AppShell } from "@/components/labsbnb/AppShell";
 import { useI18n } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Copy, Share2, ArrowLeftRight, ExternalLink, Users, Flame, Droplets, TrendingUp, MessageSquare, AlertTriangle, Crown } from "lucide-react";
+import { Copy, Share2, ArrowLeftRight, ExternalLink, Users, Flame, Droplets, TrendingUp, MessageSquare, AlertTriangle, Crown, Target } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/lib/auth";
 import { useAccount } from "wagmi";
@@ -248,7 +248,12 @@ function TokenPage() {
     },
   });
 
-
+  // Missions CTA (creator only): needs a database row, so an on-chain-only
+  // token is claimed/created on the fly before opening the campaign builder.
+  const navigate = useNavigate();
+  const ensureRowForMissions = useServerFn(ensureTokenRow);
+  const siweForMissions = useSiweSignIn();
+  const [missionsBusy, setMissionsBusy] = useState(false);
 
 
   if (tokenQ.isLoading) {
@@ -308,6 +313,30 @@ function TokenPage() {
     (!!user && !!dbRow?.creator_id && user.id === dbRow.creator_id) ||
     (!!wallet && !!chain?.creator && wallet.toLowerCase() === chain.creator.toLowerCase());
 
+  async function openMissionBuilder() {
+    setMissionsBusy(true);
+    try {
+      // The campaign builder is keyed by the database token id; sign in and
+      // create/claim the row when the token only exists on-chain.
+      let id = dbRow?.id as string | undefined;
+      if (!id) {
+        await siweForMissions();
+        const r = await ensureRowForMissions({
+          data: {
+            address: (tk.contract_address ?? chain?.address ?? "") as string,
+            name: tk.name,
+            ticker: tk.ticker,
+          },
+        });
+        id = r.id;
+      }
+      navigate({ to: "/campaigns/new", search: { token: id } });
+    } catch (e) {
+      toast.error((e as Error).message || "No se pudo abrir el creador de misiones");
+    } finally {
+      setMissionsBusy(false);
+    }
+  }
 
 
   return (
@@ -356,6 +385,16 @@ function TokenPage() {
                 name={tk.name}
                 ticker={tk.ticker}
               />
+            )}
+            {isCreator && (
+              <Button
+                onClick={openMissionBuilder}
+                disabled={missionsBusy}
+                className="brand-gradient text-primary-foreground glow-primary"
+              >
+                <Target className="h-4 w-4 mr-1.5" />
+                {missionsBusy ? "Abriendo…" : "Crear misiones"}
+              </Button>
             )}
             <Button variant="outline" className="border-white/10 bg-white/5" onClick={() => { navigator.share?.({ url: location.href }).catch(() => {}); }}>
               <Share2 className="h-4 w-4 mr-1.5" /> {t("token.share")}

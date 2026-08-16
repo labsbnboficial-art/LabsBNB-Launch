@@ -139,7 +139,18 @@ function MissionsPage() {
         </div>
 
         {tab === "campaigns" ? (
-          <div className="mt-6 grid gap-4 md:grid-cols-2">
+          <>
+            <div className="mt-6 glass-strong rounded-2xl p-5 flex flex-wrap items-center justify-between gap-3">
+              <p className="text-sm text-muted-foreground">
+                ¿Eres creador de un token? Lanza tu propia campaña de misiones para tu comunidad.
+              </p>
+              <Link to="/campaigns/new" search={{ token: undefined }}>
+                <Button className="brand-gradient text-primary-foreground glow-primary">
+                  <Target className="h-4 w-4 mr-1.5" /> Crear campaña
+                </Button>
+              </Link>
+            </div>
+            <div className="mt-6 grid gap-4 md:grid-cols-2">
             {(campaignsQ.data?.campaigns ?? []).length === 0 && (
               <p className="text-sm text-muted-foreground">Aún no hay campañas activas.</p>
             )}
@@ -164,7 +175,9 @@ function MissionsPage() {
                 </div>
               </Link>
             ))}
-          </div>
+            </div>
+          </>
+
         ) : (
           <div className="mt-6 grid gap-4 md:grid-cols-2">
             {visible.length === 0 && <p className="text-sm text-muted-foreground">No hay misiones en esta categoría todavía.</p>}
