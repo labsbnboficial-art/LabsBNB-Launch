@@ -386,6 +386,16 @@ function TokenPage() {
                 ticker={tk.ticker}
               />
             )}
+            {isCreator && (
+              <Button
+                onClick={openMissionBuilder}
+                disabled={missionsBusy}
+                className="brand-gradient text-primary-foreground glow-primary"
+              >
+                <Target className="h-4 w-4 mr-1.5" />
+                {missionsBusy ? "Abriendo…" : "Crear misiones"}
+              </Button>
+            )}
             <Button variant="outline" className="border-white/10 bg-white/5" onClick={() => { navigator.share?.({ url: location.href }).catch(() => {}); }}>
               <Share2 className="h-4 w-4 mr-1.5" /> {t("token.share")}
             </Button>
