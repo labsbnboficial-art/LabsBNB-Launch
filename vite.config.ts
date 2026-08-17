@@ -7,6 +7,23 @@
 import { defineConfig } from "@lovable.dev/vite-tanstack-config";
 
 export default defineConfig({
+  vite: {
+    resolve: {
+      alias: {
+        // eventemitter3's entry only assigns `module.exports` when a CJS
+        // `module` global exists. Some browser bundles evaluate it without one,
+        // leaving an empty namespace and crashing wallet connectors with
+        // "X.EventEmitter is not a constructor". The shipped ESM build is
+        // self-contained, so point every importer at it.
+        eventemitter3: "eventemitter3/dist/eventemitter3.esm.js",
+      },
+    },
+    optimizeDeps: {
+      esbuildOptions: {
+        alias: { eventemitter3: "eventemitter3/dist/eventemitter3.esm.js" },
+      },
+    },
+  },
   tanstackStart: {
     // Redirect TanStack Start's bundled server entry to src/server.ts (our SSR error wrapper).
     // nitro/vite builds from this
