@@ -501,27 +501,8 @@ function TokenPage() {
                     </button>
                   ))}
                 </div>
-                <div className="flex items-center gap-1 rounded-full border border-white/10 bg-white/5 p-1">
-                  <button
-                    onClick={() => zoom(-1)}
-                    disabled={visibleCount >= 600}
-                    aria-label="Alejar (más velas)"
-                    className="rounded-full px-2 py-1 text-[11px] font-mono text-muted-foreground hover:text-foreground disabled:opacity-30"
-                  >
-                    −
-                  </button>
-                  <span className="px-1 text-[11px] font-mono tabular-nums text-muted-foreground">
-                    {Math.min(visibleCount, allCandles.length || visibleCount)} velas
-                  </span>
-                  <button
-                    onClick={() => zoom(1)}
-                    disabled={visibleCount <= 15}
-                    aria-label="Acercar (menos velas)"
-                    className="rounded-full px-2 py-1 text-[11px] font-mono text-muted-foreground hover:text-foreground disabled:opacity-30"
-                  >
-                    +
-                  </button>
-                </div>
+                {/* Zoom / fit / fullscreen viven ahora en la toolbar del chart */}
+
               </div>
               {eventsError ? (
                 <ChainError error={eventsError} onRetry={() => eventsQ.refetch()} />
