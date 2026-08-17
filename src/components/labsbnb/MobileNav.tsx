@@ -76,7 +76,7 @@ export function MobileNav() {
     item.exact ? pathname === item.to : pathname === item.to || pathname.startsWith(`${item.to}/`);
 
   return (
-    <div className="md:hidden">
+    <div className="lg:hidden">
       <button
         type="button"
         onClick={() => setOpen(true)}
