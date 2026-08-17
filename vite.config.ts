@@ -11,14 +11,25 @@ const browserEventsEntry = fileURLToPath(
   new URL("./node_modules/events/events.js", import.meta.url),
 );
 
+const resolveBrowserEvents = {
+  name: "labsbnb-resolve-browser-events",
+  enforce: "pre" as const,
+  resolveId(source: string) {
+    if (source === "events" || source === "node:events") return browserEventsEntry;
+    return null;
+  },
+};
+
 export default defineConfig({
   vite: {
+    plugins: [resolveBrowserEvents],
     resolve: {
       // WalletConnect imports the browser-compatible npm package as `events`.
       // Vite 8 otherwise mistakes that bare specifier for the Node builtin and
       // emits an empty browser shim, leaving `new events.EventEmitter()` broken.
       alias: {
         events: browserEventsEntry,
+        "node:events": browserEventsEntry,
       },
     },
   },
