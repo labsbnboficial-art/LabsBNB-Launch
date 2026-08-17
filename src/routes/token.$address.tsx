@@ -187,8 +187,8 @@ function TokenPage() {
   // Zoom / visible range: how many of the most recent candles are drawn.
   // The chart itself also drives this via wheel / pinch.
   const [visibleCount, setVisibleCount] = useState(90);
-  const zoom = (dir: 1 | -1) =>
-    setVisibleCount((n) => Math.min(600, Math.max(15, Math.round(dir === 1 ? n / 1.4 : n * 1.4))));
+
+
 
 
   // Keep the chart and the trades list on the same temporal range: when the
@@ -501,27 +501,8 @@ function TokenPage() {
                     </button>
                   ))}
                 </div>
-                <div className="flex items-center gap-1 rounded-full border border-white/10 bg-white/5 p-1">
-                  <button
-                    onClick={() => zoom(-1)}
-                    disabled={visibleCount >= 600}
-                    aria-label="Alejar (más velas)"
-                    className="rounded-full px-2 py-1 text-[11px] font-mono text-muted-foreground hover:text-foreground disabled:opacity-30"
-                  >
-                    −
-                  </button>
-                  <span className="px-1 text-[11px] font-mono tabular-nums text-muted-foreground">
-                    {Math.min(visibleCount, allCandles.length || visibleCount)} velas
-                  </span>
-                  <button
-                    onClick={() => zoom(1)}
-                    disabled={visibleCount <= 15}
-                    aria-label="Acercar (menos velas)"
-                    className="rounded-full px-2 py-1 text-[11px] font-mono text-muted-foreground hover:text-foreground disabled:opacity-30"
-                  >
-                    +
-                  </button>
-                </div>
+                {/* Zoom / fit / fullscreen viven ahora en la toolbar del chart */}
+
               </div>
               {eventsError ? (
                 <ChainError error={eventsError} onRetry={() => eventsQ.refetch()} />

@@ -1,10 +1,14 @@
-// DEXTools-style candlestick chart powered by TradingView Lightweight Charts.
+// Professional trading-terminal candlestick chart (TradingView Lightweight Charts).
 //
-// Candles are built from real on-chain Trade(...) events (see curve-events.ts).
-// Interactions: wheel zoom, horizontal drag, crosshair with OHLC + volume
-// readout, autoscale, fullscreen. The visible candle count stays controlled so
-// the page can keep the trades table in sync with the chart window.
-import { useEffect, useMemo, useRef, useState } from "react";
+// Data source is untouched: real on-chain Trade(...) events aggregated by
+// buildCandles(events, timeframeSeconds) in curve-events.ts.
+//
+// Key fix vs the previous version: the visible logical range no longer forces a
+// minimum span of MIN_VISIBLE slots. With only a handful of candles that padded
+// the window with empty slots and produced the "CANDLE   CANDLE   CANDLE" gaps.
+// Now the viewport auto-fits the real data range and barSpacing is derived from
+// the available pixel width so bars always sit shoulder to shoulder.
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   CandlestickSeries,
   ColorType,
@@ -15,7 +19,7 @@ import {
   type ISeriesApi,
   type UTCTimestamp,
 } from "lightweight-charts";
-import { Maximize2, Minimize2, RotateCcw, ZoomIn, ZoomOut } from "lucide-react";
+import { Maximize2, Minimize2, Move, RotateCcw, ZoomIn, ZoomOut } from "lucide-react";
 import { createLastPriceLine, createPriceLine } from "./chart-lines";
 import type { Candle } from "@/lib/web3/curve-events";
 
@@ -30,16 +34,19 @@ type Props = {
 
 const UP = "#22c55e";
 const DOWN = "#ef4444";
-const MIN_VISIBLE = 15;
+const MIN_VISIBLE = 4;
 const MAX_VISIBLE = 600;
+const DEFAULT_VISIBLE = 100;
+/** Widest a single bar slot may become so 2–3 candles don't look like columns. */
+const MAX_BAR_SPACING = 26;
+const MIN_BAR_SPACING = 0.6;
 
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
-
 
 function priceFormat(candles: Candle[]) {
   const min = candles.reduce((acc, c) => (c.low > 0 && c.low < acc ? c.low : acc), Number.POSITIVE_INFINITY);
   const ref = Number.isFinite(min) ? min : 1;
-  const digits = Math.min(10, Math.max(4, Math.ceil(-Math.log10(ref)) + 3));
+  const digits = Math.min(12, Math.max(4, Math.ceil(-Math.log10(ref)) + 3));
   return { type: "price" as const, precision: digits, minMove: Number(`1e-${digits}`) };
 }
 
@@ -61,11 +68,9 @@ export function CandleChart({
   rangeCb.current = onVisibleCountChange;
   const programmatic = useRef(false);
 
-
   const [full, setFull] = useState(false);
   const [hover, setHover] = useState<Candle | null>(null);
   const [hostWidth, setHostWidth] = useState(0);
-
 
   const data = useMemo(() => {
     // Lightweight Charts requires strictly ascending, unique timestamps.
@@ -88,30 +93,44 @@ export function CandleChart({
       height: host.clientHeight || 360,
       layout: {
         background: { type: ColorType.Solid, color: "transparent" },
-        textColor: "rgba(226,232,240,0.65)",
+        textColor: "rgba(226,232,240,0.62)",
         fontFamily: "ui-monospace, SFMono-Regular, monospace",
+        fontSize: 11,
         attributionLogo: false,
       },
+      // Subtle terminal grid: readable, never competing with the candles.
       grid: {
-        vertLines: { color: "rgba(148,163,184,0.08)" },
-        horzLines: { color: "rgba(148,163,184,0.08)" },
+        vertLines: { color: "rgba(148,163,184,0.05)" },
+        horzLines: { color: "rgba(148,163,184,0.07)" },
       },
-      rightPriceScale: { borderColor: "rgba(148,163,184,0.15)", scaleMargins: { top: 0.08, bottom: 0.28 } },
-      // Tight professional spacing: candles sit close together like a real
-      // trading terminal instead of isolated blocks with wide gaps.
+      rightPriceScale: {
+        borderColor: "rgba(148,163,184,0.12)",
+        scaleMargins: { top: 0.08, bottom: 0.26 },
+        entireTextOnly: true,
+      },
       timeScale: {
-        borderColor: "rgba(148,163,184,0.15)",
+        borderColor: "rgba(148,163,184,0.12)",
         timeVisible: true,
         secondsVisible: false,
-        rightOffset: 2,
-        barSpacing: 5,
-        minBarSpacing: 0.4,
+        rightOffset: 1,
+        barSpacing: 6,
+        minBarSpacing: MIN_BAR_SPACING,
+        lockVisibleTimeRangeOnResize: true,
       },
-
       crosshair: {
         mode: CrosshairMode.Normal,
-        vertLine: { color: "rgba(56,189,248,0.5)", labelBackgroundColor: "#0ea5e9" },
-        horzLine: { color: "rgba(56,189,248,0.5)", labelBackgroundColor: "#0ea5e9" },
+        vertLine: {
+          color: "rgba(56,189,248,0.45)",
+          width: 1,
+          style: 3,
+          labelBackgroundColor: "#0ea5e9",
+        },
+        horzLine: {
+          color: "rgba(56,189,248,0.45)",
+          width: 1,
+          style: 3,
+          labelBackgroundColor: "#0ea5e9",
+        },
       },
       handleScroll: { mouseWheel: true, pressedMouseMove: true, horzTouchDrag: true, vertTouchDrag: false },
       handleScale: { mouseWheel: true, pinch: true, axisPressedMouseMove: true },
@@ -122,22 +141,21 @@ export function CandleChart({
       downColor: DOWN,
       borderUpColor: UP,
       borderDownColor: DOWN,
-      wickUpColor: UP,
-      wickDownColor: DOWN,
+      wickUpColor: "rgba(34,197,94,0.85)",
+      wickDownColor: "rgba(239,68,68,0.85)",
     });
     const volumeSeries = chart.addSeries(HistogramSeries, {
       priceFormat: { type: "volume" },
       priceScaleId: "volume",
     });
-    chart.priceScale("volume").applyOptions({ scaleMargins: { top: 0.78, bottom: 0 } });
+    chart.priceScale("volume").applyOptions({ scaleMargins: { top: 0.8, bottom: 0 } });
 
     chart.timeScale().subscribeVisibleLogicalRangeChange((range) => {
-      // Ignore ranges we set ourselves, otherwise the adaptive-density effect
-      // and this listener would ping-pong and shrink the preset the user chose.
+      // Ignore ranges we set ourselves, otherwise the auto-fit effect and this
+      // listener would ping-pong and shrink the preset the user chose.
       if (!range || programmatic.current) return;
       const n = Math.round(range.to - range.from);
       if (Number.isFinite(n) && n >= MIN_VISIBLE && n <= MAX_VISIBLE) rangeCb.current(n);
-
     });
 
     // ResizeObserver instead of `autoSize`: the chart lives inside flex/grid
@@ -149,7 +167,6 @@ export function CandleChart({
         chart.applyOptions({ width: w, height: h });
         setHostWidth(w);
       }
-
     });
     ro.observe(host);
 
@@ -178,7 +195,7 @@ export function CandleChart({
       data.map((c) => ({
         time: c.t as UTCTimestamp,
         value: c.volume,
-        color: c.close >= c.open ? "rgba(34,197,94,0.35)" : "rgba(239,68,68,0.35)",
+        color: c.close >= c.open ? "rgba(34,197,94,0.4)" : "rgba(239,68,68,0.4)",
       })),
     );
   }, [data, candles]);
@@ -229,34 +246,31 @@ export function CandleChart({
     };
   }, [data]);
 
-  // Adaptive density: candle width is derived from the available pixel width
-  // divided by the number of candles the user asked to see, so bars always sit
-  // shoulder to shoulder instead of floating with huge gaps. The visible window
-  // is anchored to the newest candle and never wider than the real history.
+  // Auto-fit: the window never exceeds the real candle count, and the bar slot
+  // width is the available pixel width divided by the bars actually shown, so
+  // candles stay tight regardless of whether there are 2 or 500 of them.
+  const applyFit = useCallback(
+    (target: number) => {
+      const chart = chartRef.current;
+      if (!chart || data.length === 0) return;
+      const width = hostWidth || hostRef.current?.clientWidth || 600;
+      const span = clamp(Math.min(target, data.length), 1, MAX_VISIBLE);
+      const rightPad = span <= 12 ? 0.5 : 1;
+      const spacing = clamp(width / (span + rightPad + 0.5), MIN_BAR_SPACING, MAX_BAR_SPACING);
+      chart.timeScale().applyOptions({ barSpacing: spacing, rightOffset: rightPad });
+      const to = data.length - 1 + rightPad;
+      programmatic.current = true;
+      chart.timeScale().setVisibleLogicalRange({ from: to - span, to });
+      window.setTimeout(() => {
+        programmatic.current = false;
+      }, 60);
+    },
+    [data.length, hostWidth],
+  );
+
   useEffect(() => {
-    const chart = chartRef.current;
-    if (!chart || data.length === 0) return;
-    const width = hostWidth || hostRef.current?.clientWidth || 600;
-    const target = Math.max(MIN_VISIBLE, Math.min(visibleCount, MAX_VISIBLE));
-    // Never stretch a short history across the whole canvas: cap the span at
-    // the real candle count (+ a small right margin) so bars keep a sane width.
-    const span = Math.min(target, Math.max(MIN_VISIBLE, data.length));
-    // 1px of breathing room between bars; the library reserves ~1px itself.
-    const spacing = clamp(width / (span + 2), 0.8, 24);
-    chart.timeScale().applyOptions({
-      barSpacing: spacing,
-      rightOffset: spacing >= 6 ? 2 : 1,
-    });
-    const to = data.length + (spacing >= 6 ? 2 : 1);
-    programmatic.current = true;
-    chart.timeScale().setVisibleLogicalRange({ from: to - span, to });
-    const id = setTimeout(() => {
-      programmatic.current = false;
-    }, 60);
-    return () => clearTimeout(id);
-
-  }, [visibleCount, data.length, hostWidth, data]);
-
+    applyFit(visibleCount);
+  }, [applyFit, visibleCount, full]);
 
   // Fullscreen without leaving React's control of the layout.
   useEffect(() => {
@@ -270,84 +284,125 @@ export function CandleChart({
   const shown = hover ?? last;
   const up = shown ? shown.close >= shown.open : true;
   const fmt = (v: number | undefined) =>
-    v == null || !Number.isFinite(v) ? "—" : v >= 1 ? v.toFixed(4) : v.toPrecision(5);
+    v == null || !Number.isFinite(v) ? "—" : v >= 1 ? v.toFixed(4) : v.toPrecision(6);
+
+  const btn =
+    "rounded-md border border-white/10 bg-white/[0.04] p-1.5 text-muted-foreground transition-colors hover:border-primary/40 hover:bg-primary/10 hover:text-foreground active:scale-95";
 
   return (
     <div
       ref={wrapRef}
       className={
         full
-          ? "fixed inset-0 z-50 flex flex-col gap-2 bg-background/98 p-4 backdrop-blur"
+          ? "fixed inset-0 z-50 flex flex-col gap-2 bg-background/98 p-3 backdrop-blur-xl sm:p-4"
           : "relative flex flex-col gap-2"
       }
     >
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] font-mono text-muted-foreground">
-        <span className={up ? "text-emerald-400" : "text-red-400"}>
-          O {fmt(shown?.open)} · H {fmt(shown?.high)} · L {fmt(shown?.low)} · C {fmt(shown?.close)}
+      {/* OHLC readout — follows the hovered candle, falls back to the last one */}
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border border-white/5 bg-white/[0.02] px-2.5 py-1.5 text-[11px] font-mono text-muted-foreground">
+        <span className={`tabular-nums ${up ? "text-emerald-400" : "text-red-400"}`}>
+          <span className="opacity-60">O</span> {fmt(shown?.open)} <span className="opacity-60">H</span> {fmt(shown?.high)}{" "}
+          <span className="opacity-60">L</span> {fmt(shown?.low)} <span className="opacity-60">C</span> {fmt(shown?.close)}
         </span>
-        <span>
-          Vol {shown ? shown.volume.toFixed(4) : "—"} {quoteSymbol}
+        <span className="tabular-nums">
+          <span className="opacity-60">Vol</span> {shown ? shown.volume.toFixed(4) : "—"} {quoteSymbol}
         </span>
-        <span>Trades {shown ? shown.trades : "—"}</span>
-        <span>{shown ? new Date(shown.time).toLocaleString() : ""}</span>
-        <div className="ml-auto flex items-center gap-1">
+        <span className="tabular-nums">
+          <span className="opacity-60">Trades</span> {shown ? shown.trades : "—"}
+        </span>
+        <span className="hidden tabular-nums opacity-70 sm:inline">
+          {shown ? new Date(shown.time).toLocaleString() : ""}
+        </span>
+      </div>
+
+      {/* Compact toolbar — presets collapse away on small screens */}
+      <div className="flex items-center gap-1 overflow-x-auto">
+        <div className="hidden items-center gap-1 sm:flex">
           {COUNT_PRESETS.map((n) => (
             <button
               key={n}
               type="button"
               onClick={() => onVisibleCountChange(n)}
-              className={`rounded-md border px-1.5 py-0.5 text-[10px] transition-colors ${
+              className={`rounded-md border px-2 py-1 text-[10px] font-mono transition-colors ${
                 visibleCount === n
                   ? "border-primary/50 bg-primary/15 text-foreground"
-                  : "border-white/10 bg-white/5 hover:text-foreground"
+                  : "border-white/10 bg-white/[0.04] text-muted-foreground hover:text-foreground"
               }`}
             >
               {n}
             </button>
           ))}
+        </div>
+        <span className="rounded-md border border-white/10 bg-white/[0.04] px-2 py-1 text-[10px] font-mono tabular-nums text-muted-foreground">
+          {Math.min(visibleCount, data.length || visibleCount)} velas
+        </span>
+        <div className="ml-auto flex items-center gap-1">
           <button
             type="button"
             aria-label="Zoom in"
             onClick={() => onVisibleCountChange(Math.max(MIN_VISIBLE, Math.round(visibleCount * 0.7)))}
-            className="rounded-md border border-white/10 bg-white/5 p-1.5 hover:text-foreground"
+            className={btn}
           >
             <ZoomIn className="h-3.5 w-3.5" />
           </button>
           <button
             type="button"
             aria-label="Zoom out"
-            onClick={() => onVisibleCountChange(Math.min(MAX_VISIBLE, Math.round(visibleCount * 1.4)))}
-            className="rounded-md border border-white/10 bg-white/5 p-1.5 hover:text-foreground"
+            onClick={() => onVisibleCountChange(Math.min(MAX_VISIBLE, Math.round(visibleCount * 1.4) + 1))}
+            className={btn}
           >
             <ZoomOut className="h-3.5 w-3.5" />
           </button>
           <button
             type="button"
+            aria-label="Ajustar al rango con datos"
+            title="Fit"
+            onClick={() => {
+              const n = clamp(data.length || DEFAULT_VISIBLE, MIN_VISIBLE, MAX_VISIBLE);
+              onVisibleCountChange(n);
+              applyFit(n);
+            }}
+            className={btn}
+          >
+            <Move className="h-3.5 w-3.5" />
+          </button>
+          <button
+            type="button"
             aria-label="Reset zoom"
-            onClick={() => onVisibleCountChange(100)}
-            className="rounded-md border border-white/10 bg-white/5 p-1.5 hover:text-foreground"
+            onClick={() => {
+              onVisibleCountChange(DEFAULT_VISIBLE);
+              applyFit(DEFAULT_VISIBLE);
+            }}
+            className={btn}
           >
             <RotateCcw className="h-3.5 w-3.5" />
           </button>
+          <button
+            type="button"
+            onClick={() => setFull((v) => !v)}
+            aria-label={full ? "Salir de pantalla completa" : "Pantalla completa"}
+            className={btn}
+          >
+            {full ? <Minimize2 className="h-3.5 w-3.5" /> : <Maximize2 className="h-3.5 w-3.5" />}
+          </button>
         </div>
-        <button
-          type="button"
-          onClick={() => setFull((v) => !v)}
-          aria-label={full ? "Salir de pantalla completa" : "Pantalla completa"}
-          className="rounded-md border border-white/10 bg-white/5 p-1.5 text-muted-foreground hover:text-foreground"
-        >
-          {full ? <Minimize2 className="h-3.5 w-3.5" /> : <Maximize2 className="h-3.5 w-3.5" />}
-        </button>
       </div>
-      <div className="relative">
+
+      <div className={full ? "relative min-h-0 flex-1" : "relative"}>
         <div
           ref={hostRef}
-          className={full ? "min-h-0 flex-1" : "h-[300px] w-full max-w-full overflow-hidden sm:h-[360px] lg:h-[420px]"}
+          className={
+            full
+              ? "h-full w-full"
+              : "h-[300px] w-full max-w-full overflow-hidden transition-[height] duration-200 sm:h-[380px] lg:h-[440px]"
+          }
         />
-
         {data.length === 0 && (
-          <div className="pointer-events-none absolute inset-0 flex items-center justify-center px-6 text-center text-xs text-muted-foreground">
-            No hay suficientes operaciones para construir este intervalo.
+          <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-1 px-6 text-center">
+            <span className="text-sm font-medium text-foreground/80">No trading data available yet</span>
+            <span className="text-xs text-muted-foreground">
+              El gráfico se construye con operaciones reales on-chain. Aparecerá automáticamente con el primer trade.
+            </span>
           </div>
         )}
       </div>
