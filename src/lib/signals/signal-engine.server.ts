@@ -138,7 +138,42 @@ export async function detectCandidates(
   return out;
 }
 
+/**
+ * Public entry point. Guarantees a single concurrent execution across the admin
+ * button and every cron invocation, and always reports the duration.
+ */
 export async function runSignalEngine(opts: RunOptions = {}): Promise<SignalRunResult> {
+  const started = Date.now();
+  const trigger = opts.trigger ?? "manual";
+  const { acquireLock, releaseLock } = await import("./signal-lock.server");
+  const lock = await acquireLock(trigger);
+  if (!lock.acquired) {
+    console.info(`[SIGNAL_ENGINE] run skipped (locked) trigger=${trigger} heldSince=${lock.heldSince ?? "?"}`);
+    const cfg = await loadConfig().catch(() => null);
+    return {
+      ranAt: new Date().toISOString(),
+      engineEnabled: cfg?.engine_enabled ?? false,
+      tokensScanned: 0,
+      detected: 0,
+      sent: 0,
+      skipped: 0,
+      failed: 0,
+      notes: [`Otra ejecución sigue activa (desde ${lock.heldSince ?? "hace instantes"}): esta se omitió.`],
+      locked: true,
+      durationMs: Date.now() - started,
+    };
+  }
+
+  try {
+    const result = await executeRun(opts);
+    return { ...result, locked: false, durationMs: Date.now() - started };
+  } finally {
+    await releaseLock(lock.handle);
+  }
+}
+
+async function executeRun(opts: RunOptions = {}): Promise<SignalRunResult> {
+
   const ranAt = new Date().toISOString();
   const notes: string[] = [];
   const trigger = opts.trigger ?? "manual";

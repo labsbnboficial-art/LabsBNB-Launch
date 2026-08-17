@@ -124,7 +124,11 @@ export type SignalRunResult = {
   skipped: number;
   failed: number;
   notes: string[];
+  /** True when another execution was already running and this one was skipped. */
+  locked?: boolean;
+  durationMs?: number;
 };
+
 
 export type SignalLogRow = {
   id: string;

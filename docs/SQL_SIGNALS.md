@@ -50,32 +50,69 @@ privadas (`is_public = false`):
 
 No requiere SQL adicional si `admin_config` ya existe.
 
-## Ejecución automática (cron)
+## Ejecución automática (cron) — Fase 3
 
-1. Guarda el secret `SIGNALS_CRON_SECRET` en el gestor de secrets del proyecto.
-2. Programa un POST cada 2–5 minutos a:
+El secret `SIGNALS_CRON_SECRET` ya está creado en el gestor de secrets del
+proyecto (server-side, nunca se expone al cliente ni a los logs).
+
+El endpoint es el único trigger externo y ejecuta **exactamente el mismo motor**
+que el botón *RUN ENGINE NOW*:
 
 ```
-https://project--a0ce9313-68d4-41dc-82f5-379383b2e462-dev.lovable.app/api/public/signals/run
+POST https://lp-burn-stake-gain.lovable.app/api/public/signals/run
+Header: x-signals-secret: <SIGNALS_CRON_SECRET>
 ```
 
-con la cabecera `x-signals-secret: <SIGNALS_CRON_SECRET>`.
+Respuesta: `success, skippedLocked, tokensScanned, detected, sent, skipped,
+failed, durationMs, notes`. Sin secretos ni datos privados.
 
-Ejemplo con `pg_cron` + `pg_net`:
+### Anti-concurrencia
+
+El motor toma un lock distribuido en `admin_config` (`signal_engine_lock`,
+TTL 4 min). Si una ejecución sigue activa, la nueva devuelve
+`skippedLocked: true` y no inicia una segunda instancia. Un lock huérfano
+expira solo.
+
+### Programación con pg_cron (cada minuto)
+
+Ejecuta esto **una vez** en el SQL Editor de Supabase
+(`bmfmwlylaedihkkxxgom`), sustituyendo el secret:
 
 ```sql
+create extension if not exists pg_cron;
+create extension if not exists pg_net;
+
+select cron.unschedule('labsbnb-signals')
+where exists (select 1 from cron.job where jobname = 'labsbnb-signals');
+
 select cron.schedule(
   'labsbnb-signals',
-  '*/3 * * * *',
+  '* * * * *',            -- cada minuto
   $$
   select net.http_post(
-    url := 'https://project--a0ce9313-68d4-41dc-82f5-379383b2e462-dev.lovable.app/api/public/signals/run',
-    headers := jsonb_build_object('x-signals-secret', 'REEMPLAZA_CON_EL_SECRET'),
-    body := '{}'::jsonb
+    url := 'https://lp-burn-stake-gain.lovable.app/api/public/signals/run',
+    headers := jsonb_build_object(
+      'content-type', 'application/json',
+      'x-signals-secret', 'REEMPLAZA_CON_EL_SECRET'
+    ),
+    body := '{}'::jsonb,
+    timeout_milliseconds := 55000
   );
   $$
 );
 ```
 
+Comprobación:
+
+```sql
+select jobid, jobname, schedule, active from cron.job where jobname = 'labsbnb-signals';
+select status, return_message, start_time
+from cron.job_run_details order by start_time desc limit 10;
+```
+
+Alternativa sin SQL: cualquier monitor externo (UptimeRobot, cron-job.org,
+GitHub Actions) haciendo POST cada 1–2 minutos con la misma cabecera.
+
 La primera ejecución del motor **no publica nada**: registra el estado actual
 como *baseline* para no inundar el canal con historial antiguo.
+
