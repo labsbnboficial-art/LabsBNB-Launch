@@ -83,10 +83,16 @@ async function callTelegram<T>(method: string, body: Record<string, unknown>): P
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify(body),
+      // Hard timeout: the cron must never hang on a stalled Telegram request.
+      signal: AbortSignal.timeout(15_000),
     });
-  } catch {
+  } catch (e) {
+    if (e instanceof Error && e.name === "TimeoutError") {
+      throw new TelegramError("La API de Telegram no respondió a tiempo (timeout).", 0);
+    }
     throw new TelegramError("No se pudo contactar con la API de Telegram (fallo de red).", 0);
   }
+
 
   let json: TgResponse<T>;
   try {

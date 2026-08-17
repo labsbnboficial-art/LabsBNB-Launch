@@ -11,11 +11,15 @@ export function siteUrl(configured?: unknown): string {
   try {
     const u = new URL(raw);
     if (u.protocol !== "https:" && u.protocol !== "http:") return FALLBACK_SITE_URL;
+    // Telegram rejects inline-button URLs pointing at localhost/private hosts,
+    // so a local dev origin must never leak into a published signal.
+    if (/^(localhost|127\.|0\.0\.0\.0|\[::1\]|.*\.local)$/i.test(u.hostname)) return FALLBACK_SITE_URL;
     return u.origin;
   } catch {
     return FALLBACK_SITE_URL;
   }
 }
+
 
 export function esc(v: unknown): string {
   return String(v ?? "")
