@@ -1,5 +1,5 @@
 import { build } from "vite";
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { mkdtemp, readFile, rename, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -27,7 +27,9 @@ try {
   });
 
   const bundle = await readFile(join(output, "wallet-event-resolution.js"), "utf8");
-  const module = await import(`data:text/javascript;base64,${Buffer.from(bundle).toString("base64")}`);
+  const executable = join(output, "wallet-event-resolution.mjs");
+  await rename(join(output, "wallet-event-resolution.js"), executable);
+  const module = await import(new URL(`file://${executable}`).href);
   const report = module.auditEventResolution();
 
   if (!report.eventemitter3Named || !report.nodeEventsNamed) {
