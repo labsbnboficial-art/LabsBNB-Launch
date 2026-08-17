@@ -226,14 +226,25 @@
   animation: particle-drift var(--dur, 18s) ease-in-out infinite alternate;
 }
 
+/* Mobile drawer slide-in. */
+@keyframes slide-in-right {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
+@utility animate-slide-in-right {
+  animation: slide-in-right 0.24s cubic-bezier(0.32, 0.72, 0, 1) both;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .animate-particle,
   .animate-float,
   .animate-pulse-glow,
+  .animate-slide-in-right,
   .animate-fade-in {
     animation: none !important;
   }
 }
+
 
 
 /* Soft cyan glow for hero cards, CTAs and stats. */

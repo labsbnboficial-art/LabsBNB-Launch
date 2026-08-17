@@ -20,3 +20,23 @@ export function createPriceLine(
     return null;
   }
 }
+
+/** Discreet horizontal line marking the current (last close) price. */
+export function createLastPriceLine(
+  series: ISeriesApi<"Candlestick">,
+  price: number | null | undefined,
+): IPriceLine | null {
+  if (price == null || !Number.isFinite(price) || price <= 0) return null;
+  try {
+    return series.createPriceLine({
+      price,
+      color: "rgba(56,189,248,0.75)",
+      lineWidth: 1,
+      lineStyle: 1,
+      axisLabelVisible: true,
+      title: "PRICE",
+    });
+  } catch {
+    return null;
+  }
+}

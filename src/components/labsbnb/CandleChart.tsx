@@ -16,7 +16,7 @@ import {
   type UTCTimestamp,
 } from "lightweight-charts";
 import { Maximize2, Minimize2, RotateCcw, ZoomIn, ZoomOut } from "lucide-react";
-import { createPriceLine } from "./chart-lines";
+import { createLastPriceLine, createPriceLine } from "./chart-lines";
 import type { Candle } from "@/lib/web3/curve-events";
 
 type Props = {
@@ -32,6 +32,9 @@ const UP = "#22c55e";
 const DOWN = "#ef4444";
 const MIN_VISIBLE = 15;
 const MAX_VISIBLE = 600;
+
+const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
+
 
 function priceFormat(candles: Candle[]) {
   const min = candles.reduce((acc, c) => (c.low > 0 && c.low < acc ? c.low : acc), Number.POSITIVE_INFINITY);
@@ -56,9 +59,13 @@ export function CandleChart({
   const volumeRef = useRef<ISeriesApi<"Histogram"> | null>(null);
   const rangeCb = useRef(onVisibleCountChange);
   rangeCb.current = onVisibleCountChange;
+  const programmatic = useRef(false);
+
 
   const [full, setFull] = useState(false);
   const [hover, setHover] = useState<Candle | null>(null);
+  const [hostWidth, setHostWidth] = useState(0);
+
 
   const data = useMemo(() => {
     // Lightweight Charts requires strictly ascending, unique timestamps.
@@ -125,9 +132,12 @@ export function CandleChart({
     chart.priceScale("volume").applyOptions({ scaleMargins: { top: 0.78, bottom: 0 } });
 
     chart.timeScale().subscribeVisibleLogicalRangeChange((range) => {
-      if (!range) return;
+      // Ignore ranges we set ourselves, otherwise the adaptive-density effect
+      // and this listener would ping-pong and shrink the preset the user chose.
+      if (!range || programmatic.current) return;
       const n = Math.round(range.to - range.from);
       if (Number.isFinite(n) && n >= MIN_VISIBLE && n <= MAX_VISIBLE) rangeCb.current(n);
+
     });
 
     // ResizeObserver instead of `autoSize`: the chart lives inside flex/grid
@@ -135,7 +145,11 @@ export function CandleChart({
     const ro = new ResizeObserver(() => {
       const w = host.clientWidth;
       const h = host.clientHeight;
-      if (w > 0 && h > 0) chart.applyOptions({ width: w, height: h });
+      if (w > 0 && h > 0) {
+        chart.applyOptions({ width: w, height: h });
+        setHostWidth(w);
+      }
+
     });
     ro.observe(host);
 
@@ -198,15 +212,51 @@ export function CandleChart({
     return () => chart.unsubscribeCrosshairMove(handler);
   }, [data]);
 
-  // Apply the controlled zoom level coming from the page (− / + buttons).
+  // Current-price line (last close), refreshed on every data update.
+  useEffect(() => {
+    const series = candleRef.current;
+    if (!series) return;
+    const last = data.at(-1);
+    const line = createLastPriceLine(series, last?.close ?? null);
+    return () => {
+      if (line) {
+        try {
+          series.removePriceLine(line);
+        } catch {
+          /* series already disposed */
+        }
+      }
+    };
+  }, [data]);
+
+  // Adaptive density: candle width is derived from the available pixel width
+  // divided by the number of candles the user asked to see, so bars always sit
+  // shoulder to shoulder instead of floating with huge gaps. The visible window
+  // is anchored to the newest candle and never wider than the real history.
   useEffect(() => {
     const chart = chartRef.current;
     if (!chart || data.length === 0) return;
-    // Keep the logical span equal to the requested candle count even when the
-    // history is shorter, so bars stay thin instead of stretching to fill.
-    const to = data.length + 2;
-    chart.timeScale().setVisibleLogicalRange({ from: to - visibleCount, to });
-  }, [visibleCount, data.length]);
+    const width = hostWidth || hostRef.current?.clientWidth || 600;
+    const target = Math.max(MIN_VISIBLE, Math.min(visibleCount, MAX_VISIBLE));
+    // Never stretch a short history across the whole canvas: cap the span at
+    // the real candle count (+ a small right margin) so bars keep a sane width.
+    const span = Math.min(target, Math.max(MIN_VISIBLE, data.length));
+    // 1px of breathing room between bars; the library reserves ~1px itself.
+    const spacing = clamp(width / (span + 2), 0.8, 24);
+    chart.timeScale().applyOptions({
+      barSpacing: spacing,
+      rightOffset: spacing >= 6 ? 2 : 1,
+    });
+    const to = data.length + (spacing >= 6 ? 2 : 1);
+    programmatic.current = true;
+    chart.timeScale().setVisibleLogicalRange({ from: to - span, to });
+    const id = setTimeout(() => {
+      programmatic.current = false;
+    }, 60);
+    return () => clearTimeout(id);
+
+  }, [visibleCount, data.length, hostWidth, data]);
+
 
   // Fullscreen without leaving React's control of the layout.
   useEffect(() => {
@@ -290,7 +340,11 @@ export function CandleChart({
         </button>
       </div>
       <div className="relative">
-        <div ref={hostRef} className={full ? "min-h-0 flex-1" : "h-[360px] w-full"} />
+        <div
+          ref={hostRef}
+          className={full ? "min-h-0 flex-1" : "h-[300px] w-full max-w-full overflow-hidden sm:h-[360px] lg:h-[420px]"}
+        />
+
         {data.length === 0 && (
           <div className="pointer-events-none absolute inset-0 flex items-center justify-center px-6 text-center text-xs text-muted-foreground">
             No hay suficientes operaciones para construir este intervalo.

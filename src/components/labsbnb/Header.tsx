@@ -17,6 +17,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Wallet, Rocket, Trophy, User, Globe, Search, Bell, Sparkles } from "lucide-react";
 import { RiskDisclaimer } from "@/components/labsbnb/RiskDisclaimer";
+import { MobileNav } from "@/components/labsbnb/MobileNav";
 
 function shortAddr(a?: string) {
   if (!a) return "";
@@ -191,7 +192,7 @@ export function Header() {
           </div>
         </Link>
 
-        <nav className="hidden md:flex items-center gap-1 text-sm">
+        <nav className="hidden lg:flex items-center gap-1 text-sm">
           <Link to="/" activeOptions={{ exact: true }} className="px-3 py-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-white/5 transition">
             {t("nav.launchpad")}
           </Link>
@@ -214,12 +215,15 @@ export function Header() {
           )}
         </nav>
 
-        <div className="flex items-center gap-2">
-          <RiskDisclaimer />
+        <div className="flex shrink-0 items-center gap-1 sm:gap-2">
+          <span className="hidden lg:inline-flex">
+            <RiskDisclaimer />
+          </span>
           {user && <NotifBell userId={user.id} />}
+
           <button
             onClick={() => setLocale(locale === "es" ? "en" : "es")}
-            className="hidden sm:inline-flex items-center gap-1 h-9 px-3 rounded-lg text-xs uppercase tracking-wider text-muted-foreground hover:text-foreground hover:bg-white/5 transition"
+            className="hidden md:inline-flex items-center gap-1 h-9 px-3 rounded-lg text-xs uppercase tracking-wider text-muted-foreground hover:text-foreground hover:bg-white/5 transition"
             aria-label="Toggle language"
           >
             <Globe className="h-3.5 w-3.5" />
@@ -235,6 +239,7 @@ export function Header() {
             <ConnectMenu />
           )}
 
+          <MobileNav />
         </div>
       </div>
     </header>
