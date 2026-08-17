@@ -187,8 +187,8 @@ function TokenPage() {
   // Zoom / visible range: how many of the most recent candles are drawn.
   // The chart itself also drives this via wheel / pinch.
   const [visibleCount, setVisibleCount] = useState(90);
-  const zoom = (dir: 1 | -1) =>
-    setVisibleCount((n) => Math.min(600, Math.max(15, Math.round(dir === 1 ? n / 1.4 : n * 1.4))));
+
+
 
 
   // Keep the chart and the trades list on the same temporal range: when the
