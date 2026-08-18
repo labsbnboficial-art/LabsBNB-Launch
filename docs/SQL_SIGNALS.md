@@ -52,6 +52,11 @@ No requiere SQL adicional si `admin_config` ya existe.
 
 ## Ejecución automática (cron) — Fase 3
 
+> El cron oficial de producción está documentado en
+> [`SQL_SIGNALS_CRON.md`](./SQL_SIGNALS_CRON.md) (dominio
+> `https://labsbnb-launchpad.com`, cada 5 min, secret en Supabase Vault).
+> Lo de abajo se mantiene sólo como referencia histórica.
+
 El secret `SIGNALS_CRON_SECRET` ya está creado en el gestor de secrets del
 proyecto (server-side, nunca se expone al cliente ni a los logs).
 
