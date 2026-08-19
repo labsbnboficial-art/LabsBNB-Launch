@@ -319,8 +319,31 @@ export const setCampaignStatus = createServerFn({ method: "POST" })
     }
     const { error } = await client.from("campaigns").update({ status: data.status }).eq("id", data.id);
     if (error) throw new Error(error.message);
+    if (data.status === "ended") await awardWinner(client, data.id).catch(() => {});
     return { ok: true };
   });
+
+/** El creador o el admin registran el pago on-chain del premio al ganador. */
+export const markPrizePaid = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) =>
+    z.object({ campaignId: z.string().uuid(), txHash: z.string().trim().min(6).max(80) }).parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    const client = await db();
+    const { data: camp } = await client.from("campaigns").select("creator_id").eq("id", data.campaignId).maybeSingle();
+    if (!camp) throw new Error("Campaign not found");
+    if ((camp as { creator_id: string | null }).creator_id !== context.userId && !(await isAdmin(client, context.userId))) {
+      throw new Error("Forbidden");
+    }
+    const { error } = await client
+      .from("campaigns")
+      .update({ prize_paid: true, prize_payout_tx: data.txHash })
+      .eq("id", data.campaignId);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
 
 // ------------------------------------------------------------- participation
 
