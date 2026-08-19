@@ -7,9 +7,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { useAuth } from "@/lib/auth";
-import { getCampaign, joinCampaign, submitTask, listCampaignSubmissions, reviewSubmission, setCampaignStatus } from "@/lib/missions.functions";
+import { getCampaign, joinCampaign, submitTask, listCampaignSubmissions, reviewSubmission, setCampaignStatus, markPrizePaid } from "@/lib/missions.functions";
 import { taskSpec } from "@/lib/xp";
-import { Target, Users, Gift, Clock } from "lucide-react";
+import { Target, Users, Gift, Clock, ExternalLink, Trophy } from "lucide-react";
+
 
 export const Route = createFileRoute("/campaigns/$id")({
   head: () => ({
