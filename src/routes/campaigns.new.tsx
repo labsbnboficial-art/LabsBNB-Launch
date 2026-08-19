@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useMemo, useState } from "react";
 import { z } from "zod";
-import { formatEther } from "viem";
+import { formatEther, parseEther } from "viem";
 import { useAccount, useSendTransaction, useWaitForTransactionReceipt } from "wagmi";
 import { AppShell } from "@/components/labsbnb/AppShell";
 import { Button } from "@/components/ui/button";
