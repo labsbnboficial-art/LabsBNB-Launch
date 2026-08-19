@@ -301,12 +301,58 @@ function NewCampaignPage() {
           )}
         </div>
 
-        <Button onClick={submit} disabled={busy || !paid} className="mt-6 w-full brand-gradient text-primary-foreground glow-primary">
+        <div className="mt-6 glass-strong rounded-3xl p-6">
+          <h2 className="font-display text-lg font-semibold">Premio al ganador</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Además de la comisión de la plataforma, deposita el importe que pagarás al participante con más XP.
+            Al terminar la campaña se proclama al ganador automáticamente y se anuncia en Labs Missions.
+          </p>
+          <div className="mt-4 grid gap-4 sm:grid-cols-2">
+            <div>
+              <Label className="text-xs uppercase tracking-widest text-muted-foreground">Moneda del premio</Label>
+              <select
+                value={prizeCurrency}
+                onChange={(e) => { setPrizeCurrency(e.target.value); setPrizeTx(undefined); }}
+                className="mt-2 w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm"
+              >
+                {REWARD_CURRENCIES.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
+              </select>
+            </div>
+            <div>
+              <Label className="text-xs uppercase tracking-widest text-muted-foreground">Importe del premio</Label>
+              <Input
+                type="number"
+                min="0"
+                step="0.0001"
+                value={prizeAmount}
+                onChange={(e) => { setPrizeAmount(e.target.value); setPrizeTx(undefined); }}
+                className="mt-2"
+              />
+            </div>
+          </div>
+          {needsPrizeDeposit ? (
+            <div className="mt-4 flex flex-wrap items-center gap-3">
+              <Button variant="outline" onClick={depositPrize} disabled={!!prizeTx && !prizeReceipt.isError}>
+                {prizeReceipt.isSuccess ? "Premio depositado ✓" : prizeTx ? "Confirmando…" : `Depositar ${prizeAmount} BNB`}
+              </Button>
+              {prizeTx && <span className="font-mono text-[11px] text-muted-foreground break-all">{prizeTx}</span>}
+            </div>
+          ) : (
+            <p className="mt-4 text-[11px] text-muted-foreground">
+              {prizeNum > 0
+                ? "Premio en activos del proyecto: se registra como compromiso y lo entregas al ganador desde el panel de la campaña."
+                : "Sin premio al ganador configurado."}
+            </p>
+          )}
+        </div>
+
+        <Button onClick={submit} disabled={busy || !paid || !prizeFunded} className="mt-6 w-full brand-gradient text-primary-foreground glow-primary">
           {busy ? "Publicando…" : "Publicar campaña"}
         </Button>
         <p className="mt-2 text-center text-[11px] text-muted-foreground">
-          Presupuesto estimado: {budget || 0} {currency} · {Number(perTask) || 0} por tarea · máx. {maxParticipants} participantes
+          Presupuesto estimado: {budget || 0} {currency} · {Number(perTask) || 0} por tarea · máx. {maxParticipants} participantes · premio {prizeNum} {prizeCurrency}
         </p>
+
       </div>
     </AppShell>
   );
