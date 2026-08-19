@@ -37,9 +37,17 @@ const DOWN = "#ef4444";
 const MIN_VISIBLE = 4;
 const MAX_VISIBLE = 600;
 const DEFAULT_VISIBLE = 100;
-/** Widest a single bar slot may become so 2–3 candles don't look like columns. */
-const MAX_BAR_SPACING = 26;
+/**
+ * Hard cap on the width of a single bar slot. Terminals like DEXTools never
+ * grow a candle past ~10px no matter how few bars exist; without this cap a
+ * 3-candle chart turns into three giant rectangles.
+ */
+const MAX_BAR_SPACING = 11;
 const MIN_BAR_SPACING = 0.6;
+/** Minimum number of slots the viewport pretends to have, so a handful of
+ * candles stays compact (right-aligned) instead of being stretched. */
+const MIN_SLOTS_DESKTOP = 60;
+const MIN_SLOTS_MOBILE = 34;
 
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
 
@@ -50,7 +58,26 @@ function priceFormat(candles: Candle[]) {
   return { type: "price" as const, precision: digits, minMove: Number(`1e-${digits}`) };
 }
 
+/**
+ * Smart price label: keeps significant digits for sub-gwei prices, trims
+ * trailing zeros and never falls back to unreadable scientific notation.
+ */
+function smartPrice(v: number): string {
+  if (!Number.isFinite(v)) return "—";
+  if (v === 0) return "0";
+  const abs = Math.abs(v);
+  let out: string;
+  if (abs >= 1000) out = v.toFixed(2);
+  else if (abs >= 1) out = v.toFixed(4);
+  else {
+    const lead = Math.ceil(-Math.log10(abs)); // zeros after the dot
+    out = v.toFixed(Math.min(18, lead + 4));
+  }
+  return out.includes(".") ? out.replace(/0+$/, "").replace(/\.$/, "") : out;
+}
+
 const COUNT_PRESETS = [50, 100, 200, 500];
+
 
 export function CandleChart({
   candles,
