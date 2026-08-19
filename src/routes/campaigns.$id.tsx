@@ -240,27 +240,9 @@ function CreatorReview({ campaignId }: { campaignId: string }) {
 function PayPrize({ campaignId, winner }: { campaignId: string; winner: { wallet_address: string | null } | null }) {
   const qc = useQueryClient();
   const payFn = useServerFn(markPrizePaid);
-  const { sendTransactionAsync } = useSendTransaction();
-  const { data: cfg } = useLaunchpadConfig();
   const [hash, setHash] = useState("");
   const [busy, setBusy] = useState(false);
 
-  const campaignQ = useQuery({ queryKey: ["campaign", campaignId], enabled: false });
-  void campaignQ;
-
-  async function sendPrize() {
-    const to = winner?.wallet_address;
-    if (!to) { toast.error("El ganador no tiene wallet en su perfil"); return; }
-    const amount = Number((cfg as Record<string, unknown> | undefined)?.["__unused"] ?? 0);
-    void amount;
-    toast.info("Confirma la transferencia en tu wallet");
-    try {
-      setBusy(true);
-      const tx = await sendTransactionAsync({ to: to as `0x${string}`, value: 0n, chainId: 97 });
-      setHash(tx);
-    } catch (e) { toast.error((e as Error).message); } finally { setBusy(false); }
-  }
-  void sendPrize;
 
   async function register() {
     if (!hash.trim()) { toast.error("Pega el hash de la transferencia"); return; }
