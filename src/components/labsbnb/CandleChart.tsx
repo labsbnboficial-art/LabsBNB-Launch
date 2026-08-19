@@ -278,27 +278,34 @@ export function CandleChart({
     };
   }, [data]);
 
-  // Auto-fit: the window never exceeds the real candle count, and the bar slot
-  // width is the available pixel width divided by the bars actually shown, so
-  // candles stay tight regardless of whether there are 2 or 500 of them.
+  // Auto-fit: candles keep a terminal-grade density. The slot width is derived
+  // from the width divided by a *floor* of slots, so 2 candles look like 2 thin
+  // candles anchored to the right edge instead of two giant blocks.
   const applyFit = useCallback(
     (target: number) => {
       const chart = chartRef.current;
       if (!chart || data.length === 0) return;
       const width = hostWidth || hostRef.current?.clientWidth || 600;
+      const minSlots = width < 520 ? MIN_SLOTS_MOBILE : MIN_SLOTS_DESKTOP;
       const span = clamp(Math.min(target, data.length), 1, MAX_VISIBLE);
-      const rightPad = span <= 12 ? 0.5 : 1;
-      const spacing = clamp(width / (span + rightPad + 0.5), MIN_BAR_SPACING, MAX_BAR_SPACING);
+      // Slots the viewport pretends to hold — never fewer than minSlots.
+      const slots = Math.max(span, Math.min(minSlots, target));
+      const spacing = clamp(width / (slots + 2), MIN_BAR_SPACING, MAX_BAR_SPACING);
+      const rightPad = Math.max(1, Math.round(spacing >= 6 ? 2 : 3));
       chart.timeScale().applyOptions({ barSpacing: spacing, rightOffset: rightPad });
       const to = data.length - 1 + rightPad;
+      // Show `slots` worth of window so sparse data breathes to the left
+      // instead of being stretched across the canvas.
+      const window_ = Math.max(slots, span);
       programmatic.current = true;
-      chart.timeScale().setVisibleLogicalRange({ from: to - span, to });
+      chart.timeScale().setVisibleLogicalRange({ from: to - window_, to });
       window.setTimeout(() => {
         programmatic.current = false;
       }, 60);
     },
     [data.length, hostWidth],
   );
+
 
   useEffect(() => {
     applyFit(visibleCount);
