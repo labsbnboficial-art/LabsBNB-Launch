@@ -189,7 +189,11 @@ export const createCampaign = createServerFn({ method: "POST" })
         maxParticipants: z.number().int().min(1).max(100000),
         durationHours: z.number().int().min(1).max(24 * 60),
         feeTxHash: z.string().trim().max(80).optional(),
+        prizeCurrency: z.enum(["bnb", "token", "labsbnb", "nft", "raffle", "fee_discount"]).default("bnb"),
+        prizeAmount: z.number().min(0).default(0),
+        prizeTxHash: z.string().trim().max(80).optional(),
         tasks: z.array(taskInput).min(1).max(20),
+
       })
       .parse(d),
   )
