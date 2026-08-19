@@ -115,7 +115,7 @@ export function CandleChart({
     const chart = createChart(host, {
       // Pin the locale: some environments report exotic tags (en-US@posix)
       // that make Intl throw inside the chart's time-axis formatter.
-      localization: { locale: "en-US" },
+      localization: { locale: "en-US", priceFormatter: smartPrice },
       width: host.clientWidth || 600,
       height: host.clientHeight || 360,
       layout: {
@@ -127,23 +127,28 @@ export function CandleChart({
       },
       // Subtle terminal grid: readable, never competing with the candles.
       grid: {
-        vertLines: { color: "rgba(148,163,184,0.05)" },
-        horzLines: { color: "rgba(148,163,184,0.07)" },
+        vertLines: { color: "rgba(148,163,184,0.04)" },
+        horzLines: { color: "rgba(148,163,184,0.06)" },
       },
       rightPriceScale: {
         borderColor: "rgba(148,163,184,0.12)",
-        scaleMargins: { top: 0.08, bottom: 0.26 },
+        scaleMargins: { top: 0.06, bottom: 0.24 },
         entireTextOnly: true,
+        ticksVisible: false,
       },
       timeScale: {
         borderColor: "rgba(148,163,184,0.12)",
         timeVisible: true,
         secondsVisible: false,
-        rightOffset: 1,
+        rightOffset: 2,
         barSpacing: 6,
         minBarSpacing: MIN_BAR_SPACING,
         lockVisibleTimeRangeOnResize: true,
+        ticksVisible: false,
+        fixLeftEdge: false,
+        fixRightEdge: false,
       },
+
       crosshair: {
         mode: CrosshairMode.Normal,
         vertLine: {
