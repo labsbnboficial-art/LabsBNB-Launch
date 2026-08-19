@@ -110,6 +110,7 @@ export const getCampaign = createServerFn({ method: "GET" })
   .inputValidator((d: { id: string }) => z.object({ id: z.string().uuid() }).parse(d))
   .handler(async ({ data }) => {
     const client = await db();
+    await finalizeDue(client, data.id).catch(() => {});
     const { data: campaign, error } = await client.from("campaigns").select("*").eq("id", data.id).maybeSingle();
     if (error) throw new Error(error.message);
     if (!campaign) throw new Error("Campaign not found");
@@ -126,8 +127,15 @@ export const getCampaign = createServerFn({ method: "GET" })
       const { data: tk } = await client.from("tokens").select("id,name,ticker,logo_url,contract_address").eq("id", tokenId).maybeSingle();
       token = tk ?? null;
     }
-    return { campaign, tasks: tasks ?? [], participants: participants ?? [], token };
+    let winner = null;
+    const winnerId = (campaign as { winner_user_id?: string | null }).winner_user_id;
+    if (winnerId) {
+      const { data: wp } = await client.from("profiles").select("id,username,wallet_address,avatar_url").eq("id", winnerId).maybeSingle();
+      winner = wp ?? null;
+    }
+    return { campaign, tasks: tasks ?? [], participants: participants ?? [], token, winner };
   });
+
 
 export const getMyMissionState = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
