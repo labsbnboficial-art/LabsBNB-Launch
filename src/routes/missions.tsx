@@ -200,11 +200,16 @@ function MissionsPage() {
                 <div>
                   <div className="font-semibold">{m.title}</div>
                   {m.description && <p className="mt-1 text-sm text-muted-foreground">{m.description}</p>}
-                  <div className="mt-2 text-xs text-accent">+{m.xp} XP{m.reward_text ? ` · ${m.reward_text}` : ""}</div>
+                  <div className="mt-2 text-xs text-accent">
+                    {m.xp > 0 ? `+${m.xp} XP` : "Anuncio"}{m.reward_text ? ` · ${m.reward_text}` : ""}
+                  </div>
                 </div>
-                <Button size="sm" onClick={() => claim(m.id)} className="brand-gradient text-primary-foreground shrink-0">Reclamar</Button>
+                {m.xp > 0 && (
+                  <Button size="sm" onClick={() => claim(m.id)} className="brand-gradient text-primary-foreground shrink-0">Reclamar</Button>
+                )}
               </div>
             ))}
+
           </div>
         )}
 
