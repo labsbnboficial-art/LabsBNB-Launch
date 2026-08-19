@@ -37,15 +37,21 @@ function CampaignPage() {
   const submitFn = useServerFn(submitTask);
   const statusFn = useServerFn(setCampaignStatus);
 
-  const q = useQuery({ queryKey: ["campaign", id], queryFn: () => getFn({ data: { id } }) });
+  const q = useQuery({ queryKey: ["campaign", id], queryFn: () => getFn({ data: { id } }), refetchInterval: 60_000 });
   const campaign = q.data?.campaign as
-    | { id: string; title: string; description: string | null; creator_id: string | null; status: string; reward_currency: string; reward_per_task: number; reward_budget: number; max_participants: number; ends_at: string | null }
+    | {
+        id: string; title: string; description: string | null; creator_id: string | null; status: string;
+        reward_currency: string; reward_per_task: number; reward_budget: number; max_participants: number; ends_at: string | null;
+        prize_amount?: number; prize_currency?: string; prize_paid?: boolean; prize_payout_tx?: string | null; winner_user_id?: string | null;
+      }
     | undefined;
   const tasks = (q.data?.tasks ?? []) as unknown as Task[];
   const participants = (q.data?.participants ?? []) as unknown as { user_id: string; wallet_address: string | null; xp_earned: number; reward_earned: number }[];
+  const winner = (q.data?.winner ?? null) as { username: string | null; wallet_address: string | null } | null;
   const isCreator = !!user && campaign?.creator_id === user.id;
 
   const [proofs, setProofs] = useState<Record<string, string>>({});
+
 
   async function join() {
     try { await joinFn({ data: { campaignId: id } }); toast.success("Te has unido a la campaña"); qc.invalidateQueries({ queryKey: ["campaign", id] }); }
