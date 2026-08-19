@@ -96,6 +96,7 @@ function CampaignPage() {
             {tasks.map((t) => {
               const spec = taskSpec(t.type);
               const needsProof = spec && spec.proof !== "none" && t.verification !== "auto";
+              const link = typeof t.params?.url === "string" ? (t.params.url as string) : "";
               return (
                 <div key={t.id} className="rounded-2xl border border-white/5 bg-white/[0.02] p-4">
                   <div className="flex flex-wrap items-center justify-between gap-3">
@@ -105,9 +106,18 @@ function CampaignPage() {
                         +{t.xp} XP{t.reward ? ` · ${t.reward} ${campaign.reward_currency}` : ""} · {t.required ? "obligatoria" : "opcional"} · {t.verification === "auto" ? "automática" : "revisión manual"}
                       </div>
                     </div>
-                    <Button size="sm" variant="outline" onClick={() => send(t)}>
-                      {t.verification === "auto" ? "Verificar" : "Enviar"}
-                    </Button>
+                    <div className="flex gap-2">
+                      {link && (
+                        <a href={link} target="_blank" rel="noopener noreferrer">
+                          <Button size="sm" variant="secondary">
+                            <ExternalLink className="h-3.5 w-3.5 mr-1.5" /> Abrir
+                          </Button>
+                        </a>
+                      )}
+                      <Button size="sm" variant="outline" onClick={() => send(t)}>
+                        {t.verification === "auto" ? "Verificar" : "Enviar"}
+                      </Button>
+                    </div>
                   </div>
                   {needsProof && (
                     <Input
@@ -124,6 +134,7 @@ function CampaignPage() {
             {!tasks.length && <p className="text-sm text-muted-foreground">Esta campaña aún no tiene tareas.</p>}
           </div>
         </div>
+
 
         <div className="mt-6 glass-strong rounded-3xl p-6">
           <h2 className="font-display text-lg font-semibold">Participantes</h2>
