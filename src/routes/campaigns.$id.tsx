@@ -7,9 +7,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { useAuth } from "@/lib/auth";
-import { getCampaign, joinCampaign, submitTask, listCampaignSubmissions, reviewSubmission, setCampaignStatus } from "@/lib/missions.functions";
+import { getCampaign, joinCampaign, submitTask, listCampaignSubmissions, reviewSubmission, setCampaignStatus, markPrizePaid } from "@/lib/missions.functions";
 import { taskSpec } from "@/lib/xp";
-import { Target, Users, Gift, Clock } from "lucide-react";
+import { Target, Users, Gift, Clock, ExternalLink, Trophy } from "lucide-react";
+
 
 export const Route = createFileRoute("/campaigns/$id")({
   head: () => ({
@@ -36,15 +37,21 @@ function CampaignPage() {
   const submitFn = useServerFn(submitTask);
   const statusFn = useServerFn(setCampaignStatus);
 
-  const q = useQuery({ queryKey: ["campaign", id], queryFn: () => getFn({ data: { id } }) });
+  const q = useQuery({ queryKey: ["campaign", id], queryFn: () => getFn({ data: { id } }), refetchInterval: 60_000 });
   const campaign = q.data?.campaign as
-    | { id: string; title: string; description: string | null; creator_id: string | null; status: string; reward_currency: string; reward_per_task: number; reward_budget: number; max_participants: number; ends_at: string | null }
+    | {
+        id: string; title: string; description: string | null; creator_id: string | null; status: string;
+        reward_currency: string; reward_per_task: number; reward_budget: number; max_participants: number; ends_at: string | null;
+        prize_amount?: number; prize_currency?: string; prize_paid?: boolean; prize_payout_tx?: string | null; winner_user_id?: string | null;
+      }
     | undefined;
   const tasks = (q.data?.tasks ?? []) as unknown as Task[];
   const participants = (q.data?.participants ?? []) as unknown as { user_id: string; wallet_address: string | null; xp_earned: number; reward_earned: number }[];
+  const winner = (q.data?.winner ?? null) as { username: string | null; wallet_address: string | null } | null;
   const isCreator = !!user && campaign?.creator_id === user.id;
 
   const [proofs, setProofs] = useState<Record<string, string>>({});
+
 
   async function join() {
     try { await joinFn({ data: { campaignId: id } }); toast.success("Te has unido a la campaña"); qc.invalidateQueries({ queryKey: ["campaign", id] }); }
@@ -78,6 +85,11 @@ function CampaignPage() {
           <div className="mt-4 flex flex-wrap gap-4 text-xs text-muted-foreground">
             <span className="inline-flex items-center gap-1"><Gift className="h-3 w-3" />{campaign.reward_per_task} {campaign.reward_currency} / tarea</span>
             <span className="inline-flex items-center gap-1"><Users className="h-3 w-3" />{participants.length}/{campaign.max_participants}</span>
+            {Number(campaign.prize_amount ?? 0) > 0 && (
+              <span className="inline-flex items-center gap-1 text-accent">
+                <Trophy className="h-3 w-3" />Premio al top XP: {campaign.prize_amount} {String(campaign.prize_currency ?? "").toUpperCase()}
+              </span>
+            )}
             {campaign.ends_at && <span className="inline-flex items-center gap-1"><Clock className="h-3 w-3" />termina {new Date(campaign.ends_at).toLocaleString()}</span>}
           </div>
           <div className="mt-5 flex flex-wrap gap-2">
@@ -90,12 +102,34 @@ function CampaignPage() {
           </div>
         </div>
 
+        {campaign.winner_user_id && (
+          <div className="mt-6 glass-strong rounded-3xl p-6 border border-accent/30">
+            <h2 className="font-display text-lg font-semibold flex items-center gap-2">
+              <Trophy className="h-4 w-4 text-accent" />Ganador de la campaña
+            </h2>
+            <p className="mt-2 text-sm">
+              <span className="font-mono">
+                {winner?.username || (winner?.wallet_address ? `${winner.wallet_address.slice(0, 6)}…${winner.wallet_address.slice(-4)}` : "Participante")}
+              </span>{" "}
+              se lleva {campaign.prize_amount} {String(campaign.prize_currency ?? "").toUpperCase()}.
+            </p>
+            <p className="mt-1 text-[11px] text-muted-foreground">
+              {campaign.prize_paid
+                ? `Premio abonado · tx ${campaign.prize_payout_tx ?? ""}`
+                : "Premio pendiente de abono."}
+            </p>
+            {isCreator && !campaign.prize_paid && <PayPrize campaignId={id} winner={winner} />}
+          </div>
+        )}
+
+
         <div className="mt-6 glass-strong rounded-3xl p-6">
           <h2 className="font-display text-lg font-semibold flex items-center gap-2"><Target className="h-4 w-4 text-accent" />Tareas</h2>
           <div className="mt-4 space-y-3">
             {tasks.map((t) => {
               const spec = taskSpec(t.type);
               const needsProof = spec && spec.proof !== "none" && t.verification !== "auto";
+              const link = typeof t.params?.url === "string" ? (t.params.url as string) : "";
               return (
                 <div key={t.id} className="rounded-2xl border border-white/5 bg-white/[0.02] p-4">
                   <div className="flex flex-wrap items-center justify-between gap-3">
@@ -105,9 +139,18 @@ function CampaignPage() {
                         +{t.xp} XP{t.reward ? ` · ${t.reward} ${campaign.reward_currency}` : ""} · {t.required ? "obligatoria" : "opcional"} · {t.verification === "auto" ? "automática" : "revisión manual"}
                       </div>
                     </div>
-                    <Button size="sm" variant="outline" onClick={() => send(t)}>
-                      {t.verification === "auto" ? "Verificar" : "Enviar"}
-                    </Button>
+                    <div className="flex gap-2">
+                      {link && (
+                        <a href={link} target="_blank" rel="noopener noreferrer">
+                          <Button size="sm" variant="secondary">
+                            <ExternalLink className="h-3.5 w-3.5 mr-1.5" /> Abrir
+                          </Button>
+                        </a>
+                      )}
+                      <Button size="sm" variant="outline" onClick={() => send(t)}>
+                        {t.verification === "auto" ? "Verificar" : "Enviar"}
+                      </Button>
+                    </div>
                   </div>
                   {needsProof && (
                     <Input
@@ -124,6 +167,7 @@ function CampaignPage() {
             {!tasks.length && <p className="text-sm text-muted-foreground">Esta campaña aún no tiene tareas.</p>}
           </div>
         </div>
+
 
         <div className="mt-6 glass-strong rounded-3xl p-6">
           <h2 className="font-display text-lg font-semibold">Participantes</h2>
@@ -184,6 +228,43 @@ function CreatorReview({ campaignId }: { campaignId: string }) {
           );
         })}
         {!subs.length && <p className="text-sm text-muted-foreground">Sin envíos todavía.</p>}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Abono del premio al ganador. El importe se depositó en la tesorería al crear
+ * la campaña; aquí se envía al ganador y se registra el hash on-chain.
+ */
+function PayPrize({ campaignId, winner }: { campaignId: string; winner: { wallet_address: string | null } | null }) {
+  const qc = useQueryClient();
+  const payFn = useServerFn(markPrizePaid);
+  const [hash, setHash] = useState("");
+  const [busy, setBusy] = useState(false);
+
+
+  async function register() {
+    if (!hash.trim()) { toast.error("Pega el hash de la transferencia"); return; }
+    setBusy(true);
+    try {
+      await payFn({ data: { campaignId, txHash: hash.trim() } });
+      toast.success("Premio marcado como abonado");
+      qc.invalidateQueries({ queryKey: ["campaign", campaignId] });
+    } catch (e) { toast.error((e as Error).message); } finally { setBusy(false); }
+  }
+
+  return (
+    <div className="mt-4 space-y-2">
+      <p className="text-[11px] text-muted-foreground">
+        Wallet del ganador:{" "}
+        <span className="font-mono">{winner?.wallet_address ?? "sin wallet en el perfil"}</span>
+      </p>
+      <div className="flex flex-wrap gap-2">
+        <Input value={hash} onChange={(e) => setHash(e.target.value)} placeholder="Hash de la transferencia al ganador" className="h-9 max-w-md" />
+        <Button size="sm" onClick={register} disabled={busy} className="brand-gradient text-primary-foreground">
+          Marcar como abonado
+        </Button>
       </div>
     </div>
   );

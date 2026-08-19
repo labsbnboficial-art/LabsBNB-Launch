@@ -27,8 +27,11 @@ export const Route = createFileRoute("/missions")({
 type CampaignCard = {
   id: string; title: string; description: string | null; reward_currency: string;
   reward_per_task: number; max_participants: number; ends_at: string | null; status: string;
+  prize_amount?: number; prize_currency?: string;
+  winner?: { username: string | null; wallet_address: string | null } | null;
   token: { name: string; ticker: string; logo_url: string | null } | null;
 };
+
 
 type BoardRow = {
   user_id: string; xp: number;
@@ -171,8 +174,19 @@ function MissionsPage() {
                 <div className="mt-3 flex flex-wrap gap-3 text-xs text-muted-foreground">
                   <span className="inline-flex items-center gap-1"><Gift className="h-3 w-3" />{c.reward_per_task} {c.reward_currency}</span>
                   <span className="inline-flex items-center gap-1"><Trophy className="h-3 w-3" />{c.max_participants} plazas</span>
+                  {Number(c.prize_amount ?? 0) > 0 && (
+                    <span className="inline-flex items-center gap-1 text-accent">
+                      🏆 {c.prize_amount} {String(c.prize_currency ?? "").toUpperCase()} al top XP
+                    </span>
+                  )}
                   {c.ends_at && <span className="inline-flex items-center gap-1"><Clock className="h-3 w-3" />{new Date(c.ends_at).toLocaleDateString()}</span>}
                 </div>
+                {c.winner && (
+                  <div className="mt-3 rounded-xl bg-accent/10 px-3 py-2 text-xs text-accent">
+                    Ganador: {c.winner.username || (c.winner.wallet_address ? `${c.winner.wallet_address.slice(0, 6)}…${c.winner.wallet_address.slice(-4)}` : "anunciado")}
+                  </div>
+                )}
+
               </Link>
             ))}
             </div>
@@ -186,11 +200,16 @@ function MissionsPage() {
                 <div>
                   <div className="font-semibold">{m.title}</div>
                   {m.description && <p className="mt-1 text-sm text-muted-foreground">{m.description}</p>}
-                  <div className="mt-2 text-xs text-accent">+{m.xp} XP{m.reward_text ? ` · ${m.reward_text}` : ""}</div>
+                  <div className="mt-2 text-xs text-accent">
+                    {m.xp > 0 ? `+${m.xp} XP` : "Anuncio"}{m.reward_text ? ` · ${m.reward_text}` : ""}
+                  </div>
                 </div>
-                <Button size="sm" onClick={() => claim(m.id)} className="brand-gradient text-primary-foreground shrink-0">Reclamar</Button>
+                {m.xp > 0 && (
+                  <Button size="sm" onClick={() => claim(m.id)} className="brand-gradient text-primary-foreground shrink-0">Reclamar</Button>
+                )}
               </div>
             ))}
+
           </div>
         )}
 

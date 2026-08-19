@@ -67,9 +67,10 @@ export const listCampaigns = createServerFn({ method: "GET" })
   )
   .handler(async ({ data }) => {
     const client = await db();
+    await finalizeDue(client).catch(() => {});
     let q = client
       .from("campaigns")
-      .select("id,token_id,creator_id,title,description,reward_currency,reward_budget,reward_per_task,max_participants,starts_at,ends_at,status,created_at")
+      .select("*")
       .order("created_at", { ascending: false })
       .limit(60);
     if (data.tokenId) q = q.eq("token_id", data.tokenId);
@@ -86,13 +87,30 @@ export const listCampaigns = createServerFn({ method: "GET" })
       const { data: tk } = await client.from("tokens").select("id,name,ticker,logo_url").in("id", ids);
       tokens = Object.fromEntries((tk ?? []).map((t) => [String((t as { id: string }).id), t as unknown as { name: string; ticker: string; logo_url: string | null }]));
     }
-    return { campaigns: (rows ?? []).map((r: { token_id: string | null }) => ({ ...r, token: r.token_id ? tokens[r.token_id] ?? null : null })), schemaReady: true as const };
+    const winnerIds = (rows ?? [])
+      .map((r: { winner_user_id?: string | null }) => r.winner_user_id)
+      .filter(Boolean) as string[];
+    let winners: Record<string, { username: string | null; wallet_address: string | null }> = {};
+    if (winnerIds.length) {
+      const { data: profs } = await client.from("profiles").select("id,username,wallet_address").in("id", winnerIds);
+      winners = Object.fromEntries((profs ?? []).map((p) => [String((p as { id: string }).id), p as unknown as { username: string | null; wallet_address: string | null }]));
+    }
+    return {
+      campaigns: (rows ?? []).map((r: { token_id: string | null; winner_user_id?: string | null }) => ({
+        ...r,
+        token: r.token_id ? tokens[r.token_id] ?? null : null,
+        winner: r.winner_user_id ? winners[r.winner_user_id] ?? null : null,
+      })),
+      schemaReady: true as const,
+    };
   });
+
 
 export const getCampaign = createServerFn({ method: "GET" })
   .inputValidator((d: { id: string }) => z.object({ id: z.string().uuid() }).parse(d))
   .handler(async ({ data }) => {
     const client = await db();
+    await finalizeDue(client, data.id).catch(() => {});
     const { data: campaign, error } = await client.from("campaigns").select("*").eq("id", data.id).maybeSingle();
     if (error) throw new Error(error.message);
     if (!campaign) throw new Error("Campaign not found");
@@ -109,8 +127,15 @@ export const getCampaign = createServerFn({ method: "GET" })
       const { data: tk } = await client.from("tokens").select("id,name,ticker,logo_url,contract_address").eq("id", tokenId).maybeSingle();
       token = tk ?? null;
     }
-    return { campaign, tasks: tasks ?? [], participants: participants ?? [], token };
+    let winner = null;
+    const winnerId = (campaign as { winner_user_id?: string | null }).winner_user_id;
+    if (winnerId) {
+      const { data: wp } = await client.from("profiles").select("id,username,wallet_address,avatar_url").eq("id", winnerId).maybeSingle();
+      winner = wp ?? null;
+    }
+    return { campaign, tasks: tasks ?? [], participants: participants ?? [], token, winner };
   });
+
 
 export const getMyMissionState = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
@@ -164,7 +189,11 @@ export const createCampaign = createServerFn({ method: "POST" })
         maxParticipants: z.number().int().min(1).max(100000),
         durationHours: z.number().int().min(1).max(24 * 60),
         feeTxHash: z.string().trim().max(80).optional(),
+        prizeCurrency: z.enum(["bnb", "token", "labsbnb", "nft", "raffle", "fee_discount"]).default("bnb"),
+        prizeAmount: z.number().min(0).default(0),
+        prizeTxHash: z.string().trim().max(80).optional(),
         tasks: z.array(taskInput).min(1).max(20),
+
       })
       .parse(d),
   )
@@ -201,6 +230,20 @@ export const createCampaign = createServerFn({ method: "POST" })
       if (dup) throw new Error("Ese pago ya fue usado en otra campaña");
     }
 
+    // Depósito del premio para el ganador (BNB verificado on-chain).
+    if (data.prizeAmount > 0 && data.prizeCurrency === "bnb") {
+      if (!data.prizeTxHash) throw new Error("Falta el depósito del premio del ganador");
+      const { parseEther } = await import("viem");
+      await verifyFeePayment({
+        hash: data.prizeTxHash,
+        rpc: String(c.rpc_url ?? ""),
+        to: String(c.admin_wallet ?? ""),
+        minValue: parseEther(String(data.prizeAmount)),
+      });
+      const { data: dupP } = await client.from("campaigns").select("id").eq("prize_tx_hash", data.prizeTxHash).maybeSingle();
+      if (dupP) throw new Error("Ese depósito ya fue usado en otra campaña");
+    }
+
     const startsAt = new Date();
     const endsAt = new Date(startsAt.getTime() + data.durationHours * 3600_000);
     const { data: created, error } = await client
@@ -219,10 +262,19 @@ export const createCampaign = createServerFn({ method: "POST" })
         ends_at: endsAt.toISOString(),
         status: "active",
         fee_tx_hash: data.feeTxHash ?? null,
+        prize_currency: data.prizeCurrency,
+        prize_amount: data.prizeAmount,
+        prize_tx_hash: data.prizeTxHash ?? null,
       })
       .select("id")
       .single();
-    if (error) throw new Error(error.message);
+    if (error) {
+      if (/prize_/.test(error.message)) {
+        throw new Error("Falta aplicar docs/SQL_MISSIONS_PRIZE.md en la base de datos (columnas del premio).");
+      }
+      throw new Error(error.message);
+    }
+
 
     const campaignId = (created as { id: string }).id;
     const rows = data.tasks.map((t, i) => {
@@ -267,8 +319,31 @@ export const setCampaignStatus = createServerFn({ method: "POST" })
     }
     const { error } = await client.from("campaigns").update({ status: data.status }).eq("id", data.id);
     if (error) throw new Error(error.message);
+    if (data.status === "ended") await awardWinner(client, data.id).catch(() => {});
     return { ok: true };
   });
+
+/** El creador o el admin registran el pago on-chain del premio al ganador. */
+export const markPrizePaid = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) =>
+    z.object({ campaignId: z.string().uuid(), txHash: z.string().trim().min(6).max(80) }).parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    const client = await db();
+    const { data: camp } = await client.from("campaigns").select("creator_id").eq("id", data.campaignId).maybeSingle();
+    if (!camp) throw new Error("Campaign not found");
+    if ((camp as { creator_id: string | null }).creator_id !== context.userId && !(await isAdmin(client, context.userId))) {
+      throw new Error("Forbidden");
+    }
+    const { error } = await client
+      .from("campaigns")
+      .update({ prize_paid: true, prize_payout_tx: data.txHash })
+      .eq("id", data.campaignId);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
 
 // ------------------------------------------------------------- participation
 
@@ -485,7 +560,71 @@ export const claimMission = createServerFn({ method: "POST" })
 
 // ----------------------------------------------------------------- internals
 
+/**
+ * Cierra las campañas cuyo plazo venció y proclama al ganador (más XP).
+ * Se ejecuta de forma oportunista en cada lectura pública de campañas.
+ */
+async function finalizeDue(client: AnyDb, campaignId?: string) {
+  let q = client.from("campaigns").select("id").eq("status", "active").lt("ends_at", new Date().toISOString()).limit(20);
+  if (campaignId) q = q.eq("id", campaignId);
+  const { data } = await q;
+  for (const row of (data ?? []) as { id: string }[]) {
+    await client.from("campaigns").update({ status: "ended" }).eq("id", row.id);
+    await awardWinner(client, row.id).catch(() => {});
+  }
+}
+
+/** Elige al participante con más XP, lo registra y publica el anuncio. */
+async function awardWinner(client: AnyDb, campaignId: string) {
+  const { data: camp } = await client.from("campaigns").select("*").eq("id", campaignId).maybeSingle();
+  if (!camp) return;
+  const c = camp as {
+    id: string; title: string; token_id: string | null; announced?: boolean;
+    winner_user_id?: string | null; prize_amount?: number; prize_currency?: string;
+  };
+  if (c.announced || c.winner_user_id) return;
+
+  const { data: top } = await client
+    .from("campaign_participants")
+    .select("user_id,wallet_address,xp_earned")
+    .eq("campaign_id", campaignId)
+    .neq("status", "disqualified")
+    .order("xp_earned", { ascending: false })
+    .limit(1);
+  const winner = (top ?? [])[0] as { user_id: string; wallet_address: string | null; xp_earned: number } | undefined;
+  if (!winner || winner.xp_earned <= 0) {
+    await client.from("campaigns").update({ announced: true }).eq("id", campaignId);
+    return;
+  }
+
+  await client.from("campaigns").update({ winner_user_id: winner.user_id, announced: true }).eq("id", campaignId);
+
+  const { data: prof } = await client.from("profiles").select("username,wallet_address").eq("id", winner.user_id).maybeSingle();
+  const p = prof as { username?: string | null; wallet_address?: string | null } | null;
+  const who =
+    p?.username ||
+    (p?.wallet_address ? `${p.wallet_address.slice(0, 6)}…${p.wallet_address.slice(-4)}` : "un participante");
+  const prize = Number(c.prize_amount ?? 0);
+  const prizeText = prize > 0 ? `${prize} ${String(c.prize_currency ?? "bnb").toUpperCase()}` : "recompensa del proyecto";
+
+  await client.from("missions").insert({
+    title: `🏆 Ganador de "${c.title}"`,
+    description: `${who} finalizó la campaña con ${winner.xp_earned} XP y se lleva ${prizeText}.`,
+    scope: "event",
+    xp: 0,
+    reward_text: prizeText,
+    active: true,
+  });
+
+  await client.from("activity").insert({
+    kind: "notification",
+    user_id: winner.user_id,
+    payload: { title: "¡Has ganado una campaña!", body: `Ganaste "${c.title}" con ${winner.xp_earned} XP · premio ${prizeText}.` },
+  });
+}
+
 async function grantXp(client: AnyDb, userId: string, taskId: string, xp: number, reason: string) {
+
   const { data: dup } = await client.from("xp_ledger").select("id").eq("user_id", userId).eq("task_id", taskId).maybeSingle();
   if (dup) return;
   await client.from("xp_ledger").insert({ user_id: userId, task_id: taskId, xp, reason });
