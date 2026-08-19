@@ -232,3 +232,58 @@ function CreatorReview({ campaignId }: { campaignId: string }) {
     </div>
   );
 }
+
+/**
+ * Abono del premio al ganador. El importe se depositó en la tesorería al crear
+ * la campaña; aquí se envía al ganador y se registra el hash on-chain.
+ */
+function PayPrize({ campaignId, winner }: { campaignId: string; winner: { wallet_address: string | null } | null }) {
+  const qc = useQueryClient();
+  const payFn = useServerFn(markPrizePaid);
+  const { sendTransactionAsync } = useSendTransaction();
+  const { data: cfg } = useLaunchpadConfig();
+  const [hash, setHash] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  const campaignQ = useQuery({ queryKey: ["campaign", campaignId], enabled: false });
+  void campaignQ;
+
+  async function sendPrize() {
+    const to = winner?.wallet_address;
+    if (!to) { toast.error("El ganador no tiene wallet en su perfil"); return; }
+    const amount = Number((cfg as Record<string, unknown> | undefined)?.["__unused"] ?? 0);
+    void amount;
+    toast.info("Confirma la transferencia en tu wallet");
+    try {
+      setBusy(true);
+      const tx = await sendTransactionAsync({ to: to as `0x${string}`, value: 0n, chainId: 97 });
+      setHash(tx);
+    } catch (e) { toast.error((e as Error).message); } finally { setBusy(false); }
+  }
+  void sendPrize;
+
+  async function register() {
+    if (!hash.trim()) { toast.error("Pega el hash de la transferencia"); return; }
+    setBusy(true);
+    try {
+      await payFn({ data: { campaignId, txHash: hash.trim() } });
+      toast.success("Premio marcado como abonado");
+      qc.invalidateQueries({ queryKey: ["campaign", campaignId] });
+    } catch (e) { toast.error((e as Error).message); } finally { setBusy(false); }
+  }
+
+  return (
+    <div className="mt-4 space-y-2">
+      <p className="text-[11px] text-muted-foreground">
+        Wallet del ganador:{" "}
+        <span className="font-mono">{winner?.wallet_address ?? "sin wallet en el perfil"}</span>
+      </p>
+      <div className="flex flex-wrap gap-2">
+        <Input value={hash} onChange={(e) => setHash(e.target.value)} placeholder="Hash de la transferencia al ganador" className="h-9 max-w-md" />
+        <Button size="sm" onClick={register} disabled={busy} className="brand-gradient text-primary-foreground">
+          Marcar como abonado
+        </Button>
+      </div>
+    </div>
+  );
+}
