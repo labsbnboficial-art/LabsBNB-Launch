@@ -322,8 +322,8 @@ export function CandleChart({
   const last = data.at(-1) ?? null;
   const shown = hover ?? last;
   const up = shown ? shown.close >= shown.open : true;
-  const fmt = (v: number | undefined) =>
-    v == null || !Number.isFinite(v) ? "—" : v >= 1 ? v.toFixed(4) : v.toPrecision(6);
+  const fmt = (v: number | undefined) => (v == null || !Number.isFinite(v) ? "—" : smartPrice(v));
+
 
   const btn =
     "rounded-md border border-white/10 bg-white/[0.04] p-1.5 text-muted-foreground transition-colors hover:border-primary/40 hover:bg-primary/10 hover:text-foreground active:scale-95";
