@@ -230,6 +230,20 @@ export const createCampaign = createServerFn({ method: "POST" })
       if (dup) throw new Error("Ese pago ya fue usado en otra campaña");
     }
 
+    // Depósito del premio para el ganador (BNB verificado on-chain).
+    if (data.prizeAmount > 0 && data.prizeCurrency === "bnb") {
+      if (!data.prizeTxHash) throw new Error("Falta el depósito del premio del ganador");
+      const { parseEther } = await import("viem");
+      await verifyFeePayment({
+        hash: data.prizeTxHash,
+        rpc: String(c.rpc_url ?? ""),
+        to: String(c.admin_wallet ?? ""),
+        minValue: parseEther(String(data.prizeAmount)),
+      });
+      const { data: dupP } = await client.from("campaigns").select("id").eq("prize_tx_hash", data.prizeTxHash).maybeSingle();
+      if (dupP) throw new Error("Ese depósito ya fue usado en otra campaña");
+    }
+
     const startsAt = new Date();
     const endsAt = new Date(startsAt.getTime() + data.durationHours * 3600_000);
     const { data: created, error } = await client
@@ -248,10 +262,19 @@ export const createCampaign = createServerFn({ method: "POST" })
         ends_at: endsAt.toISOString(),
         status: "active",
         fee_tx_hash: data.feeTxHash ?? null,
+        prize_currency: data.prizeCurrency,
+        prize_amount: data.prizeAmount,
+        prize_tx_hash: data.prizeTxHash ?? null,
       })
       .select("id")
       .single();
-    if (error) throw new Error(error.message);
+    if (error) {
+      if (/prize_/.test(error.message)) {
+        throw new Error("Falta aplicar docs/SQL_MISSIONS_PRIZE.md en la base de datos (columnas del premio).");
+      }
+      throw new Error(error.message);
+    }
+
 
     const campaignId = (created as { id: string }).id;
     const rows = data.tasks.map((t, i) => {
