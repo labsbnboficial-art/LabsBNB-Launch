@@ -560,7 +560,71 @@ export const claimMission = createServerFn({ method: "POST" })
 
 // ----------------------------------------------------------------- internals
 
+/**
+ * Cierra las campañas cuyo plazo venció y proclama al ganador (más XP).
+ * Se ejecuta de forma oportunista en cada lectura pública de campañas.
+ */
+async function finalizeDue(client: AnyDb, campaignId?: string) {
+  let q = client.from("campaigns").select("id").eq("status", "active").lt("ends_at", new Date().toISOString()).limit(20);
+  if (campaignId) q = q.eq("id", campaignId);
+  const { data } = await q;
+  for (const row of (data ?? []) as { id: string }[]) {
+    await client.from("campaigns").update({ status: "ended" }).eq("id", row.id);
+    await awardWinner(client, row.id).catch(() => {});
+  }
+}
+
+/** Elige al participante con más XP, lo registra y publica el anuncio. */
+async function awardWinner(client: AnyDb, campaignId: string) {
+  const { data: camp } = await client.from("campaigns").select("*").eq("id", campaignId).maybeSingle();
+  if (!camp) return;
+  const c = camp as {
+    id: string; title: string; token_id: string | null; announced?: boolean;
+    winner_user_id?: string | null; prize_amount?: number; prize_currency?: string;
+  };
+  if (c.announced || c.winner_user_id) return;
+
+  const { data: top } = await client
+    .from("campaign_participants")
+    .select("user_id,wallet_address,xp_earned")
+    .eq("campaign_id", campaignId)
+    .neq("status", "disqualified")
+    .order("xp_earned", { ascending: false })
+    .limit(1);
+  const winner = (top ?? [])[0] as { user_id: string; wallet_address: string | null; xp_earned: number } | undefined;
+  if (!winner || winner.xp_earned <= 0) {
+    await client.from("campaigns").update({ announced: true }).eq("id", campaignId);
+    return;
+  }
+
+  await client.from("campaigns").update({ winner_user_id: winner.user_id, announced: true }).eq("id", campaignId);
+
+  const { data: prof } = await client.from("profiles").select("username,wallet_address").eq("id", winner.user_id).maybeSingle();
+  const p = prof as { username?: string | null; wallet_address?: string | null } | null;
+  const who =
+    p?.username ||
+    (p?.wallet_address ? `${p.wallet_address.slice(0, 6)}…${p.wallet_address.slice(-4)}` : "un participante");
+  const prize = Number(c.prize_amount ?? 0);
+  const prizeText = prize > 0 ? `${prize} ${String(c.prize_currency ?? "bnb").toUpperCase()}` : "recompensa del proyecto";
+
+  await client.from("missions").insert({
+    title: `🏆 Ganador de "${c.title}"`,
+    description: `${who} finalizó la campaña con ${winner.xp_earned} XP y se lleva ${prizeText}.`,
+    scope: "event",
+    xp: 0,
+    reward_text: prizeText,
+    active: true,
+  });
+
+  await client.from("activity").insert({
+    kind: "notification",
+    user_id: winner.user_id,
+    payload: { title: "¡Has ganado una campaña!", body: `Ganaste "${c.title}" con ${winner.xp_earned} XP · premio ${prizeText}.` },
+  });
+}
+
 async function grantXp(client: AnyDb, userId: string, taskId: string, xp: number, reason: string) {
+
   const { data: dup } = await client.from("xp_ledger").select("id").eq("user_id", userId).eq("task_id", taskId).maybeSingle();
   if (dup) return;
   await client.from("xp_ledger").insert({ user_id: userId, task_id: taskId, xp, reason });
