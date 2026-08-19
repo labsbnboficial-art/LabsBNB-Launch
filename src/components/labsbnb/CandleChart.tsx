@@ -401,7 +401,7 @@ export function CandleChart({
               onVisibleCountChange(n);
               applyFit(n);
             }}
-            className={btn}
+            className={`${btn} hidden sm:block`}
           >
             <Move className="h-3.5 w-3.5" />
           </button>
@@ -412,7 +412,8 @@ export function CandleChart({
               onVisibleCountChange(DEFAULT_VISIBLE);
               applyFit(DEFAULT_VISIBLE);
             }}
-            className={btn}
+            className={`${btn} hidden sm:block`}
+
           >
             <RotateCcw className="h-3.5 w-3.5" />
           </button>
