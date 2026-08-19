@@ -67,9 +67,10 @@ export const listCampaigns = createServerFn({ method: "GET" })
   )
   .handler(async ({ data }) => {
     const client = await db();
+    await finalizeDue(client).catch(() => {});
     let q = client
       .from("campaigns")
-      .select("id,token_id,creator_id,title,description,reward_currency,reward_budget,reward_per_task,max_participants,starts_at,ends_at,status,created_at")
+      .select("*")
       .order("created_at", { ascending: false })
       .limit(60);
     if (data.tokenId) q = q.eq("token_id", data.tokenId);
@@ -86,8 +87,24 @@ export const listCampaigns = createServerFn({ method: "GET" })
       const { data: tk } = await client.from("tokens").select("id,name,ticker,logo_url").in("id", ids);
       tokens = Object.fromEntries((tk ?? []).map((t) => [String((t as { id: string }).id), t as unknown as { name: string; ticker: string; logo_url: string | null }]));
     }
-    return { campaigns: (rows ?? []).map((r: { token_id: string | null }) => ({ ...r, token: r.token_id ? tokens[r.token_id] ?? null : null })), schemaReady: true as const };
+    const winnerIds = (rows ?? [])
+      .map((r: { winner_user_id?: string | null }) => r.winner_user_id)
+      .filter(Boolean) as string[];
+    let winners: Record<string, { username: string | null; wallet_address: string | null }> = {};
+    if (winnerIds.length) {
+      const { data: profs } = await client.from("profiles").select("id,username,wallet_address").in("id", winnerIds);
+      winners = Object.fromEntries((profs ?? []).map((p) => [String((p as { id: string }).id), p as unknown as { username: string | null; wallet_address: string | null }]));
+    }
+    return {
+      campaigns: (rows ?? []).map((r: { token_id: string | null; winner_user_id?: string | null }) => ({
+        ...r,
+        token: r.token_id ? tokens[r.token_id] ?? null : null,
+        winner: r.winner_user_id ? winners[r.winner_user_id] ?? null : null,
+      })),
+      schemaReady: true as const,
+    };
   });
+
 
 export const getCampaign = createServerFn({ method: "GET" })
   .inputValidator((d: { id: string }) => z.object({ id: z.string().uuid() }).parse(d))
