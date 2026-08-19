@@ -85,6 +85,11 @@ function CampaignPage() {
           <div className="mt-4 flex flex-wrap gap-4 text-xs text-muted-foreground">
             <span className="inline-flex items-center gap-1"><Gift className="h-3 w-3" />{campaign.reward_per_task} {campaign.reward_currency} / tarea</span>
             <span className="inline-flex items-center gap-1"><Users className="h-3 w-3" />{participants.length}/{campaign.max_participants}</span>
+            {Number(campaign.prize_amount ?? 0) > 0 && (
+              <span className="inline-flex items-center gap-1 text-accent">
+                <Trophy className="h-3 w-3" />Premio al top XP: {campaign.prize_amount} {String(campaign.prize_currency ?? "").toUpperCase()}
+              </span>
+            )}
             {campaign.ends_at && <span className="inline-flex items-center gap-1"><Clock className="h-3 w-3" />termina {new Date(campaign.ends_at).toLocaleString()}</span>}
           </div>
           <div className="mt-5 flex flex-wrap gap-2">
@@ -96,6 +101,27 @@ function CampaignPage() {
             )}
           </div>
         </div>
+
+        {campaign.winner_user_id && (
+          <div className="mt-6 glass-strong rounded-3xl p-6 border border-accent/30">
+            <h2 className="font-display text-lg font-semibold flex items-center gap-2">
+              <Trophy className="h-4 w-4 text-accent" />Ganador de la campaña
+            </h2>
+            <p className="mt-2 text-sm">
+              <span className="font-mono">
+                {winner?.username || (winner?.wallet_address ? `${winner.wallet_address.slice(0, 6)}…${winner.wallet_address.slice(-4)}` : "Participante")}
+              </span>{" "}
+              se lleva {campaign.prize_amount} {String(campaign.prize_currency ?? "").toUpperCase()}.
+            </p>
+            <p className="mt-1 text-[11px] text-muted-foreground">
+              {campaign.prize_paid
+                ? `Premio abonado · tx ${campaign.prize_payout_tx ?? ""}`
+                : "Premio pendiente de abono."}
+            </p>
+            {isCreator && !campaign.prize_paid && <PayPrize campaignId={id} winner={winner} />}
+          </div>
+        )}
+
 
         <div className="mt-6 glass-strong rounded-3xl p-6">
           <h2 className="font-display text-lg font-semibold flex items-center gap-2"><Target className="h-4 w-4 text-accent" />Tareas</h2>
