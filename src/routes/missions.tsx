@@ -171,8 +171,19 @@ function MissionsPage() {
                 <div className="mt-3 flex flex-wrap gap-3 text-xs text-muted-foreground">
                   <span className="inline-flex items-center gap-1"><Gift className="h-3 w-3" />{c.reward_per_task} {c.reward_currency}</span>
                   <span className="inline-flex items-center gap-1"><Trophy className="h-3 w-3" />{c.max_participants} plazas</span>
+                  {Number(c.prize_amount ?? 0) > 0 && (
+                    <span className="inline-flex items-center gap-1 text-accent">
+                      🏆 {c.prize_amount} {String(c.prize_currency ?? "").toUpperCase()} al top XP
+                    </span>
+                  )}
                   {c.ends_at && <span className="inline-flex items-center gap-1"><Clock className="h-3 w-3" />{new Date(c.ends_at).toLocaleDateString()}</span>}
                 </div>
+                {c.winner && (
+                  <div className="mt-3 rounded-xl bg-accent/10 px-3 py-2 text-xs text-accent">
+                    Ganador: {c.winner.username || (c.winner.wallet_address ? `${c.winner.wallet_address.slice(0, 6)}…${c.winner.wallet_address.slice(-4)}` : "anunciado")}
+                  </div>
+                )}
+
               </Link>
             ))}
             </div>
