@@ -27,8 +27,11 @@ export const Route = createFileRoute("/missions")({
 type CampaignCard = {
   id: string; title: string; description: string | null; reward_currency: string;
   reward_per_task: number; max_participants: number; ends_at: string | null; status: string;
+  prize_amount?: number; prize_currency?: string;
+  winner?: { username: string | null; wallet_address: string | null } | null;
   token: { name: string; ticker: string; logo_url: string | null } | null;
 };
+
 
 type BoardRow = {
   user_id: string; xp: number;
