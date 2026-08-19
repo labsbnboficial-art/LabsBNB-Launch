@@ -180,7 +180,7 @@ export function CandleChart({
       priceFormat: { type: "volume" },
       priceScaleId: "volume",
     });
-    chart.priceScale("volume").applyOptions({ scaleMargins: { top: 0.8, bottom: 0 } });
+    chart.priceScale("volume").applyOptions({ scaleMargins: { top: 0.78, bottom: 0 } });
 
     chart.timeScale().subscribeVisibleLogicalRangeChange((range) => {
       // Ignore ranges we set ourselves, otherwise the auto-fit effect and this
