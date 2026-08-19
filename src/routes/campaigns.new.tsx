@@ -52,10 +52,14 @@ function NewCampaignPage() {
   const [maxParticipants, setMaxParticipants] = useState("100");
   const [duration, setDuration] = useState(72);
   const [feeTx, setFeeTx] = useState<`0x${string}` | undefined>();
+  const [prizeCurrency, setPrizeCurrency] = useState("bnb");
+  const [prizeAmount, setPrizeAmount] = useState("0");
+  const [prizeTx, setPrizeTx] = useState<`0x${string}` | undefined>();
   const [busy, setBusy] = useState(false);
   const [tasks, setTasks] = useState<TaskDraft[]>(() =>
     TASK_CATALOG.map((t) => ({ type: t.type, enabled: ["follow_labsbnb", "buy_min", "favorite"].includes(t.type), required: true, xp: t.xp, reward: 0, params: {} })),
   );
+
 
   const myTokensQ = useQuery({
     queryKey: ["my-tokens-campaign", user?.id],
