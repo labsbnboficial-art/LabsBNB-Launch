@@ -37,9 +37,17 @@ const DOWN = "#ef4444";
 const MIN_VISIBLE = 4;
 const MAX_VISIBLE = 600;
 const DEFAULT_VISIBLE = 100;
-/** Widest a single bar slot may become so 2–3 candles don't look like columns. */
-const MAX_BAR_SPACING = 26;
+/**
+ * Hard cap on the width of a single bar slot. Terminals like DEXTools never
+ * grow a candle past ~10px no matter how few bars exist; without this cap a
+ * 3-candle chart turns into three giant rectangles.
+ */
+const MAX_BAR_SPACING = 11;
 const MIN_BAR_SPACING = 0.6;
+/** Minimum number of slots the viewport pretends to have, so a handful of
+ * candles stays compact (right-aligned) instead of being stretched. */
+const MIN_SLOTS_DESKTOP = 60;
+const MIN_SLOTS_MOBILE = 34;
 
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
 
@@ -50,7 +58,26 @@ function priceFormat(candles: Candle[]) {
   return { type: "price" as const, precision: digits, minMove: Number(`1e-${digits}`) };
 }
 
+/**
+ * Smart price label: keeps significant digits for sub-gwei prices, trims
+ * trailing zeros and never falls back to unreadable scientific notation.
+ */
+function smartPrice(v: number): string {
+  if (!Number.isFinite(v)) return "—";
+  if (v === 0) return "0";
+  const abs = Math.abs(v);
+  let out: string;
+  if (abs >= 1000) out = v.toFixed(2);
+  else if (abs >= 1) out = v.toFixed(4);
+  else {
+    const lead = Math.ceil(-Math.log10(abs)); // zeros after the dot
+    out = v.toFixed(Math.min(18, lead + 4));
+  }
+  return out.includes(".") ? out.replace(/0+$/, "").replace(/\.$/, "") : out;
+}
+
 const COUNT_PRESETS = [50, 100, 200, 500];
+
 
 export function CandleChart({
   candles,
@@ -88,7 +115,7 @@ export function CandleChart({
     const chart = createChart(host, {
       // Pin the locale: some environments report exotic tags (en-US@posix)
       // that make Intl throw inside the chart's time-axis formatter.
-      localization: { locale: "en-US" },
+      localization: { locale: "en-US", priceFormatter: smartPrice },
       width: host.clientWidth || 600,
       height: host.clientHeight || 360,
       layout: {
@@ -100,23 +127,28 @@ export function CandleChart({
       },
       // Subtle terminal grid: readable, never competing with the candles.
       grid: {
-        vertLines: { color: "rgba(148,163,184,0.05)" },
-        horzLines: { color: "rgba(148,163,184,0.07)" },
+        vertLines: { color: "rgba(148,163,184,0.04)" },
+        horzLines: { color: "rgba(148,163,184,0.06)" },
       },
       rightPriceScale: {
         borderColor: "rgba(148,163,184,0.12)",
-        scaleMargins: { top: 0.08, bottom: 0.26 },
+        scaleMargins: { top: 0.06, bottom: 0.24 },
         entireTextOnly: true,
+        ticksVisible: false,
       },
       timeScale: {
         borderColor: "rgba(148,163,184,0.12)",
         timeVisible: true,
         secondsVisible: false,
-        rightOffset: 1,
+        rightOffset: 2,
         barSpacing: 6,
         minBarSpacing: MIN_BAR_SPACING,
         lockVisibleTimeRangeOnResize: true,
+        ticksVisible: false,
+        fixLeftEdge: false,
+        fixRightEdge: false,
       },
+
       crosshair: {
         mode: CrosshairMode.Normal,
         vertLine: {
@@ -148,7 +180,7 @@ export function CandleChart({
       priceFormat: { type: "volume" },
       priceScaleId: "volume",
     });
-    chart.priceScale("volume").applyOptions({ scaleMargins: { top: 0.8, bottom: 0 } });
+    chart.priceScale("volume").applyOptions({ scaleMargins: { top: 0.78, bottom: 0 } });
 
     chart.timeScale().subscribeVisibleLogicalRangeChange((range) => {
       // Ignore ranges we set ourselves, otherwise the auto-fit effect and this
@@ -246,27 +278,34 @@ export function CandleChart({
     };
   }, [data]);
 
-  // Auto-fit: the window never exceeds the real candle count, and the bar slot
-  // width is the available pixel width divided by the bars actually shown, so
-  // candles stay tight regardless of whether there are 2 or 500 of them.
+  // Auto-fit: candles keep a terminal-grade density. The slot width is derived
+  // from the width divided by a *floor* of slots, so 2 candles look like 2 thin
+  // candles anchored to the right edge instead of two giant blocks.
   const applyFit = useCallback(
     (target: number) => {
       const chart = chartRef.current;
       if (!chart || data.length === 0) return;
       const width = hostWidth || hostRef.current?.clientWidth || 600;
+      const minSlots = width < 520 ? MIN_SLOTS_MOBILE : MIN_SLOTS_DESKTOP;
       const span = clamp(Math.min(target, data.length), 1, MAX_VISIBLE);
-      const rightPad = span <= 12 ? 0.5 : 1;
-      const spacing = clamp(width / (span + rightPad + 0.5), MIN_BAR_SPACING, MAX_BAR_SPACING);
+      // Slots the viewport pretends to hold — never fewer than minSlots.
+      const slots = Math.max(span, Math.min(minSlots, target));
+      const spacing = clamp(width / (slots + 2), MIN_BAR_SPACING, MAX_BAR_SPACING);
+      const rightPad = Math.max(1, Math.round(spacing >= 6 ? 2 : 3));
       chart.timeScale().applyOptions({ barSpacing: spacing, rightOffset: rightPad });
       const to = data.length - 1 + rightPad;
+      // Show `slots` worth of window so sparse data breathes to the left
+      // instead of being stretched across the canvas.
+      const window_ = Math.max(slots, span);
       programmatic.current = true;
-      chart.timeScale().setVisibleLogicalRange({ from: to - span, to });
+      chart.timeScale().setVisibleLogicalRange({ from: to - window_, to });
       window.setTimeout(() => {
         programmatic.current = false;
       }, 60);
     },
     [data.length, hostWidth],
   );
+
 
   useEffect(() => {
     applyFit(visibleCount);
@@ -283,8 +322,8 @@ export function CandleChart({
   const last = data.at(-1) ?? null;
   const shown = hover ?? last;
   const up = shown ? shown.close >= shown.open : true;
-  const fmt = (v: number | undefined) =>
-    v == null || !Number.isFinite(v) ? "—" : v >= 1 ? v.toFixed(4) : v.toPrecision(6);
+  const fmt = (v: number | undefined) => (v == null || !Number.isFinite(v) ? "—" : smartPrice(v));
+
 
   const btn =
     "rounded-md border border-white/10 bg-white/[0.04] p-1.5 text-muted-foreground transition-colors hover:border-primary/40 hover:bg-primary/10 hover:text-foreground active:scale-95";
@@ -362,7 +401,7 @@ export function CandleChart({
               onVisibleCountChange(n);
               applyFit(n);
             }}
-            className={btn}
+            className={`${btn} hidden sm:block`}
           >
             <Move className="h-3.5 w-3.5" />
           </button>
@@ -373,7 +412,8 @@ export function CandleChart({
               onVisibleCountChange(DEFAULT_VISIBLE);
               applyFit(DEFAULT_VISIBLE);
             }}
-            className={btn}
+            className={`${btn} hidden sm:block`}
+
           >
             <RotateCcw className="h-3.5 w-3.5" />
           </button>
