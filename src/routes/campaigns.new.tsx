@@ -81,6 +81,14 @@ function NewCampaignPage() {
   const receipt = useWaitForTransactionReceipt({ hash: feeTx });
   const paid = feeWei === 0n || receipt.isSuccess;
 
+  const prizeNum = Number(prizeAmount) || 0;
+  const prizeWei = useMemo(() => {
+    try { return prizeNum > 0 ? parseEther(String(prizeNum)) : 0n; } catch { return 0n; }
+  }, [prizeNum]);
+  const prizeReceipt = useWaitForTransactionReceipt({ hash: prizeTx });
+  const needsPrizeDeposit = prizeCurrency === "bnb" && prizeWei > 0n;
+  const prizeFunded = !needsPrizeDeposit || prizeReceipt.isSuccess;
+
   async function payFee() {
     if (!address) { toast.error("Conecta tu wallet"); return; }
     try {
@@ -90,12 +98,23 @@ function NewCampaignPage() {
     } catch (e) { toast.error((e as Error).message); }
   }
 
+  async function depositPrize() {
+    if (!address) { toast.error("Conecta tu wallet"); return; }
+    if (prizeWei <= 0n) { toast.error("Indica el importe del premio"); return; }
+    try {
+      const hash = await sendTransactionAsync({ to: cfg!.admin_wallet as `0x${string}`, value: prizeWei, chainId: 97 });
+      setPrizeTx(hash);
+      toast.success("Depósito enviado, esperando confirmación…");
+    } catch (e) { toast.error((e as Error).message); }
+  }
+
   async function submit() {
     if (!user) { toast.error("Inicia sesión primero"); navigate({ to: "/auth", search: { redirect: "/campaigns/new" } }); return; }
     if (!activeToken) { toast.error("Selecciona un token"); return; }
     const selected = tasks.filter((t) => t.enabled);
     if (!selected.length) { toast.error("Selecciona al menos una tarea"); return; }
     if (!paid) { toast.error("Paga la comisión de campaña primero"); return; }
+    if (!prizeFunded) { toast.error("Deposita el premio del ganador primero"); return; }
     setBusy(true);
     try {
       const r = await createFn({
@@ -109,6 +128,9 @@ function NewCampaignPage() {
           maxParticipants: Number(maxParticipants) || 100,
           durationHours: duration,
           feeTxHash: feeTx,
+          prizeCurrency: prizeCurrency as "bnb",
+          prizeAmount: prizeNum,
+          prizeTxHash: prizeTx,
           tasks: selected.map((t) => ({
             type: t.type,
             required: t.required,
@@ -118,6 +140,7 @@ function NewCampaignPage() {
           })),
         },
       });
+
       toast.success("Campaña creada");
       navigate({ to: "/campaigns/$id", params: { id: r.id } });
     } catch (e) { toast.error((e as Error).message); } finally { setBusy(false); }
