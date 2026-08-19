@@ -262,6 +262,20 @@ function NewCampaignPage() {
                           <Input type="number" min="1" value={draft.params.count ?? ""} onChange={(e) => update({ params: { ...draft.params, count: e.target.value } })} className="mt-1 h-9" />
                         </div>
                       )}
+                      {spec.group === "social" && (
+                        <div className="sm:col-span-3">
+                          <Label className="text-[10px] uppercase tracking-widest text-muted-foreground">
+                            Enlace a promocionar (lo abrirán los usuarios)
+                          </Label>
+                          <Input
+                            value={draft.params.url ?? ""}
+                            onChange={(e) => update({ params: { ...draft.params, url: e.target.value } })}
+                            placeholder="https://x.com/tuproyecto o https://t.me/tucanal"
+                            className="mt-1 h-9"
+                          />
+                        </div>
+                      )}
+
                     </div>
                   )}
                 </div>
