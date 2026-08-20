@@ -9,7 +9,7 @@ import {BondingCurve} from "../src/BondingCurve.sol";
 /// @notice Router mock que evita depender de Pancake real en tests.
 contract RouterMock {
     bool public shouldFail;
-    address public pairAddr = address(0xPa1r00000000000000000000000000000000000);
+    address public pairAddr = address(0xdeadBEEF);
 
     function setShouldFail(bool v) external { shouldFail = v; }
 
