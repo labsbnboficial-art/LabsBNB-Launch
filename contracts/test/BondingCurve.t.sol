@@ -105,11 +105,11 @@ contract BondingCurveTest is Test {
     function testQuoteBuyWithReferralMatchesBuy() public {
         (BondingCurve curve, LabsBNBToken token) = _create();
         (uint256 expected,) = curve.quoteBuyWithReferral(1 ether, ref);
+        (uint256 noRef,) = curve.quoteBuy(1 ether);
+        assertLt(expected, noRef, "referral quote must be lower");
         vm.prank(alice, alice);
         curve.buy{value: 1 ether}(0, ref);
         assertEq(token.balanceOf(alice), expected);
-        (uint256 noRef,) = curve.quoteBuy(1 ether);
-        assertLt(expected, noRef, "referral quote must be lower");
     }
 
     function testQuoteSellMatchesSell() public {
@@ -171,6 +171,7 @@ contract BondingCurveTest is Test {
 
     function testFeeSplitBuy() public {
         (BondingCurve curve,) = _create();
+        _openAntibot(curve);
         uint256 fw = feeWallet.balance;
         uint256 cr = creator.balance;
         uint256 rf = ref.balance;
@@ -248,6 +249,7 @@ contract BondingCurveTest is Test {
 
     function testOwnerCannotWithdrawUserFunds() public {
         (BondingCurve curve,) = _create();
+        _openAntibot(curve);
         vm.prank(alice, alice);
         curve.buy{value: 5 ether}(0, address(0));
         // no existe emergencyWithdraw; skim sólo puede tocar el excedente (0 aquí)
