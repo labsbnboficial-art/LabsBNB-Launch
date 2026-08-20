@@ -265,24 +265,32 @@ contract BondingCurve is ReentrancyGuard, Pausable {
     }
 
     /// @notice Cotización exacta incluyendo el referral fee cuando aplica.
+    /// @dev Replica el redondeo componente a componente de `buy()` (fee por fee),
+    ///      de modo que la cotización coincide al wei con la ejecución.
     function quoteBuyWithReferral(uint256 bnbIn, address referrer)
         public
         view
         returns (uint256 tokensOut, uint256 fee)
     {
-        bool hasRef = referrer != address(0);
-        fee = (bnbIn * _totalFeeBps(hasRef)) / 10000;
+        uint256 protoFee = (bnbIn * _protocolFeeBps()) / 10000;
+        uint256 creatorFee = (bnbIn * _creatorFeeBps()) / 10000;
+        uint256 refFee = referrer != address(0) ? (bnbIn * _referralFeeBps()) / 10000 : 0;
+        fee = protoFee + creatorFee + refFee;
         uint256 net = bnbIn - fee;
         (uint256 rBNB, uint256 rTOK) = reserves();
         tokensOut = (net * rTOK) / (rBNB + net);
     }
 
+    /// @dev Replica el redondeo de `sell()` (protocol y creator fee redondeados por separado).
     function quoteSell(uint256 tokensIn) public view returns (uint256 bnbOut, uint256 fee) {
         (uint256 rBNB, uint256 rTOK) = reserves();
         uint256 gross = (tokensIn * rBNB) / (rTOK + tokensIn);
-        fee = (gross * _totalFeeBps(false)) / 10000;
+        uint256 protoFee = (gross * _protocolFeeBps()) / 10000;
+        uint256 creatorFee = (gross * _creatorFeeBps()) / 10000;
+        fee = protoFee + creatorFee;
         bnbOut = gross - fee;
     }
+
 
     // ---- AntiBot ----
 
