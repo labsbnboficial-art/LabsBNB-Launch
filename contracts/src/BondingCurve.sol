@@ -8,9 +8,14 @@ import {IPancakeRouter} from "./interfaces/IPancakeRouter.sol";
 
 /// @title BondingCurve
 /// @notice Curva constante x*y=k con reservas virtuales estilo four.meme / pump.fun.
-///         Incluye: creator fee split, referral, antibot (max buy, cooldown,
-///         anti-sandwich, anti-flashloan, max wallet, max tx), emergency withdraw
-///         y vistas ampliadas (marketCap, liquidity, holders, etc.).
+/// @dev Endurecimiento pre-mainnet:
+///      - Sin `emergencyWithdraw`: el owner NUNCA puede tocar el BNB respaldado por
+///        los holders. Sólo puede hacer `skim()` del excedente no contabilizado.
+///      - `pause()` bloquea únicamente las COMPRAS: la salida (sell) siempre está abierta.
+///      - Graduación en fase propia: `buy()` no llama al router. Al cruzar el umbral la
+///        curva entra en `Graduating` y cualquiera puede ejecutar `migrate()` con
+///        mínimos de slippage. Si el router falla, la tx revierte (fallo visible) y se
+///        puede reintentar; tras 7 días sin éxito se habilita el reembolso pro-rata.
 contract BondingCurve is ReentrancyGuard, Pausable {
     // ---- Configuración inmutable ----
     IERC20 public token;
@@ -26,10 +31,14 @@ contract BondingCurve is ReentrancyGuard, Pausable {
     uint256 public constant VIRTUAL_TOKENS = 800_000_000 ether;
     uint256 public constant MIGRATION_THRESHOLD = 24 ether;
 
-    // ---- Fee split (bps sobre BNB in/out). Total = protocol + creator + referral. ----
-    /// Referral bps se aplica solo si hay `referrer` distinto de 0 y del propio comprador.
-    uint16 public constant CREATOR_FEE_BPS   = 20; // 0.20%
-    uint16 public constant REFERRAL_FEE_BPS  = 10; // 0.10% (si aplica)
+    /// @notice Slippage máximo tolerado al añadir liquidez (1%).
+    uint256 public constant MIGRATION_SLIPPAGE_BPS = 100;
+    /// @notice Tras este plazo en `Graduating` sin migrar, el owner puede abrir el reembolso.
+    uint256 public constant MIGRATION_GRACE = 7 days;
+
+    // ---- Fases ----
+    enum Phase { Bonding, Graduating, Migrated, Refunding }
+    Phase public phase;
 
     // ---- AntiBot config (admin-configurable vía factory owner) ----
     struct AntiBot {
@@ -38,23 +47,32 @@ contract BondingCurve is ReentrancyGuard, Pausable {
         uint128 maxTxTokens;      // 0 = sin límite
         uint32  cooldownSeconds;  // 0 = sin cooldown
         bool    antiSandwich;     // bloquea buy+sell en el mismo bloque por wallet
-        bool    antiFlashloan;    // bloquea contratos (tx.origin != msg.sender)
+        bool    antiFlashloan;    // bloquea contratos no autorizados
         bool    enabled;
     }
     AntiBot public antibot;
 
+    /// @notice Smart wallets (Safe, ERC-4337…) autorizadas pese a `antiFlashloan`.
+    mapping(address => bool) public contractAllowed;
+
     // ---- Estado ----
     uint256 public tokensSold;
     uint256 public bnbCollected;
+    /// @dev Mantenido por compatibilidad de ABI/frontend: true cuando phase == Migrated.
     bool    public migrated;
     address public pancakePair;
+    uint256 public graduatingSince;
+
+    // Reembolso de emergencia (sólo si la migración es imposible)
+    uint256 public refundBnbPool;
+    uint256 public refundTokenPool;
 
     // Analytics
     uint256 public holders;
-    uint256 public volume24h;      // rolling ventana simple
+    uint256 public volume24h;
     uint256 public volumeWindowStart;
     uint256 public lastPrice;
-    uint256 public priceRefPrice;  // precio hace 24h aprox
+    uint256 public priceRefPrice;
     uint256 public priceRefTs;
 
     mapping(address => uint256) public lastActionBlock;
@@ -64,6 +82,7 @@ contract BondingCurve is ReentrancyGuard, Pausable {
     // ---- Eventos ----
     event Buy(address indexed buyer, uint256 bnbIn, uint256 tokensOut, uint256 priceAfter);
     event Sell(address indexed seller, uint256 tokensIn, uint256 bnbOut, uint256 priceAfter);
+    /// @dev `amountBnb` es SIEMPRE el importe bruto del trade (antes de fees), en buy y en sell.
     event Trade(
         address indexed trader,
         bool    isBuy,
@@ -75,9 +94,14 @@ contract BondingCurve is ReentrancyGuard, Pausable {
     );
     event FeeCollected(address indexed to, uint256 amount, uint8 kind); // 0=protocol 1=creator 2=referral
     event Referral(address indexed referrer, address indexed buyer, uint256 amount);
+    event GraduationReady(uint256 bnbCollected, uint256 timestamp);
     event Migrated(address indexed pair, uint256 bnbLiquidity, uint256 tokenLiquidity);
+    event MigrationDust(address indexed to, uint256 bnb, uint256 tokens);
+    event RefundEnabled(uint256 bnbPool, uint256 tokenPool);
+    event Redeemed(address indexed holder, uint256 tokensIn, uint256 bnbOut);
     event AntiBotUpdated(AntiBot cfg);
-    event EmergencyWithdraw(address indexed to, uint256 bnb, uint256 tokens);
+    event ContractAllowed(address indexed account, bool allowed);
+    event Skimmed(address indexed to, uint256 bnb, uint256 tokens);
 
     error AlreadyMigrated();
     error SlippageExceeded();
@@ -86,9 +110,12 @@ contract BondingCurve is ReentrancyGuard, Pausable {
     error TransferFailed();
     error OnlyFactoryOwner();
     error AntiBotViolation(string reason);
+    error WrongPhase();
+    error GraceNotElapsed();
+    error NothingToSkim();
 
-    modifier notMigrated() {
-        if (migrated) revert AlreadyMigrated();
+    modifier onlyPhase(Phase p) {
+        if (phase != p) revert WrongPhase();
         _;
     }
 
@@ -103,8 +130,8 @@ contract BondingCurve is ReentrancyGuard, Pausable {
         router = IPancakeRouter(router_);
         antibot = AntiBot({
             maxBuyBnb: 2 ether,
-            maxWalletTokens: 0,                        // sin límite por defecto (configurable)
-            maxTxTokens: 0,                            // sin límite por defecto (configurable)
+            maxWalletTokens: 0,
+            maxTxTokens: 0,
             cooldownSeconds: 3,
             antiSandwich: true,
             antiFlashloan: true,
@@ -129,22 +156,44 @@ contract BondingCurve is ReentrancyGuard, Pausable {
         emit AntiBotUpdated(cfg);
     }
 
+    function setContractAllowed(address account, bool allowed) external onlyFactoryOwner {
+        contractAllowed[account] = allowed;
+        emit ContractAllowed(account, allowed);
+    }
+
+    /// @notice Pausa SÓLO las compras. Las ventas nunca se pueden bloquear.
     function pause() external onlyFactoryOwner { _pause(); }
     function unpause() external onlyFactoryOwner { _unpause(); }
 
-    /// @notice Rescate de emergencia (solo si NO migró). Envía todo el BNB y tokens al owner.
-    function emergencyWithdraw(address to) external onlyFactoryOwner {
-        require(!migrated, "migrated");
+    /// @notice BNB no contabilizado (donaciones vía receive, polvo post-migración).
+    function skimmableBnb() public view returns (uint256) {
         uint256 bal = address(this).balance;
-        uint256 tbal = token.balanceOf(address(this));
-        if (bal > 0) {
-            (bool ok,) = to.call{value: bal}("");
+        uint256 reserved = phase == Phase.Refunding
+            ? refundBnbPool
+            : (phase == Phase.Migrated ? 0 : bnbCollected);
+        return bal > reserved ? bal - reserved : 0;
+    }
+
+    /// @notice Tokens no comprometidos con la curva ni con la LP futura.
+    function skimmableTokens() public view returns (uint256) {
+        if (phase != Phase.Bonding && phase != Phase.Graduating) return 0;
+        uint256 bal = token.balanceOf(address(this));
+        uint256 reserved = (CURVE_ALLOC - tokensSold) + LP_ALLOC;
+        return bal > reserved ? bal - reserved : 0;
+    }
+
+    /// @notice Rescate ESTRICTAMENTE limitado al excedente. Nunca toca fondos de holders.
+    function skim(address to) external nonReentrant onlyFactoryOwner {
+        if (to == address(0)) revert TransferFailed();
+        uint256 bnb = skimmableBnb();
+        uint256 tok = skimmableTokens();
+        if (bnb == 0 && tok == 0) revert NothingToSkim();
+        if (bnb > 0) {
+            (bool ok,) = to.call{value: bnb}("");
             if (!ok) revert TransferFailed();
         }
-        if (tbal > 0) {
-            require(token.transfer(to, tbal), "tok tx");
-        }
-        emit EmergencyWithdraw(to, bal, tbal);
+        if (tok > 0) require(token.transfer(to, tok), "tok tx");
+        emit Skimmed(to, bnb, tok);
     }
 
     // ---- Vistas / quotes ----
@@ -152,13 +201,19 @@ contract BondingCurve is ReentrancyGuard, Pausable {
     function _protocolFeeBps() internal view returns (uint16) {
         return ILabsBNBFactory(factory).feeBps();
     }
+    function _creatorFeeBps() internal view returns (uint16) {
+        return ILabsBNBFactory(factory).creatorFeeBps();
+    }
+    function _referralFeeBps() internal view returns (uint16) {
+        return ILabsBNBFactory(factory).referralFeeBps();
+    }
     function _feeWallet() internal view returns (address) {
         return ILabsBNBFactory(factory).feeWallet();
     }
 
     function _totalFeeBps(bool withReferral) internal view returns (uint16) {
-        uint16 f = _protocolFeeBps() + CREATOR_FEE_BPS;
-        if (withReferral) f += REFERRAL_FEE_BPS;
+        uint16 f = _protocolFeeBps() + _creatorFeeBps();
+        if (withReferral) f += _referralFeeBps();
         return f;
     }
 
@@ -173,8 +228,9 @@ contract BondingCurve is ReentrancyGuard, Pausable {
     }
 
     function progress() external view returns (uint256) {
-        if (migrated) return 10000;
-        return (bnbCollected * 10000) / MIGRATION_THRESHOLD;
+        if (phase != Phase.Bonding) return 10000;
+        uint256 p = (bnbCollected * 10000) / MIGRATION_THRESHOLD;
+        return p > 10000 ? 10000 : p;
     }
 
     function marketCap() public view returns (uint256) {
@@ -190,7 +246,12 @@ contract BondingCurve is ReentrancyGuard, Pausable {
     }
     function estimatedMigration() external view returns (uint256 bnbToGo, uint256 progressBps) {
         bnbToGo = bnbCollected >= MIGRATION_THRESHOLD ? 0 : MIGRATION_THRESHOLD - bnbCollected;
-        progressBps = migrated ? 10000 : (bnbCollected * 10000) / MIGRATION_THRESHOLD;
+        if (phase != Phase.Bonding) {
+            progressBps = 10000;
+        } else {
+            uint256 p = (bnbCollected * 10000) / MIGRATION_THRESHOLD;
+            progressBps = p > 10000 ? 10000 : p;
+        }
     }
     function priceChange() external view returns (int256 bps) {
         if (priceRefPrice == 0) return 0;
@@ -200,7 +261,17 @@ contract BondingCurve is ReentrancyGuard, Pausable {
     }
 
     function quoteBuy(uint256 bnbIn) public view returns (uint256 tokensOut, uint256 fee) {
-        fee = (bnbIn * _totalFeeBps(false)) / 10000;
+        return quoteBuyWithReferral(bnbIn, address(0));
+    }
+
+    /// @notice Cotización exacta incluyendo el referral fee cuando aplica.
+    function quoteBuyWithReferral(uint256 bnbIn, address referrer)
+        public
+        view
+        returns (uint256 tokensOut, uint256 fee)
+    {
+        bool hasRef = referrer != address(0);
+        fee = (bnbIn * _totalFeeBps(hasRef)) / 10000;
         uint256 net = bnbIn - fee;
         (uint256 rBNB, uint256 rTOK) = reserves();
         tokensOut = (net * rTOK) / (rBNB + net);
@@ -218,11 +289,10 @@ contract BondingCurve is ReentrancyGuard, Pausable {
     function _checkAntiBot(address who, bool isBuy, uint256 tokenAmount, uint256 bnbAmount) internal {
         AntiBot memory a = antibot;
         if (!a.enabled) return;
-        if (a.antiFlashloan) {
-            // bloquea contratos
+        if (a.antiFlashloan && !contractAllowed[who]) {
             uint256 size;
             assembly { size := extcodesize(who) }
-            if (size > 0 || who != tx.origin) revert AntiBotViolation("contract");
+            if (size > 0) revert AntiBotViolation("contract");
         }
         if (a.antiSandwich) {
             if (lastActionBlock[who] == block.number) revert AntiBotViolation("sandwich");
@@ -266,17 +336,15 @@ contract BondingCurve is ReentrancyGuard, Pausable {
         payable
         nonReentrant
         whenNotPaused
-        notMigrated
+        onlyPhase(Phase.Bonding)
     {
         if (msg.value == 0) revert ZeroAmount();
 
         bool hasRef = referrer != address(0) && referrer != msg.sender;
-        uint16 protoBps = _protocolFeeBps();
-        uint256 protoFee = (msg.value * protoBps) / 10000;
-        uint256 creatorFee = (msg.value * CREATOR_FEE_BPS) / 10000;
-        uint256 refFee = hasRef ? (msg.value * REFERRAL_FEE_BPS) / 10000 : 0;
-        uint256 totalFee = protoFee + creatorFee + refFee;
-        uint256 net = msg.value - totalFee;
+        uint256 protoFee = (msg.value * _protocolFeeBps()) / 10000;
+        uint256 creatorFee = (msg.value * _creatorFeeBps()) / 10000;
+        uint256 refFee = hasRef ? (msg.value * _referralFeeBps()) / 10000 : 0;
+        uint256 net = msg.value - protoFee - creatorFee - refFee;
 
         (uint256 rBNB, uint256 rTOK) = reserves();
         uint256 tokensOut = (net * rTOK) / (rBNB + net);
@@ -305,25 +373,27 @@ contract BondingCurve is ReentrancyGuard, Pausable {
         emit Buy(msg.sender, msg.value, tokensOut, price);
         emit Trade(msg.sender, true, msg.value, tokensOut, price, marketCap(), block.timestamp);
 
-        if (bnbCollected >= MIGRATION_THRESHOLD) _migrate();
+        // La migración NO se ejecuta aquí: sólo se marca la curva como lista.
+        if (bnbCollected >= MIGRATION_THRESHOLD) {
+            phase = Phase.Graduating;
+            graduatingSince = block.timestamp;
+            emit GraduationReady(bnbCollected, block.timestamp);
+        }
     }
 
     function sell(uint256 tokensIn, uint256 minBnbOut)
         external
         nonReentrant
-        whenNotPaused
-        notMigrated
+        onlyPhase(Phase.Bonding)
     {
         if (tokensIn == 0) revert ZeroAmount();
 
         (uint256 rBNB, uint256 rTOK) = reserves();
         uint256 gross = (tokensIn * rBNB) / (rTOK + tokensIn);
 
-        uint16 protoBps = _protocolFeeBps();
-        uint256 protoFee = (gross * protoBps) / 10000;
-        uint256 creatorFee = (gross * CREATOR_FEE_BPS) / 10000;
-        uint256 totalFee = protoFee + creatorFee;
-        uint256 bnbOut = gross - totalFee;
+        uint256 protoFee = (gross * _protocolFeeBps()) / 10000;
+        uint256 creatorFee = (gross * _creatorFeeBps()) / 10000;
+        uint256 bnbOut = gross - protoFee - creatorFee;
         if (bnbOut < minBnbOut) revert SlippageExceeded();
 
         _checkAntiBot(msg.sender, false, tokensIn, gross);
@@ -338,12 +408,17 @@ contract BondingCurve is ReentrancyGuard, Pausable {
         (bool ok,) = msg.sender.call{value: bnbOut}("");
         if (!ok) revert TransferFailed();
 
+        if (counted[msg.sender] && token.balanceOf(msg.sender) == 0) {
+            counted[msg.sender] = false;
+            if (holders > 0) holders -= 1;
+        }
+
         uint256 price = currentPrice();
         lastPrice = price;
         _rollVolume(gross);
 
         emit Sell(msg.sender, tokensIn, bnbOut, price);
-        emit Trade(msg.sender, false, bnbOut, tokensIn, price, marketCap(), block.timestamp);
+        emit Trade(msg.sender, false, gross, tokensIn, price, marketCap(), block.timestamp);
     }
 
     function _payFee(address to, uint256 amount, uint8 kind) internal {
@@ -355,26 +430,71 @@ contract BondingCurve is ReentrancyGuard, Pausable {
 
     // ---- Migración a PancakeSwap ----
 
-    function _migrate() internal {
+    /// @notice Ejecuta la graduación. Permissionless, reintentable, con mínimos de slippage.
+    ///         Si el router falla la transacción revierte por completo (fallo visible),
+    ///         la curva permanece en `Graduating` y se puede reintentar.
+    function migrate() external nonReentrant onlyPhase(Phase.Graduating) {
+        if (bnbCollected < MIGRATION_THRESHOLD) revert InsufficientReserve();
+
+        phase = Phase.Migrated;
         migrated = true;
+
         uint256 bnbForLP = bnbCollected;
         uint256 tokensForLP = LP_ALLOC;
+        uint256 minTokens = (tokensForLP * (10000 - MIGRATION_SLIPPAGE_BPS)) / 10000;
+        uint256 minBnb = (bnbForLP * (10000 - MIGRATION_SLIPPAGE_BPS)) / 10000;
 
         require(token.approve(address(router), tokensForLP), "approve");
-        router.addLiquidityETH{value: bnbForLP}(
+        (uint256 usedTokens, uint256 usedBnb,) = router.addLiquidityETH{value: bnbForLP}(
             address(token),
             tokensForLP,
-            0,
-            0,
+            minTokens,
+            minBnb,
             address(0xdead),
             block.timestamp + 300
         );
+        require(usedTokens >= minTokens && usedBnb >= minBnb, "migration slippage");
+        require(token.approve(address(router), 0), "approve reset");
+
         pancakePair = IPancakeFactory(router.factory()).getPair(address(token), router.WETH());
 
-        uint256 remaining = token.balanceOf(address(this));
-        if (remaining > 0) token.transfer(address(0xdead), remaining);
+        // Tokens sobrantes de la curva → quemados. BNB sobrante (refund del router) → fee wallet.
+        uint256 remainingTok = token.balanceOf(address(this));
+        if (remainingTok > 0) require(token.transfer(address(0xdead), remainingTok), "burn");
+        uint256 dust = address(this).balance;
+        if (dust > 0) {
+            (bool ok,) = _feeWallet().call{value: dust}("");
+            if (!ok) revert TransferFailed();
+            emit MigrationDust(_feeWallet(), dust, remainingTok);
+        }
 
-        emit Migrated(pancakePair, bnbForLP, tokensForLP);
+        emit Migrated(pancakePair, usedBnb, usedTokens);
+    }
+
+    /// @notice Última red de seguridad: si tras `MIGRATION_GRACE` la migración sigue siendo
+    ///         imposible (router roto/pausado), habilita el reembolso pro-rata a los holders.
+    ///         El owner NO recibe fondos: sólo abre el canje.
+    function enableRefund() external onlyFactoryOwner onlyPhase(Phase.Graduating) {
+        if (block.timestamp < graduatingSince + MIGRATION_GRACE) revert GraceNotElapsed();
+        phase = Phase.Refunding;
+        refundBnbPool = address(this).balance;
+        refundTokenPool = tokensSold;
+        emit RefundEnabled(refundBnbPool, refundTokenPool);
+    }
+
+    /// @notice Canjea tokens por su parte proporcional del BNB de la curva.
+    function redeem(uint256 tokensIn) external nonReentrant onlyPhase(Phase.Refunding) {
+        if (tokensIn == 0) revert ZeroAmount();
+        if (refundTokenPool == 0) revert InsufficientReserve();
+        uint256 bnbOut = (tokensIn * refundBnbPool) / refundTokenPool;
+        refundBnbPool -= bnbOut;
+        refundTokenPool -= tokensIn;
+        require(token.transferFrom(msg.sender, address(this), tokensIn), "tok tx");
+        if (bnbOut > 0) {
+            (bool ok,) = msg.sender.call{value: bnbOut}("");
+            if (!ok) revert TransferFailed();
+        }
+        emit Redeemed(msg.sender, tokensIn, bnbOut);
     }
 
     receive() external payable {}
@@ -382,7 +502,10 @@ contract BondingCurve is ReentrancyGuard, Pausable {
 
 interface ILabsBNBFactory {
     function feeBps() external view returns (uint16);
+    function creatorFeeBps() external view returns (uint16);
+    function referralFeeBps() external view returns (uint16);
     function feeWallet() external view returns (address);
+    function treasury() external view returns (address);
     function owner() external view returns (address);
 }
 
