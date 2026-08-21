@@ -98,10 +98,15 @@ describe("no duplicated / stale critical config", () => {
     }
   });
 
-  it("never exposes secret env names to the client bundle", () => {
+  it("secrets are never exposed through client (VITE_) env vars", () => {
+    // Only VITE_-prefixed vars are inlined into the browser bundle.
+    const clientKeys = Object.keys(import.meta.env as Record<string, unknown>).filter((k) =>
+      k.startsWith("VITE_"),
+    );
     for (const name of FORBIDDEN_PUBLIC_ENV) {
       expect(name.startsWith("VITE_")).toBe(false);
-      expect((import.meta.env as Record<string, unknown>)[name]).toBeUndefined();
+      expect(clientKeys).not.toContain(`VITE_${name}`);
+      expect(clientKeys.some((k) => k.includes(name))).toBe(false);
     }
   });
 });
