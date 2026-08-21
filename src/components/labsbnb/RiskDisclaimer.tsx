@@ -53,8 +53,10 @@ export function RiskDisclaimer({ compact = false }: { compact?: boolean }) {
             jurisdicción.
           </p>
           <p className="text-xs">
-            Fase de pruebas: la aplicación opera actualmente en BNB Smart Chain Testnet (Chain ID
-            97). Los activos de testnet no tienen valor económico.
+            Red activa: {ACTIVE_NETWORK.name} (Chain ID {ACTIVE_NETWORK.chainId}).
+            {ACTIVE_NETWORK.isTestnet
+              ? " Fase de pruebas: los activos de testnet no tienen valor económico."
+              : ""}
           </p>
         </div>
       </DialogContent>
