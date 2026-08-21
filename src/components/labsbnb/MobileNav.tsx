@@ -8,6 +8,7 @@ import { createPortal } from "react-dom";
 import { Link, useRouterState } from "@tanstack/react-router";
 import {
   Bell,
+  Globe,
   Menu,
   PlusCircle,
   Rocket,
@@ -20,6 +21,8 @@ import {
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { useAuth } from "@/lib/auth";
+import { useI18n } from "@/lib/i18n";
+import { RiskDisclaimer } from "@/components/labsbnb/RiskDisclaimer";
 
 type Item = { to: string; label: string; icon: LucideIcon; exact?: boolean; authOnly?: boolean };
 type Group = { title: string; items: Item[] };
@@ -56,6 +59,7 @@ const GROUPS: Group[] = [
 export function MobileNav() {
   const [open, setOpen] = useState(false);
   const { user } = useAuth();
+  const { locale, setLocale } = useI18n();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
 
   // Close on route change and lock body scroll while the drawer is open.
