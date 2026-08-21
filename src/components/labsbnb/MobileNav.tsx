@@ -157,6 +157,21 @@ export function MobileNav() {
                 );
               })}
             </nav>
+
+            <div className="border-t border-white/5 px-3 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+              <div className="flex items-center justify-between gap-2">
+                <RiskDisclaimer />
+                <button
+                  type="button"
+                  onClick={() => setLocale(locale === "es" ? "en" : "es")}
+                  aria-label="Cambiar idioma"
+                  className="inline-flex min-h-11 items-center gap-1.5 rounded-lg px-3 text-xs uppercase tracking-wider text-muted-foreground transition hover:bg-white/5 hover:text-foreground"
+                >
+                  <Globe className="h-3.5 w-3.5" />
+                  {locale === "es" ? "ES" : "EN"}
+                </button>
+              </div>
+            </div>
           </aside>
           </div>,
           document.body,
