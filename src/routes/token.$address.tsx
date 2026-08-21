@@ -104,7 +104,7 @@ function TokenPage() {
     refetchInterval: 15_000,
     retry: 1,
     initialPageParam: null as string | null,
-    queryFn: ({ pageParam }) => fetchTradePage(curveOk!, pageParam, 25),
+    queryFn: ({ pageParam }) => withRpcTimeout("Trade events", () => fetchTradePage(curveOk!, pageParam, 25)),
     getNextPageParam: (last) => last.nextCursor,
   });
 
@@ -113,7 +113,7 @@ function TokenPage() {
     queryKey: ["curveStats", curveOk],
     enabled: !!curveOk,
     refetchInterval: 15_000,
-    queryFn: () => fetchCurveStats(curveOk!),
+    queryFn: () => withRpcTimeout("curve stats", () => fetchCurveStats(curveOk!)),
   });
 
   // Live market price: currentPrice() while the curve is active, PancakeSwap
@@ -733,11 +733,11 @@ function ChainError({ error, onRetry }: { error: Error; onRetry: () => void }) {
   return (
     <div className="rounded-xl border border-destructive/40 bg-destructive/10 p-4 text-xs">
       <div className="flex items-center gap-2 font-semibold text-destructive">
-        <AlertTriangle className="h-4 w-4" /> No se pudieron leer los eventos Trade
+        <AlertTriangle className="h-4 w-4" /> Unable to load data
       </div>
       <p className="mt-2 break-words font-mono text-[11px] text-muted-foreground">{error.message}</p>
       <Button variant="outline" size="sm" className="mt-3 border-white/10 bg-white/5" onClick={onRetry}>
-        Reintentar
+        Retry
       </Button>
     </div>
   );
@@ -828,7 +828,7 @@ function TopHolders({ token, ticker }: { token: string | null; ticker: string })
     enabled: !!valid,
     refetchInterval: 60_000,
     retry: 1,
-    queryFn: () => fetchTopHolders(valid!, 10),
+    queryFn: () => withRpcTimeout("token holders", () => fetchTopHolders(valid!, 10)),
   });
 
   return (
@@ -848,7 +848,7 @@ function TopHolders({ token, ticker }: { token: string | null; ticker: string })
       ) : q.isLoading ? (
         <p className="text-xs text-muted-foreground">Leyendo transferencias on-chain…</p>
       ) : q.error ? (
-        <p className="text-xs text-destructive break-words font-mono">{(q.error as Error).message}</p>
+        <ChainError error={q.error as Error} onRetry={() => void q.refetch()} />
       ) : !q.data?.holders.length ? (
         <p className="text-xs text-muted-foreground">Sin transferencias en el rango consultado.</p>
       ) : (
