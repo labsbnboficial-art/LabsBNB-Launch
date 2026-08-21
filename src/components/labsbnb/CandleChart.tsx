@@ -159,9 +159,9 @@ export function CandleChart({
     return top
       .map((e) => ({
         time: (Math.floor(e.timestamp / bucketSeconds) * bucketSeconds) as UTCTimestamp,
-        position: (e.isBuy ? "belowBar" : "aboveBar") as SeriesMarker<Time>["position"],
+        position: e.isBuy ? ("belowBar" as const) : ("aboveBar" as const),
         color: e.isBuy ? UP : DOWN,
-        shape: (e.isBuy ? "arrowUp" : "arrowDown") as SeriesMarker<Time>["shape"],
+        shape: e.isBuy ? ("arrowUp" as const) : ("arrowDown" as const),
         size: 0.7,
       }))
       .sort((a, b) => Number(a.time) - Number(b.time));
