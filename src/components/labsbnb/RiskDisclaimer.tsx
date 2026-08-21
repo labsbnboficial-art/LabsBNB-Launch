@@ -17,11 +17,11 @@ export function RiskDisclaimer({ compact = false }: { compact?: boolean }) {
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <button
-          className="inline-flex items-center gap-1.5 h-9 px-3 rounded-lg text-xs uppercase tracking-wider text-warning/90 hover:text-warning hover:bg-white/5 transition"
+          className="inline-flex items-center gap-1.5 min-h-11 px-3 rounded-lg text-xs uppercase tracking-wider text-warning/90 hover:text-warning hover:bg-white/5 transition"
           aria-label="Risk disclaimer"
         >
           <AlertTriangle className="h-3.5 w-3.5" />
-          {!compact && <span className="hidden sm:inline">Disclaimer</span>}
+          {!compact && <span>Disclaimer</span>}
         </button>
       </DialogTrigger>
       <DialogContent className="glass-strong max-w-lg">
