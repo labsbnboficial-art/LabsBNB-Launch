@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { AlertTriangle } from "lucide-react";
+import { ACTIVE_NETWORK } from "@/lib/web3/networks";
 import {
   Dialog,
   DialogContent,
