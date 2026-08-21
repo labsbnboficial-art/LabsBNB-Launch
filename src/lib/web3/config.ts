@@ -53,7 +53,10 @@ export const web3Config = createConfig({
   // wallet keeps its own provider instead of everyone sharing window.ethereum.
   multiInjectedProviderDiscovery: true,
   transports: {
-    [activeChain.id]: rpcTransport([...ACTIVE_NETWORK.rpcUrls], { batch: true }),
+    // Both entries exist only to satisfy the union type of `activeChain`;
+    // only the active chain is announced to wallets.
+    [bsc.id]: rpcTransport([...NETWORKS.mainnet.rpcUrls], { batch: true }),
+    [bscTestnet.id]: rpcTransport([...NETWORKS.testnet.rpcUrls], { batch: true }),
   },
 
   ssr: true,
