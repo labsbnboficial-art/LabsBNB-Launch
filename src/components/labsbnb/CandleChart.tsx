@@ -266,32 +266,70 @@ export function CandleChart({
     chartRef.current = chart;
     candleRef.current = candleSeries;
     volumeRef.current = volumeSeries;
+    markersRef.current = createSeriesMarkers(candleSeries, []);
     return () => {
       ro.disconnect();
       chart.remove();
       chartRef.current = null;
       candleRef.current = null;
       volumeRef.current = null;
+      markersRef.current = null;
+      renderedRef.current = null;
     };
   }, []);
 
-  // Feed data (and keep the price precision aligned with sub-gwei prices).
+  // Feed data. Appends are applied incrementally (`update()`), so a new trade
+  // never re-renders the whole history nor disturbs the viewport.
   useEffect(() => {
     const candleSeries = candleRef.current;
     const volumeSeries = volumeRef.current;
     if (!candleSeries || !volumeSeries) return;
     candleSeries.applyOptions({ priceFormat: priceFormat(candles) });
-    candleSeries.setData(
-      data.map((c) => ({ time: c.t as UTCTimestamp, open: c.open, high: c.high, low: c.low, close: c.close })),
-    );
-    volumeSeries.setData(
-      data.map((c) => ({
+
+    const toBar = (c: (typeof data)[number]) => ({
+      time: c.t as UTCTimestamp,
+      open: c.open,
+      high: c.high,
+      low: c.low,
+      close: c.close,
+    });
+    const toVol = (c: (typeof data)[number]) => {
+      const f = flow.get(c.t);
+      const buyDominant = f ? f.buy >= f.sell : c.close >= c.open;
+      return {
         time: c.t as UTCTimestamp,
         value: c.volume,
-        color: c.close >= c.open ? "rgba(34,197,94,0.4)" : "rgba(239,68,68,0.4)",
-      })),
-    );
-  }, [data, candles]);
+        color: buyDominant ? "rgba(34,197,94,0.4)" : "rgba(239,68,68,0.4)",
+      };
+    };
+
+    const times = data.map((c) => c.t);
+    const prev = renderedRef.current;
+    const tfKey = timeframe ?? String(bucketSeconds ?? "-");
+    const isAppend =
+      prev != null &&
+      prev.tf === tfKey &&
+      prev.times.length > 0 &&
+      times.length >= prev.times.length &&
+      prev.times.every((t, i) => t === times[i]);
+
+    if (isAppend) {
+      for (let i = Math.max(0, prev.times.length - 1); i < data.length; i += 1) {
+        candleSeries.update(toBar(data[i]));
+        volumeSeries.update(toVol(data[i]));
+      }
+    } else {
+      candleSeries.setData(data.map(toBar));
+      volumeSeries.setData(data.map(toVol));
+    }
+    renderedRef.current = { tf: tfKey, times };
+  }, [data, candles, flow, timeframe, bucketSeconds]);
+
+  // Discreet BUY/SELL markers over the candles.
+  useEffect(() => {
+    markersRef.current?.setMarkers(markers);
+  }, [markers]);
+
 
   // Gold ATH reference line — drawn only when a real ATH exists.
   useEffect(() => {
