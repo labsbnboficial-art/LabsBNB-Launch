@@ -567,18 +567,37 @@ function Field({ label, children, full }: { label: string; children: React.React
 }
 
 function Stepper({ step, labels }: { step: number; labels: string[] }) {
+  // Grid instead of a nowrap flex row: on phones the three steps share the
+  // width evenly (labels wrap under the bullet) so nothing overflows.
   return (
-    <div className="flex items-center justify-center gap-2">
+    <ol
+      className="grid w-full grid-cols-3 gap-2 sm:flex sm:items-center sm:justify-center sm:gap-3"
+      aria-label="Progreso"
+    >
       {labels.map((l, i) => (
-        <div key={l} className="flex items-center gap-2">
-          <div className={`h-8 w-8 rounded-full grid place-items-center text-xs font-bold transition ${i <= step ? "brand-gradient text-primary-foreground glow-primary" : "bg-white/5 text-muted-foreground"}`}>
+        <li
+          key={l}
+          aria-current={i === step ? "step" : undefined}
+          className="flex min-w-0 flex-col items-center gap-1.5 text-center sm:flex-row sm:gap-2 sm:text-left"
+        >
+          <div
+            className={`h-8 w-8 shrink-0 rounded-full grid place-items-center text-xs font-bold transition ${
+              i <= step ? "brand-gradient text-primary-foreground glow-primary" : "bg-white/5 text-muted-foreground"
+            }`}
+          >
             {i + 1}
           </div>
-          <span className={`text-sm ${i === step ? "text-foreground font-medium" : "text-muted-foreground"}`}>{l}</span>
-          {i < labels.length - 1 && <div className="w-8 h-px bg-white/10 mx-1" />}
-        </div>
+          <span
+            className={`min-w-0 break-words text-[11px] leading-tight sm:text-sm ${
+              i === step ? "text-foreground font-medium" : "text-muted-foreground"
+            }`}
+          >
+            {l}
+          </span>
+          {i < labels.length - 1 && <div className="hidden sm:block w-8 h-px bg-white/10 mx-1" />}
+        </li>
       ))}
-    </div>
+    </ol>
   );
 }
 
