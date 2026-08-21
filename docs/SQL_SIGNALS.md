@@ -64,7 +64,7 @@ El endpoint es el único trigger externo y ejecuta **exactamente el mismo motor*
 que el botón *RUN ENGINE NOW*:
 
 ```
-POST https://lp-burn-stake-gain.lovable.app/api/public/signals/run
+POST https://labsbnb-launchpad.com/api/public/signals/run
 Header: x-signals-secret: <SIGNALS_CRON_SECRET>
 ```
 
@@ -95,7 +95,7 @@ select cron.schedule(
   '* * * * *',            -- cada minuto
   $$
   select net.http_post(
-    url := 'https://lp-burn-stake-gain.lovable.app/api/public/signals/run',
+    url := 'https://labsbnb-launchpad.com/api/public/signals/run',
     headers := jsonb_build_object(
       'content-type', 'application/json',
       'x-signals-secret', 'REEMPLAZA_CON_EL_SECRET'

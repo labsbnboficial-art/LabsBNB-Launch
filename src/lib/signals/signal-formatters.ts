@@ -4,7 +4,7 @@ import { explorerTxUrl } from "@/lib/web3/networks";
 // so a token name can never break the message layout or inject markup.
 import { SIGNAL_LABELS, type SignalCandidate, type SignalType } from "./signal-types";
 
-export const FALLBACK_SITE_URL = "https://lp-burn-stake-gain.lovable.app";
+export const FALLBACK_SITE_URL = "https://labsbnb-launchpad.com";
 
 export function siteUrl(configured?: unknown): string {
   const raw = typeof configured === "string" ? configured.trim() : "";
