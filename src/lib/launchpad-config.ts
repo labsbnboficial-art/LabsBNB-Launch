@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { getPublicConfig } from "@/lib/config.functions";
+import { ACTIVE_NETWORK } from "@/lib/web3/networks";
 
 export type LaunchpadConfig = {
   admin_wallet: string;
@@ -33,12 +34,12 @@ export type LaunchpadConfig = {
 };
 
 export const DEFAULT_CONFIG: LaunchpadConfig = {
-  admin_wallet: "0x60e655Fe39Bc7D17661f226bB44Dcc681cc4e05e",
-  factory_address: "0x0738dA5824d03fF3E8BDDFd33cdb3728b6d8abD9",
-  rpc_url: "https://data-seed-prebsc-1-s1.binance.org:8545",
-  chain_id: 97,
+  admin_wallet: (ACTIVE_NETWORK.contracts.treasury ?? "") as string,
+  factory_address: ACTIVE_NETWORK.contracts.factory,
+  rpc_url: ACTIVE_NETWORK.rpcUrls[0]!,
+  chain_id: ACTIVE_NETWORK.chainId,
   fee_bps: 50,
-  fee_wallet: "0x60e655Fe39Bc7D17661f226bB44Dcc681cc4e05e",
+  fee_wallet: (ACTIVE_NETWORK.contracts.feeWallet ?? "") as string,
   curve_target_bnb: "24000000000000000000",
   burn_pct: 0,
   liquidity_pct: 100,
@@ -62,8 +63,8 @@ export const DEFAULT_CONFIG: LaunchpadConfig = {
 };
 
 /** Testing phase: the launchpad is locked to BNB Smart Chain Testnet (97). */
-export const TESTNET_CHAIN_ID = 97;
-export const TESTNET_FACTORY = "0x0738dA5824d03fF3E8BDDFd33cdb3728b6d8abD9" as `0x${string}`;
+export const TESTNET_CHAIN_ID = ACTIVE_NETWORK.chainId;
+export const TESTNET_FACTORY = (ACTIVE_NETWORK.contracts.factory ?? "0x") as `0x${string}`;
 
 function coerce(cfg: Record<string, unknown>): LaunchpadConfig {
   const g = <T,>(k: keyof LaunchpadConfig, fallback: T): T => {

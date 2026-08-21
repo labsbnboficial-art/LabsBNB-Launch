@@ -1,0 +1,88 @@
+# Mainnet Frontend Checklist — LabsBNB Launchpad
+
+Phase: **pre-mainnet frontend hardening** (no contracts changed, no deploy).
+Single source of truth for all network data: `src/lib/web3/networks.ts`.
+
+## 1. Network
+
+| Item | Testnet (active) | Mainnet |
+| --- | --- | --- |
+| Key | `testnet` | `mainnet` |
+| Selected by | `VITE_LAUNCHPAD_NETWORK` unset / `testnet` | `VITE_LAUNCHPAD_NETWORK=mainnet` |
+| UI notice | Persistent "TESTNET" banner | none |
+
+## 2. Chain ID
+
+- Testnet: **97**
+- Mainnet: **56**
+- Wallet chain is validated by `isCorrectChain()`; `NetworkGuard` blocks with a
+  "Wrong network" panel + "Switch Network" (wagmi `useSwitchChain`).
+
+## 3. Factory
+
+- Testnet: `0x0738dA5824d03fF3E8BDDFd33cdb3728b6d8abD9`
+- Mainnet: **PENDING — not deployed. Do not invent an address.**
+
+## 4. Router (PancakeSwap V2)
+
+- Testnet: `0xD99D1c33F9fC3444f8101754aBC46c52416550D1`
+- Mainnet: `0x10ED43C718714eb63d5aA57B78B54704E256024E`
+- WBNB testnet `0xae13d989daC2f0dEbFf460aC112a837C89BAa7cd`, mainnet `0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c`
+
+## 5. Treasury
+
+`0x60e655Fe39Bc7D17661f226bB44Dcc681cc4e05e` (Impulso, campaigns, advanced creation fee).
+Mainnet treasury **to be confirmed before launch** (currently the same wallet).
+
+## 6. Fee wallet
+
+`0x60e655Fe39Bc7D17661f226bB44Dcc681cc4e05e` (buy/sell + creation fees).
+
+## 7. RPC
+
+Testnet — PRIMARY `https://bsc-prebsc-dataseed.bnbchain.org`; fallbacks: drpc,
+binance data-seeds (s1/s2), zan.top. Log-capable subset in `LOG_RPC_URLS`
+(chart, trades, holders, ATH, curve events).
+Mainnet — PRIMARY `https://bsc-dataseed.bnbchain.org`; fallbacks: defibit,
+ninicoin, dataseed2, drpc.
+Batching is disabled on purpose (public seeds answer `-32005 limit exceeded`).
+No new third-party RPC provider was introduced.
+
+## 8. Explorer
+
+Helpers only: `explorerAddressUrl`, `explorerTxUrl`, `explorerTokenUrl`,
+`explorerContractUrl`. Testnet `https://testnet.bscscan.com`, Mainnet
+`https://bscscan.com`. No hardcoded explorer URLs remain in components.
+
+## 9. WalletConnect
+
+Unchanged and still validated with MetaMask, Trust, WalletConnect and Coinbase.
+`web3Config` now announces only the ACTIVE chain (first-chain rule for Trust).
+`VITE_WALLETCONNECT_PROJECT_ID` should be set per environment.
+
+## 10. Environment variables
+
+Public (safe): `VITE_LAUNCHPAD_NETWORK`, `VITE_WALLETCONNECT_PROJECT_ID`,
+`VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`, `VITE_SUPABASE_PROJECT_ID`.
+Server-only, never rendered/logged: `PRIVATE_KEY`, `SIGNALS_CRON_SECRET`,
+service-role keys, `BSCSCAN_API_KEY`, `TELEGRAM_BOT_TOKEN`, `LOVABLE_API_KEY`
+(enumerated in `FORBIDDEN_PUBLIC_ENV`).
+
+## 11. Security checks
+
+`networkSafetyCheck(net)` (read-only) verifies chain id, factory, router,
+treasury, fee wallet, explorer/network coherence and testnet-RPC leakage.
+Run it before any Mainnet switch; it currently returns `ok: false` for Mainnet
+because the factory is pending.
+
+## 12. Remaining blockers
+
+1. **BLOCKER** — Mainnet `LabsBNBFactory` not deployed (address pending).
+2. **BLOCKER (contracts phase)** — Mainnet deployment must run the hardened
+   BondingCurve/Factory audited in `docs/AUDIT_BONDING_CURVE_POST_FIX.md`.
+3. Confirm whether Mainnet fee wallet and treasury must be different addresses.
+4. Admin panel network-scoped settings: DB config rows are shared across
+   environments; a Mainnet build should not read Testnet-written factory rows
+   (mitigated today because the frontend forces the config factory to the
+   active-network factory).
+5. Dedicated (non-public) RPC endpoint recommended before Mainnet traffic.

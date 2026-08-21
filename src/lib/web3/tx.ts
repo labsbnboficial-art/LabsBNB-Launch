@@ -7,28 +7,17 @@
 // wallet response blocked create/buy/sell everywhere. We now switch once,
 // tolerate the failure, re-check the connector chain and only then write.
 
+import { chainAddParams, chainLabel, ACTIVE_CHAIN_ID } from "./networks";
+
 export type SwitchChain = (args: { chainId: number }) => Promise<unknown>;
 
-const CHAIN_NAMES: Record<number, string> = {
-  97: "BNB Smart Chain Testnet",
-  56: "BNB Smart Chain",
-};
-
+/** Human network name — resolved from the centralized network registry. */
 export function chainName(id: number) {
-  return CHAIN_NAMES[id] ?? `chain ${id}`;
+  return chainLabel(id);
 }
 
-/** EIP-3085 payload so wallets that don't know chain 97 (Trust Wallet) can add it. */
-export const BSC_TESTNET_PARAMS = {
-  chainId: "0x61",
-  chainName: "BNB Smart Chain Testnet",
-  nativeCurrency: { name: "tBNB", symbol: "tBNB", decimals: 18 },
-  rpcUrls: [
-    "https://bsc-prebsc-dataseed.bnbchain.org",
-    "https://data-seed-prebsc-1-s1.binance.org:8545",
-  ],
-  blockExplorerUrls: ["https://testnet.bscscan.com"],
-} as const;
+/** EIP-3085 payload so wallets that don't know the chain (Trust) can add it. */
+export const BSC_TESTNET_PARAMS = chainAddParams();
 
 type Eip1193 = { request: (args: { method: string; params?: unknown[] }) => Promise<unknown> };
 
@@ -50,7 +39,7 @@ async function rawSwitch(target: number): Promise<void> {
     if (code === 4902 || code === -32603 || code === -32602) {
       await provider.request({
         method: "wallet_addEthereumChain",
-        params: [target === 97 ? BSC_TESTNET_PARAMS : { chainId: hex }],
+        params: [target === ACTIVE_CHAIN_ID ? BSC_TESTNET_PARAMS : { chainId: hex }],
       });
       return;
     }

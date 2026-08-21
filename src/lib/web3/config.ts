@@ -1,7 +1,11 @@
 import { createConfig } from "wagmi";
-import { testnetTransport, TESTNET_RPC_URLS } from "./rpc";
-import { bscTestnet } from "wagmi/chains";
+import { rpcTransport, TESTNET_RPC_URLS } from "./rpc";
+import { bsc, bscTestnet } from "wagmi/chains";
+import { ACTIVE_NETWORK, NETWORKS } from "./networks";
 import { injected, walletConnect, coinbaseWallet } from "wagmi/connectors";
+
+/** Chain object for the active build (centralized in ./networks). */
+export const activeChain = ACTIVE_NETWORK.chainId === bsc.id ? bsc : bscTestnet;
 
 /**
  * LabsBNB Launchpad — Web3 configuration.
@@ -26,7 +30,9 @@ export const BSC_TESTNET_RPC = TESTNET_RPC_URLS[0]!;
 // default to the FIRST chain announced in the session proposal, so listing
 // Ethereum or BSC mainnet here made Trust connect on chain 1.
 export const web3Config = createConfig({
-  chains: [bscTestnet],
+  // Only the ACTIVE chain is announced: Trust/WalletConnect connect to the
+  // first chain of the proposal, so never list a second one here.
+  chains: [activeChain],
   connectors: [
     walletConnect({
       projectId: WC_PROJECT_ID,
@@ -47,7 +53,10 @@ export const web3Config = createConfig({
   // wallet keeps its own provider instead of everyone sharing window.ethereum.
   multiInjectedProviderDiscovery: true,
   transports: {
-    [bscTestnet.id]: testnetTransport({ batch: true }),
+    // Both entries exist only to satisfy the union type of `activeChain`;
+    // only the active chain is announced to wallets.
+    [bsc.id]: rpcTransport([...NETWORKS.mainnet.rpcUrls], { batch: true }),
+    [bscTestnet.id]: rpcTransport([...NETWORKS.testnet.rpcUrls], { batch: true }),
   },
 
   ssr: true,
@@ -55,6 +64,6 @@ export const web3Config = createConfig({
 
 export const BSC_TESTNET_CHAIN_ID = bscTestnet.id;
 /** Active chain for the whole app during the testing phase. */
-export const ACTIVE_CHAIN_ID = bscTestnet.id;
-export const BSC_CHAIN_ID = bscTestnet.id;
-export const ACTIVE_CHAIN = bscTestnet;
+export const ACTIVE_CHAIN_ID = activeChain.id;
+export const BSC_CHAIN_ID = activeChain.id;
+export const ACTIVE_CHAIN = activeChain;
