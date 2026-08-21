@@ -15,13 +15,17 @@ import {
   CrosshairMode,
   HistogramSeries,
   createChart,
+  createSeriesMarkers,
   type IChartApi,
   type ISeriesApi,
+  type ISeriesMarkersPluginApi,
+  type SeriesMarker,
+  type Time,
   type UTCTimestamp,
 } from "lightweight-charts";
 import { Maximize2, Minimize2, Move, RotateCcw, ZoomIn, ZoomOut } from "lucide-react";
 import { createLastPriceLine, createPriceLine } from "./chart-lines";
-import type { Candle } from "@/lib/web3/curve-events";
+import type { Candle, TradeEvent } from "@/lib/web3/curve-events";
 
 type Props = {
   candles: Candle[];
@@ -30,7 +34,16 @@ type Props = {
   quoteSymbol?: string;
   /** Real all-time-high price (BNB per token) drawn as a gold reference line. */
   athPrice?: number | null;
+  /** Raw on-chain trades (same source as the candles) for markers + volume flow. */
+  trades?: TradeEvent[];
+  /** Seconds per candle of the active timeframe (used to bucket trades). */
+  bucketSeconds?: number;
+  /** Timeframe selector rendered inside the chart toolbar. */
+  timeframe?: string;
+  timeframes?: ReadonlyArray<{ id: string; label: string }>;
+  onTimeframeChange?: (id: string) => void;
 };
+
 
 const UP = "#22c55e";
 const DOWN = "#ef4444";
