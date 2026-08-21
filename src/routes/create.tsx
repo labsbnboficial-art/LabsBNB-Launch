@@ -401,7 +401,7 @@ function CreatePage() {
 
         <div className="glass-strong rounded-3xl p-6 md:p-8 mt-8">
           {step === 0 && (
-            <div className="grid gap-5 md:grid-cols-2">
+            <div className="grid min-w-0 grid-cols-1 gap-5 md:grid-cols-2">
               <Field label={t("create.name")}><Input value={form.name} onChange={(e) => set("name", e.target.value)} /></Field>
               <Field label={t("create.ticker")}><Input value={form.ticker} onChange={(e) => set("ticker", e.target.value.toUpperCase())} className="font-mono" /></Field>
               <Field label={t("create.description")} full><Textarea rows={3} value={form.description} onChange={(e) => set("description", e.target.value)} /></Field>
@@ -428,7 +428,7 @@ function CreatePage() {
             </div>
           )}
           {step === 1 && (
-            <div className="grid gap-5 md:grid-cols-2">
+            <div className="grid min-w-0 grid-cols-1 gap-5 md:grid-cols-2">
               <Field label={t("create.supply")}><Input type="number" value={form.supply} onChange={(e) => set("supply", Number(e.target.value))} /></Field>
               <Field label={t("create.decimals")}><Input type="number" value={form.decimals} onChange={(e) => set("decimals", Number(e.target.value))} /></Field>
               <Field label={t("create.initialBuy")}><Input type="number" step="0.01" value={form.initial_buy_bnb} onChange={(e) => set("initial_buy_bnb", Number(e.target.value))} /></Field>
@@ -560,7 +560,7 @@ function CreatePage() {
 
 function Field({ label, children, full }: { label: string; children: React.ReactNode; full?: boolean }) {
   return (
-    <div className={full ? "md:col-span-2" : ""}>
+    <div className={`min-w-0 ${full ? "md:col-span-2" : ""}`}>
       <Label className="text-xs uppercase tracking-widest text-muted-foreground mb-1.5 block">{label}</Label>
       {children}
     </div>
