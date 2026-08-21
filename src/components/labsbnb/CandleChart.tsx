@@ -98,12 +98,19 @@ export function CandleChart({
   onVisibleCountChange,
   quoteSymbol = "BNB",
   athPrice = null,
+  trades,
+  bucketSeconds,
+  timeframe,
+  timeframes,
+  onTimeframeChange,
 }: Props) {
   const wrapRef = useRef<HTMLDivElement | null>(null);
   const hostRef = useRef<HTMLDivElement | null>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const candleRef = useRef<ISeriesApi<"Candlestick"> | null>(null);
   const volumeRef = useRef<ISeriesApi<"Histogram"> | null>(null);
+  const markersRef = useRef<ISeriesMarkersPluginApi<Time> | null>(null);
+  const renderedRef = useRef<{ tf: string; times: number[] } | null>(null);
   const rangeCb = useRef(onVisibleCountChange);
   rangeCb.current = onVisibleCountChange;
   const programmatic = useRef(false);
@@ -111,6 +118,7 @@ export function CandleChart({
   const [full, setFull] = useState(false);
   const [hover, setHover] = useState<Candle | null>(null);
   const [hostWidth, setHostWidth] = useState(0);
+
 
   const data = useMemo(() => {
     // Lightweight Charts requires strictly ascending, unique timestamps.
