@@ -24,6 +24,7 @@ import { useLaunchpadConfig } from "@/lib/launchpad-config";
 import { describeTxError, describeTxErrorVerbose, ensureChain } from "@/lib/web3/tx";
 import { ACTIVE_CHAIN_ID, BSC_TESTNET_RPC } from "@/lib/web3/config";
 import { toast } from "sonner";
+import { ImagePicker } from "@/components/labsbnb/ImagePicker";
 import { Rocket, Check, ArrowLeft, ArrowRight, Sparkles, Lock } from "lucide-react";
 
 export const Route = createFileRoute("/create")({
@@ -849,9 +850,7 @@ function FileUploader({ value, onChange, kind }: { value?: string; onChange: (ur
   const [busy, setBusy] = useState(false);
   const upload = useServerFn(uploadTokenMedia);
   const ensureSession = useSiweSignIn();
-  async function onFile(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  async function onFile(file: File) {
     setBusy(true);
     try {
       await ensureSession();
@@ -859,13 +858,15 @@ function FileUploader({ value, onChange, kind }: { value?: string; onChange: (ur
       onChange(url);
       toast.success("Imagen subida");
     } catch (err) { toast.error((err as Error).message); }
-    finally { setBusy(false); e.target.value = ""; }
+    finally { setBusy(false); }
   }
   return (
-    <div className="space-y-2">
-      <Input type="file" accept="image/png,image/jpeg,image/jpg,image/webp,image/gif" disabled={busy} onChange={onFile} />
-      {busy && <p className="text-xs text-muted-foreground">Subiendo…</p>}
-      {value && <img src={value} alt="" loading="lazy" className="h-16 w-16 rounded-lg object-cover border border-white/10" />}
-    </div>
+    <ImagePicker
+      value={value}
+      busy={busy}
+      aspect={kind === "banner" ? "wide" : "square"}
+      onFile={(f) => void onFile(f)}
+      onClear={() => onChange("")}
+    />
   );
 }
