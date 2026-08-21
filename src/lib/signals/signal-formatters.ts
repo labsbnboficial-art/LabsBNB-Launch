@@ -1,3 +1,4 @@
+import { explorerTxUrl } from "@/lib/web3/networks";
 // Telegram message rendering for the Signal Engine.
 // Pure functions: no network, no secrets. All dynamic content is HTML-escaped
 // so a token name can never break the message layout or inject markup.
@@ -178,7 +179,7 @@ export function renderSignal(candidate: SignalCandidate, base: string): Rendered
   const buttons = tokenLinks(base, String(candidate.tokenAddress));
   if (candidate.txHash) {
     buttons.push([
-      { text: "🔎 Transaction", url: `https://testnet.bscscan.com/tx/${candidate.txHash}` },
+      { text: "🔎 Transaction", url: explorerTxUrl(candidate.txHash) },
     ]);
   }
   return { text, buttons };

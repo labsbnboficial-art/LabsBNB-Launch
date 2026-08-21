@@ -1,3 +1,4 @@
+import { explorerAddressUrl, explorerTxUrl } from "@/lib/web3/networks";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { uploadTokenMedia } from "@/lib/media.functions";
@@ -468,7 +469,7 @@ function CreatePage() {
                       <span className="text-muted-foreground">Tx: </span>
                       <a
                         className="font-mono underline break-all"
-                        href={`https://testnet.bscscan.com/tx/${deployTx}`}
+                        href={explorerTxUrl(deployTx)}
                         target="_blank"
                         rel="noreferrer"
                       >
@@ -481,7 +482,7 @@ function CreatePage() {
                       <span className="text-muted-foreground">Token: </span>
                       <a
                         className="font-mono underline break-all"
-                        href={`https://testnet.bscscan.com/address/${deployedToken}`}
+                        href={explorerAddressUrl(deployedToken)}
                         target="_blank"
                         rel="noreferrer"
                       >
@@ -494,7 +495,7 @@ function CreatePage() {
                       <span className="text-muted-foreground">Bonding curve: </span>
                       <a
                         className="font-mono underline break-all"
-                        href={`https://testnet.bscscan.com/address/${deployedCurve}`}
+                        href={explorerAddressUrl(deployedCurve)}
                         target="_blank"
                         rel="noreferrer"
                       >

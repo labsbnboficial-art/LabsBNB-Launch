@@ -3,19 +3,24 @@
 import LabsBNBFactoryAbi from "./LabsBNBFactory.json";
 import BondingCurveAbi from "./BondingCurve.json";
 import LabsBNBTokenAbi from "./LabsBNBToken.json";
+import { ACTIVE_NETWORK } from "../networks";
 
 export const FACTORY_ABI = LabsBNBFactoryAbi;
 export const CURVE_ABI = BondingCurveAbi;
 export const TOKEN_ABI = LabsBNBTokenAbi;
 
 
-/** BSC Testnet (chainId 97) deployment constants. */
+/**
+ * Deployment constants for the ACTIVE network.
+ * Kept under the historical `BSC_TESTNET` name for call-site compatibility;
+ * the values now come from the centralized config in `../networks`.
+ */
 export const BSC_TESTNET = {
-  chainId: 97,
-  rpcUrl: "https://bsc-prebsc-dataseed.bnbchain.org",
-  pancakeRouter: "0xD99D1c33F9fC3444f8101754aBC46c52416550D1",
-  wbnb: "0xae13d989daC2f0dEbFf460aC112a837C89BAa7cd",
-  explorer: "https://testnet.bscscan.com",
+  chainId: ACTIVE_NETWORK.chainId,
+  rpcUrl: ACTIVE_NETWORK.rpcUrls[0]!,
+  pancakeRouter: ACTIVE_NETWORK.contracts.router!,
+  wbnb: ACTIVE_NETWORK.contracts.wbnb!,
+  explorer: ACTIVE_NETWORK.explorer,
 } as const;
 
 export { LOG_RPC_URLS } from "../rpc";
