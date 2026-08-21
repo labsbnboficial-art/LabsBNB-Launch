@@ -30,7 +30,9 @@ export const BSC_TESTNET_RPC = TESTNET_RPC_URLS[0]!;
 // default to the FIRST chain announced in the session proposal, so listing
 // Ethereum or BSC mainnet here made Trust connect on chain 1.
 export const web3Config = createConfig({
-  chains: [activeChain, activeChain.id === bsc.id ? bscTestnet : bsc] as const,
+  // Only the ACTIVE chain is announced: Trust/WalletConnect connect to the
+  // first chain of the proposal, so never list a second one here.
+  chains: [activeChain],
   connectors: [
     walletConnect({
       projectId: WC_PROJECT_ID,
@@ -51,8 +53,7 @@ export const web3Config = createConfig({
   // wallet keeps its own provider instead of everyone sharing window.ethereum.
   multiInjectedProviderDiscovery: true,
   transports: {
-    [bsc.id]: rpcTransport([...NETWORKS.mainnet.rpcUrls], { batch: true }),
-    [bscTestnet.id]: rpcTransport([...NETWORKS.testnet.rpcUrls], { batch: true }),
+    [activeChain.id]: rpcTransport([...ACTIVE_NETWORK.rpcUrls], { batch: true }),
   },
 
   ssr: true,
