@@ -2,10 +2,10 @@ import { createConfig } from "wagmi";
 import { rpcTransport, TESTNET_RPC_URLS } from "./rpc";
 import { bsc, bscTestnet } from "wagmi/chains";
 import { ACTIVE_NETWORK } from "./networks";
+import { injected, walletConnect, coinbaseWallet } from "wagmi/connectors";
 
 /** Chain object for the active build (centralized in ./networks). */
 export const activeChain = ACTIVE_NETWORK.chainId === bsc.id ? bsc : bscTestnet;
-import { injected, walletConnect, coinbaseWallet } from "wagmi/connectors";
 
 /**
  * LabsBNB Launchpad — Web3 configuration.
@@ -30,7 +30,7 @@ export const BSC_TESTNET_RPC = TESTNET_RPC_URLS[0]!;
 // default to the FIRST chain announced in the session proposal, so listing
 // Ethereum or BSC mainnet here made Trust connect on chain 1.
 export const web3Config = createConfig({
-  chains: [activeChain],
+  chains: [activeChain] as const,
   connectors: [
     walletConnect({
       projectId: WC_PROJECT_ID,
