@@ -8,6 +8,7 @@ import { createPortal } from "react-dom";
 import { Link, useRouterState } from "@tanstack/react-router";
 import {
   Bell,
+  Globe,
   Menu,
   PlusCircle,
   Rocket,
@@ -20,6 +21,8 @@ import {
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { useAuth } from "@/lib/auth";
+import { useI18n } from "@/lib/i18n";
+import { RiskDisclaimer } from "@/components/labsbnb/RiskDisclaimer";
 
 type Item = { to: string; label: string; icon: LucideIcon; exact?: boolean; authOnly?: boolean };
 type Group = { title: string; items: Item[] };
@@ -56,6 +59,7 @@ const GROUPS: Group[] = [
 export function MobileNav() {
   const [open, setOpen] = useState(false);
   const { user } = useAuth();
+  const { locale, setLocale } = useI18n();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
 
   // Close on route change and lock body scroll while the drawer is open.
@@ -157,6 +161,21 @@ export function MobileNav() {
                 );
               })}
             </nav>
+
+            <div className="border-t border-white/5 px-3 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+              <div className="flex items-center justify-between gap-2">
+                <RiskDisclaimer />
+                <button
+                  type="button"
+                  onClick={() => setLocale(locale === "es" ? "en" : "es")}
+                  aria-label="Cambiar idioma"
+                  className="inline-flex min-h-11 items-center gap-1.5 rounded-lg px-3 text-xs uppercase tracking-wider text-muted-foreground transition hover:bg-white/5 hover:text-foreground"
+                >
+                  <Globe className="h-3.5 w-3.5" />
+                  {locale === "es" ? "ES" : "EN"}
+                </button>
+              </div>
+            </div>
           </aside>
           </div>,
           document.body,

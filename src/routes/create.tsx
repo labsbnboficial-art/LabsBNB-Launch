@@ -24,6 +24,7 @@ import { useLaunchpadConfig } from "@/lib/launchpad-config";
 import { describeTxError, describeTxErrorVerbose, ensureChain } from "@/lib/web3/tx";
 import { ACTIVE_CHAIN_ID, BSC_TESTNET_RPC } from "@/lib/web3/config";
 import { toast } from "sonner";
+import { ImagePicker } from "@/components/labsbnb/ImagePicker";
 import { Rocket, Check, ArrowLeft, ArrowRight, Sparkles, Lock } from "lucide-react";
 
 export const Route = createFileRoute("/create")({
@@ -400,7 +401,7 @@ function CreatePage() {
 
         <div className="glass-strong rounded-3xl p-6 md:p-8 mt-8">
           {step === 0 && (
-            <div className="grid gap-5 md:grid-cols-2">
+            <div className="grid min-w-0 grid-cols-1 gap-5 md:grid-cols-2">
               <Field label={t("create.name")}><Input value={form.name} onChange={(e) => set("name", e.target.value)} /></Field>
               <Field label={t("create.ticker")}><Input value={form.ticker} onChange={(e) => set("ticker", e.target.value.toUpperCase())} className="font-mono" /></Field>
               <Field label={t("create.description")} full><Textarea rows={3} value={form.description} onChange={(e) => set("description", e.target.value)} /></Field>
@@ -427,7 +428,7 @@ function CreatePage() {
             </div>
           )}
           {step === 1 && (
-            <div className="grid gap-5 md:grid-cols-2">
+            <div className="grid min-w-0 grid-cols-1 gap-5 md:grid-cols-2">
               <Field label={t("create.supply")}><Input type="number" value={form.supply} onChange={(e) => set("supply", Number(e.target.value))} /></Field>
               <Field label={t("create.decimals")}><Input type="number" value={form.decimals} onChange={(e) => set("decimals", Number(e.target.value))} /></Field>
               <Field label={t("create.initialBuy")}><Input type="number" step="0.01" value={form.initial_buy_bnb} onChange={(e) => set("initial_buy_bnb", Number(e.target.value))} /></Field>
@@ -559,7 +560,7 @@ function CreatePage() {
 
 function Field({ label, children, full }: { label: string; children: React.ReactNode; full?: boolean }) {
   return (
-    <div className={full ? "md:col-span-2" : ""}>
+    <div className={`min-w-0 ${full ? "md:col-span-2" : ""}`}>
       <Label className="text-xs uppercase tracking-widest text-muted-foreground mb-1.5 block">{label}</Label>
       {children}
     </div>
@@ -567,18 +568,37 @@ function Field({ label, children, full }: { label: string; children: React.React
 }
 
 function Stepper({ step, labels }: { step: number; labels: string[] }) {
+  // Grid instead of a nowrap flex row: on phones the three steps share the
+  // width evenly (labels wrap under the bullet) so nothing overflows.
   return (
-    <div className="flex items-center justify-center gap-2">
+    <ol
+      className="grid w-full grid-cols-3 gap-2 sm:flex sm:items-center sm:justify-center sm:gap-3"
+      aria-label="Progreso"
+    >
       {labels.map((l, i) => (
-        <div key={l} className="flex items-center gap-2">
-          <div className={`h-8 w-8 rounded-full grid place-items-center text-xs font-bold transition ${i <= step ? "brand-gradient text-primary-foreground glow-primary" : "bg-white/5 text-muted-foreground"}`}>
+        <li
+          key={l}
+          aria-current={i === step ? "step" : undefined}
+          className="flex min-w-0 flex-col items-center gap-1.5 text-center sm:flex-row sm:gap-2 sm:text-left"
+        >
+          <div
+            className={`h-8 w-8 shrink-0 rounded-full grid place-items-center text-xs font-bold transition ${
+              i <= step ? "brand-gradient text-primary-foreground glow-primary" : "bg-white/5 text-muted-foreground"
+            }`}
+          >
             {i + 1}
           </div>
-          <span className={`text-sm ${i === step ? "text-foreground font-medium" : "text-muted-foreground"}`}>{l}</span>
-          {i < labels.length - 1 && <div className="w-8 h-px bg-white/10 mx-1" />}
-        </div>
+          <span
+            className={`min-w-0 break-words text-[11px] leading-tight sm:text-sm ${
+              i === step ? "text-foreground font-medium" : "text-muted-foreground"
+            }`}
+          >
+            {l}
+          </span>
+          {i < labels.length - 1 && <div className="hidden sm:block w-8 h-px bg-white/10 mx-1" />}
+        </li>
       ))}
-    </div>
+    </ol>
   );
 }
 
@@ -830,9 +850,7 @@ function FileUploader({ value, onChange, kind }: { value?: string; onChange: (ur
   const [busy, setBusy] = useState(false);
   const upload = useServerFn(uploadTokenMedia);
   const ensureSession = useSiweSignIn();
-  async function onFile(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  async function onFile(file: File) {
     setBusy(true);
     try {
       await ensureSession();
@@ -840,13 +858,15 @@ function FileUploader({ value, onChange, kind }: { value?: string; onChange: (ur
       onChange(url);
       toast.success("Imagen subida");
     } catch (err) { toast.error((err as Error).message); }
-    finally { setBusy(false); e.target.value = ""; }
+    finally { setBusy(false); }
   }
   return (
-    <div className="space-y-2">
-      <Input type="file" accept="image/png,image/jpeg,image/jpg,image/webp,image/gif" disabled={busy} onChange={onFile} />
-      {busy && <p className="text-xs text-muted-foreground">Subiendo…</p>}
-      {value && <img src={value} alt="" loading="lazy" className="h-16 w-16 rounded-lg object-cover border border-white/10" />}
-    </div>
+    <ImagePicker
+      value={value}
+      busy={busy}
+      aspect={kind === "banner" ? "wide" : "square"}
+      onFile={(f) => void onFile(f)}
+      onClear={() => onChange("")}
+    />
   );
 }

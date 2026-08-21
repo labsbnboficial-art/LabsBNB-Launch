@@ -30,6 +30,8 @@ import { uploadTokenMedia } from "@/lib/media.functions";
 import { uploadTokenImage } from "@/lib/image-upload";
 import { tokenMediaUrl } from "@/lib/media-url";
 import { BoostPurchaseModal } from "@/components/labsbnb/BoostPurchaseModal";
+import { ImagePicker } from "@/components/labsbnb/ImagePicker";
+import { withRpcTimeout } from "@/lib/web3/timeout";
 
 
 
@@ -102,7 +104,7 @@ function TokenPage() {
     refetchInterval: 15_000,
     retry: 1,
     initialPageParam: null as string | null,
-    queryFn: ({ pageParam }) => fetchTradePage(curveOk!, pageParam, 25),
+    queryFn: ({ pageParam }) => withRpcTimeout("Trade events", () => fetchTradePage(curveOk!, pageParam, 25)),
     getNextPageParam: (last) => last.nextCursor,
   });
 
@@ -111,7 +113,7 @@ function TokenPage() {
     queryKey: ["curveStats", curveOk],
     enabled: !!curveOk,
     refetchInterval: 15_000,
-    queryFn: () => fetchCurveStats(curveOk!),
+    queryFn: () => withRpcTimeout("curve stats", () => fetchCurveStats(curveOk!)),
   });
 
   // Live market price: currentPrice() while the curve is active, PancakeSwap
@@ -731,11 +733,11 @@ function ChainError({ error, onRetry }: { error: Error; onRetry: () => void }) {
   return (
     <div className="rounded-xl border border-destructive/40 bg-destructive/10 p-4 text-xs">
       <div className="flex items-center gap-2 font-semibold text-destructive">
-        <AlertTriangle className="h-4 w-4" /> No se pudieron leer los eventos Trade
+        <AlertTriangle className="h-4 w-4" /> Unable to load data
       </div>
       <p className="mt-2 break-words font-mono text-[11px] text-muted-foreground">{error.message}</p>
       <Button variant="outline" size="sm" className="mt-3 border-white/10 bg-white/5" onClick={onRetry}>
-        Reintentar
+        Retry
       </Button>
     </div>
   );
@@ -826,7 +828,7 @@ function TopHolders({ token, ticker }: { token: string | null; ticker: string })
     enabled: !!valid,
     refetchInterval: 60_000,
     retry: 1,
-    queryFn: () => fetchTopHolders(valid!, 10),
+    queryFn: () => withRpcTimeout("token holders", () => fetchTopHolders(valid!, 10)),
   });
 
   return (
@@ -846,7 +848,7 @@ function TopHolders({ token, ticker }: { token: string | null; ticker: string })
       ) : q.isLoading ? (
         <p className="text-xs text-muted-foreground">Leyendo transferencias on-chain…</p>
       ) : q.error ? (
-        <p className="text-xs text-destructive break-words font-mono">{(q.error as Error).message}</p>
+        <ChainError error={q.error as Error} onRetry={() => void q.refetch()} />
       ) : !q.data?.holders.length ? (
         <p className="text-xs text-muted-foreground">Sin transferencias en el rango consultado.</p>
       ) : (
@@ -980,11 +982,22 @@ function TokenInformation({
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-2">
               <Input placeholder="Logo URL" value={form.logo_url} onChange={(e) => set("logo_url", e.target.value)} />
-              <Input type="file" accept="image/png,image/jpeg,image/jpg,image/webp,image/gif" disabled={uploading !== null} onChange={(e) => upload("logo", e.target.files?.[0])} />
+              <ImagePicker
+                value={form.logo_url}
+                busy={uploading === "logo"}
+                onFile={(f) => void upload("logo", f)}
+                onClear={() => set("logo_url", "")}
+              />
             </div>
             <div className="space-y-2">
               <Input placeholder="Banner URL" value={form.banner_url} onChange={(e) => set("banner_url", e.target.value)} />
-              <Input type="file" accept="image/png,image/jpeg,image/jpg,image/webp,image/gif" disabled={uploading !== null} onChange={(e) => upload("banner", e.target.files?.[0])} />
+              <ImagePicker
+                value={form.banner_url}
+                busy={uploading === "banner"}
+                aspect="wide"
+                onFile={(f) => void upload("banner", f)}
+                onClear={() => set("banner_url", "")}
+              />
             </div>
             {SOCIAL_FIELDS.map((f) => (
               <Input
