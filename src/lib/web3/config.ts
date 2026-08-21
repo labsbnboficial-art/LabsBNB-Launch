@@ -1,7 +1,7 @@
 import { createConfig } from "wagmi";
 import { rpcTransport, TESTNET_RPC_URLS } from "./rpc";
 import { bsc, bscTestnet } from "wagmi/chains";
-import { ACTIVE_NETWORK } from "./networks";
+import { ACTIVE_NETWORK, NETWORKS } from "./networks";
 import { injected, walletConnect, coinbaseWallet } from "wagmi/connectors";
 
 /** Chain object for the active build (centralized in ./networks). */
@@ -30,7 +30,7 @@ export const BSC_TESTNET_RPC = TESTNET_RPC_URLS[0]!;
 // default to the FIRST chain announced in the session proposal, so listing
 // Ethereum or BSC mainnet here made Trust connect on chain 1.
 export const web3Config = createConfig({
-  chains: [activeChain] as const,
+  chains: [activeChain, activeChain.id === bsc.id ? bscTestnet : bsc] as const,
   connectors: [
     walletConnect({
       projectId: WC_PROJECT_ID,
@@ -51,7 +51,8 @@ export const web3Config = createConfig({
   // wallet keeps its own provider instead of everyone sharing window.ethereum.
   multiInjectedProviderDiscovery: true,
   transports: {
-    [activeChain.id]: rpcTransport([...ACTIVE_NETWORK.rpcUrls], { batch: true }),
+    [bsc.id]: rpcTransport([...NETWORKS.mainnet.rpcUrls], { batch: true }),
+    [bscTestnet.id]: rpcTransport([...NETWORKS.testnet.rpcUrls], { batch: true }),
   },
 
   ssr: true,
