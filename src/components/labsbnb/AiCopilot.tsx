@@ -125,7 +125,7 @@ export function AiCopilot() {
           type="button"
           onClick={() => setOpen(true)}
           aria-label="Abrir LabsBNB AI"
-          className="group fixed right-4 bottom-[calc(1.25rem+env(safe-area-inset-bottom))] z-40 flex items-center gap-2 rounded-full border border-primary/40 bg-background/80 px-3.5 py-2.5 shadow-lg backdrop-blur sm:px-4 sm:py-3 transition-transform duration-200 hover:scale-[1.04] active:scale-95"
+          className="group fixed right-4 bottom-5 z-40 flex items-center gap-2 rounded-full border border-primary/40 bg-background/80 px-3.5 py-2.5 shadow-lg backdrop-blur sm:px-4 sm:py-3 transition-transform duration-200 hover:scale-[1.04] active:scale-95"
           style={{
             boxShadow: "0 0 0 1px oklch(0.7 0.15 210 / 0.15), 0 8px 30px oklch(0.7 0.15 210 / 0.25)",
             marginBottom: "env(safe-area-inset-bottom)",
