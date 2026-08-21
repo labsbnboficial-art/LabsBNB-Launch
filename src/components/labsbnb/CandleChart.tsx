@@ -15,13 +15,17 @@ import {
   CrosshairMode,
   HistogramSeries,
   createChart,
+  createSeriesMarkers,
   type IChartApi,
   type ISeriesApi,
+  type ISeriesMarkersPluginApi,
+  type SeriesMarker,
+  type Time,
   type UTCTimestamp,
 } from "lightweight-charts";
 import { Maximize2, Minimize2, Move, RotateCcw, ZoomIn, ZoomOut } from "lucide-react";
 import { createLastPriceLine, createPriceLine } from "./chart-lines";
-import type { Candle } from "@/lib/web3/curve-events";
+import type { Candle, TradeEvent } from "@/lib/web3/curve-events";
 
 type Props = {
   candles: Candle[];
@@ -30,7 +34,16 @@ type Props = {
   quoteSymbol?: string;
   /** Real all-time-high price (BNB per token) drawn as a gold reference line. */
   athPrice?: number | null;
+  /** Raw on-chain trades (same source as the candles) for markers + volume flow. */
+  trades?: TradeEvent[];
+  /** Seconds per candle of the active timeframe (used to bucket trades). */
+  bucketSeconds?: number;
+  /** Timeframe selector rendered inside the chart toolbar. */
+  timeframe?: string;
+  timeframes?: ReadonlyArray<{ id: string; label: string }>;
+  onTimeframeChange?: (id: string) => void;
 };
+
 
 const UP = "#22c55e";
 const DOWN = "#ef4444";
@@ -85,12 +98,19 @@ export function CandleChart({
   onVisibleCountChange,
   quoteSymbol = "BNB",
   athPrice = null,
+  trades,
+  bucketSeconds,
+  timeframe,
+  timeframes,
+  onTimeframeChange,
 }: Props) {
   const wrapRef = useRef<HTMLDivElement | null>(null);
   const hostRef = useRef<HTMLDivElement | null>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const candleRef = useRef<ISeriesApi<"Candlestick"> | null>(null);
   const volumeRef = useRef<ISeriesApi<"Histogram"> | null>(null);
+  const markersRef = useRef<ISeriesMarkersPluginApi<Time> | null>(null);
+  const renderedRef = useRef<{ tf: string; times: number[] } | null>(null);
   const rangeCb = useRef(onVisibleCountChange);
   rangeCb.current = onVisibleCountChange;
   const programmatic = useRef(false);
@@ -98,6 +118,7 @@ export function CandleChart({
   const [full, setFull] = useState(false);
   const [hover, setHover] = useState<Candle | null>(null);
   const [hostWidth, setHostWidth] = useState(0);
+
 
   const data = useMemo(() => {
     // Lightweight Charts requires strictly ascending, unique timestamps.
@@ -107,6 +128,46 @@ export function CandleChart({
       .filter((c) => (seen.has(c.t) ? false : (seen.add(c.t), true)))
       .sort((a, b) => a.t - b.t);
   }, [candles]);
+
+  /**
+   * Buy/sell split per candle, derived from the same on-chain Trade events that
+   * produced the candles (no extra source, no mock data).
+   */
+  const flow = useMemo(() => {
+    const map = new Map<number, { buy: number; sell: number }>();
+    if (!trades?.length || !bucketSeconds) return map;
+    for (const e of trades) {
+      const t = Math.floor(e.timestamp / bucketSeconds) * bucketSeconds;
+      const vol = Number(e.amountBnb) / 1e18;
+      if (!Number.isFinite(vol)) continue;
+      const cur = map.get(t) ?? { buy: 0, sell: 0 };
+      if (e.isBuy) cur.buy += vol;
+      else cur.sell += vol;
+      map.set(t, cur);
+    }
+    return map;
+  }, [trades, bucketSeconds]);
+
+  /** Discreet BUY/SELL markers: only the biggest trades, so the chart breathes. */
+  const markers = useMemo<SeriesMarker<Time>[]>(() => {
+    if (!trades?.length || !bucketSeconds || data.length === 0) return [];
+    const valid = new Set(data.map((c) => c.t));
+    const top = [...trades]
+      .filter((e) => valid.has(Math.floor(e.timestamp / bucketSeconds) * bucketSeconds))
+      .sort((a, b) => (a.amountBnb === b.amountBnb ? 0 : a.amountBnb > b.amountBnb ? -1 : 1))
+      .slice(0, 30);
+    return top
+      .map((e) => ({
+        time: (Math.floor(e.timestamp / bucketSeconds) * bucketSeconds) as UTCTimestamp,
+        position: e.isBuy ? ("belowBar" as const) : ("aboveBar" as const),
+        color: e.isBuy ? UP : DOWN,
+        shape: e.isBuy ? ("arrowUp" as const) : ("arrowDown" as const),
+        size: 0.7,
+      }))
+      .sort((a, b) => Number(a.time) - Number(b.time));
+  }, [trades, bucketSeconds, data]);
+
+
 
   // Create the chart once.
   useEffect(() => {
@@ -205,32 +266,70 @@ export function CandleChart({
     chartRef.current = chart;
     candleRef.current = candleSeries;
     volumeRef.current = volumeSeries;
+    markersRef.current = createSeriesMarkers(candleSeries, []);
     return () => {
       ro.disconnect();
       chart.remove();
       chartRef.current = null;
       candleRef.current = null;
       volumeRef.current = null;
+      markersRef.current = null;
+      renderedRef.current = null;
     };
   }, []);
 
-  // Feed data (and keep the price precision aligned with sub-gwei prices).
+  // Feed data. Appends are applied incrementally (`update()`), so a new trade
+  // never re-renders the whole history nor disturbs the viewport.
   useEffect(() => {
     const candleSeries = candleRef.current;
     const volumeSeries = volumeRef.current;
     if (!candleSeries || !volumeSeries) return;
     candleSeries.applyOptions({ priceFormat: priceFormat(candles) });
-    candleSeries.setData(
-      data.map((c) => ({ time: c.t as UTCTimestamp, open: c.open, high: c.high, low: c.low, close: c.close })),
-    );
-    volumeSeries.setData(
-      data.map((c) => ({
+
+    const toBar = (c: (typeof data)[number]) => ({
+      time: c.t as UTCTimestamp,
+      open: c.open,
+      high: c.high,
+      low: c.low,
+      close: c.close,
+    });
+    const toVol = (c: (typeof data)[number]) => {
+      const f = flow.get(c.t);
+      const buyDominant = f ? f.buy >= f.sell : c.close >= c.open;
+      return {
         time: c.t as UTCTimestamp,
         value: c.volume,
-        color: c.close >= c.open ? "rgba(34,197,94,0.4)" : "rgba(239,68,68,0.4)",
-      })),
-    );
-  }, [data, candles]);
+        color: buyDominant ? "rgba(34,197,94,0.4)" : "rgba(239,68,68,0.4)",
+      };
+    };
+
+    const times = data.map((c) => c.t);
+    const prev = renderedRef.current;
+    const tfKey = timeframe ?? String(bucketSeconds ?? "-");
+    const isAppend =
+      prev != null &&
+      prev.tf === tfKey &&
+      prev.times.length > 0 &&
+      times.length >= prev.times.length &&
+      prev.times.every((t, i) => t === times[i]);
+
+    if (isAppend) {
+      for (let i = Math.max(0, prev.times.length - 1); i < data.length; i += 1) {
+        candleSeries.update(toBar(data[i]));
+        volumeSeries.update(toVol(data[i]));
+      }
+    } else {
+      candleSeries.setData(data.map(toBar));
+      volumeSeries.setData(data.map(toVol));
+    }
+    renderedRef.current = { tf: tfKey, times };
+  }, [data, candles, flow, timeframe, bucketSeconds]);
+
+  // Discreet BUY/SELL markers over the candles.
+  useEffect(() => {
+    markersRef.current?.setMarkers(markers);
+  }, [markers]);
+
 
   // Gold ATH reference line — drawn only when a real ATH exists.
   useEffect(() => {
@@ -354,9 +453,26 @@ export function CandleChart({
         </span>
       </div>
 
-      {/* Compact toolbar — presets collapse away on small screens */}
+      {/* Compact toolbar — timeframes first, presets collapse away on small screens */}
       <div className="flex items-center gap-1 overflow-x-auto">
+        {timeframes?.length ? (
+          <div className="mr-1 flex shrink-0 items-center gap-0.5 rounded-md border border-white/10 bg-white/[0.04] p-0.5">
+            {timeframes.map((tf) => (
+              <button
+                key={tf.id}
+                type="button"
+                onClick={() => onTimeframeChange?.(tf.id)}
+                className={`rounded px-1.5 py-1 text-[10px] font-mono transition-colors ${
+                  timeframe === tf.id ? "bg-primary/20 text-foreground" : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {tf.label}
+              </button>
+            ))}
+          </div>
+        ) : null}
         <div className="hidden items-center gap-1 sm:flex">
+
           {COUNT_PRESETS.map((n) => (
             <button
               key={n}

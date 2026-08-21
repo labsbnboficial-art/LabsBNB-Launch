@@ -488,21 +488,6 @@ function TokenPage() {
             <div className="glass rounded-2xl p-6">
               <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
                 <div className="text-xs uppercase tracking-widest text-muted-foreground">Price chart · candles</div>
-                <div className="flex gap-1 rounded-full border border-white/10 bg-white/5 p-1">
-                  {TIMEFRAMES.map((tf) => (
-                    <button
-                      key={tf.id}
-                      onClick={() => setTimeframe(tf.id)}
-                      className={`rounded-full px-2.5 py-1 text-[11px] font-mono transition ${
-                        timeframe === tf.id ? "brand-gradient text-primary-foreground" : "text-muted-foreground hover:text-foreground"
-                      }`}
-                    >
-                      {tf.label}
-                    </button>
-                  ))}
-                </div>
-                {/* Zoom / fit / fullscreen viven ahora en la toolbar del chart */}
-
               </div>
               {eventsError ? (
                 <ChainError error={eventsError} onRetry={() => eventsQ.refetch()} />
@@ -512,7 +497,13 @@ function TokenPage() {
                   visibleCount={visibleCount}
                   onVisibleCountChange={setVisibleCount}
                   athPrice={ath ? Number(ath.priceWei) / 1e18 : null}
+                  trades={events}
+                  bucketSeconds={tfSeconds}
+                  timeframe={timeframe}
+                  timeframes={TIMEFRAMES}
+                  onTimeframeChange={(id) => setTimeframe(id as TimeframeId)}
                 />
+
 
               ) : (
                 <div className="h-64 rounded-xl border border-dashed border-white/10 grid place-items-center text-sm text-muted-foreground">
