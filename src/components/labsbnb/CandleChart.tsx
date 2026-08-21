@@ -453,9 +453,26 @@ export function CandleChart({
         </span>
       </div>
 
-      {/* Compact toolbar — presets collapse away on small screens */}
+      {/* Compact toolbar — timeframes first, presets collapse away on small screens */}
       <div className="flex items-center gap-1 overflow-x-auto">
+        {timeframes?.length ? (
+          <div className="mr-1 flex shrink-0 items-center gap-0.5 rounded-md border border-white/10 bg-white/[0.04] p-0.5">
+            {timeframes.map((tf) => (
+              <button
+                key={tf.id}
+                type="button"
+                onClick={() => onTimeframeChange?.(tf.id)}
+                className={`rounded px-1.5 py-1 text-[10px] font-mono transition-colors ${
+                  timeframe === tf.id ? "bg-primary/20 text-foreground" : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {tf.label}
+              </button>
+            ))}
+          </div>
+        ) : null}
         <div className="hidden items-center gap-1 sm:flex">
+
           {COUNT_PRESETS.map((n) => (
             <button
               key={n}
