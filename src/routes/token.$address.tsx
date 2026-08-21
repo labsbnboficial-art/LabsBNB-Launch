@@ -30,6 +30,8 @@ import { uploadTokenMedia } from "@/lib/media.functions";
 import { uploadTokenImage } from "@/lib/image-upload";
 import { tokenMediaUrl } from "@/lib/media-url";
 import { BoostPurchaseModal } from "@/components/labsbnb/BoostPurchaseModal";
+import { ImagePicker } from "@/components/labsbnb/ImagePicker";
+import { withRpcTimeout } from "@/lib/web3/timeout";
 
 
 
@@ -980,11 +982,22 @@ function TokenInformation({
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-2">
               <Input placeholder="Logo URL" value={form.logo_url} onChange={(e) => set("logo_url", e.target.value)} />
-              <Input type="file" accept="image/png,image/jpeg,image/jpg,image/webp,image/gif" disabled={uploading !== null} onChange={(e) => upload("logo", e.target.files?.[0])} />
+              <ImagePicker
+                value={form.logo_url}
+                busy={uploading === "logo"}
+                onFile={(f) => void upload("logo", f)}
+                onClear={() => set("logo_url", "")}
+              />
             </div>
             <div className="space-y-2">
               <Input placeholder="Banner URL" value={form.banner_url} onChange={(e) => set("banner_url", e.target.value)} />
-              <Input type="file" accept="image/png,image/jpeg,image/jpg,image/webp,image/gif" disabled={uploading !== null} onChange={(e) => upload("banner", e.target.files?.[0])} />
+              <ImagePicker
+                value={form.banner_url}
+                busy={uploading === "banner"}
+                aspect="wide"
+                onFile={(f) => void upload("banner", f)}
+                onClear={() => set("banner_url", "")}
+              />
             </div>
             {SOCIAL_FIELDS.map((f) => (
               <Input
