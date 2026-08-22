@@ -9,10 +9,57 @@
 // "RPC endpoint returned too many errors". Only endpoints verified to answer
 // eth_call / eth_getCode are listed here, and JSON-RPC batching is disabled
 // because the public seeds reject batched payloads.
+//
+// PROVIDER SWAP WITHOUT CODE CHANGES
+// ----------------------------------
+// Every list below can be overridden through environment variables, so moving
+// to a dedicated provider (QuickNode, Ankr, dRPC, NodeReal, ...) never requires
+// touching contracts, components or `networks.ts`:
+//
+//   VITE_BSC_MAINNET_RPC_PRIMARY    single URL, always tried first
+//   VITE_BSC_MAINNET_RPC_FALLBACKS  comma separated fallback URLs
+//   VITE_BSC_MAINNET_LOG_RPC_URLS   comma separated endpoints for eth_getLogs
+//   VITE_BSC_TESTNET_RPC_PRIMARY    (same three knobs for chain 97)
+//   VITE_BSC_TESTNET_RPC_FALLBACKS
+//   VITE_BSC_TESTNET_LOG_RPC_URLS
+//
+// The URLs are public client config, not secrets: if a provider issues a
+// key-bearing URL, keep the whole URL in the env var and never hardcode it in
+// the repo, never log it and never print it in the UI.
 import { fallback, http, type Transport } from "viem";
 
-/** BNB Smart Chain Testnet (97) — verified to answer eth_call/eth_getCode. */
-export const TESTNET_RPC_URLS: string[] = [
+/** Reads a client env var; falls back to `process.env` for server-side runs. */
+function env(name: string): string | undefined {
+  const viteEnv =
+    typeof import.meta !== "undefined"
+      ? (import.meta.env as Record<string, string | undefined> | undefined)
+      : undefined;
+  const fromVite = viteEnv?.[name];
+  if (fromVite && fromVite.trim()) return fromVite.trim();
+  const fromNode =
+    typeof process !== "undefined" ? (process.env?.[name] as string | undefined) : undefined;
+  return fromNode && fromNode.trim() ? fromNode.trim() : undefined;
+}
+
+/** Splits a comma / whitespace separated env list into clean https URLs. */
+function envList(name: string): string[] {
+  const raw = env(name);
+  if (!raw) return [];
+  return raw
+    .split(/[\s,]+/)
+    .map((u) => u.trim())
+    .filter((u) => /^https?:\/\//i.test(u));
+}
+
+/** primary (env) → fallbacks (env) → defaults, deduped and order preserved. */
+function buildList(primaryVar: string, fallbackVar: string, defaults: string[]): string[] {
+  const primary = env(primaryVar);
+  const merged = [...(primary ? [primary] : []), ...envList(fallbackVar), ...defaults];
+  return [...new Set(merged)];
+}
+
+/** Public BNB Smart Chain Testnet (97) endpoints — verified for eth_call. */
+const TESTNET_DEFAULTS: string[] = [
   "https://bsc-prebsc-dataseed.bnbchain.org",
   "https://bsc-testnet.drpc.org",
   "https://data-seed-prebsc-1-s1.binance.org:8545",
@@ -22,8 +69,8 @@ export const TESTNET_RPC_URLS: string[] = [
   "https://api.zan.top/bsc-testnet",
 ];
 
-/** BNB Smart Chain Mainnet (56). */
-export const MAINNET_RPC_URLS: string[] = [
+/** Public BNB Smart Chain Mainnet (56) endpoints. */
+const MAINNET_DEFAULTS: string[] = [
   "https://bsc-dataseed.bnbchain.org",
   "https://bsc-dataseed1.defibit.io",
   "https://bsc-dataseed1.ninicoin.io",
@@ -31,13 +78,49 @@ export const MAINNET_RPC_URLS: string[] = [
   "https://bsc.drpc.org",
 ];
 
-/** Endpoints that actually serve `eth_getLogs` for the event indexer. */
-export const LOG_RPC_URLS: string[] = [
+/** Testnet endpoints that actually serve `eth_getLogs` for the event indexer. */
+const TESTNET_LOG_DEFAULTS: string[] = [
   "https://bsc-prebsc-dataseed.bnbchain.org",
   "https://bsc-testnet.drpc.org",
   "https://api.zan.top/bsc-testnet",
   "https://data-seed-prebsc-1-s1.binance.org:8545",
 ];
+
+/**
+ * Mainnet log endpoints. The public data-seeds cap `eth_getLogs` hard, so a
+ * dedicated provider MUST be supplied through `VITE_BSC_MAINNET_LOG_RPC_URLS`
+ * before going live; until then these public nodes are used as a best effort.
+ */
+const MAINNET_LOG_DEFAULTS: string[] = ["https://bsc.drpc.org", "https://bsc-dataseed.bnbchain.org"];
+
+/** BNB Smart Chain Testnet (97): [primary, ...fallbacks]. */
+export const TESTNET_RPC_URLS: string[] = buildList(
+  "VITE_BSC_TESTNET_RPC_PRIMARY",
+  "VITE_BSC_TESTNET_RPC_FALLBACKS",
+  TESTNET_DEFAULTS,
+);
+
+/** BNB Smart Chain Mainnet (56): [primary, ...fallbacks]. */
+export const MAINNET_RPC_URLS: string[] = buildList(
+  "VITE_BSC_MAINNET_RPC_PRIMARY",
+  "VITE_BSC_MAINNET_RPC_FALLBACKS",
+  MAINNET_DEFAULTS,
+);
+
+/** Testnet endpoints used exclusively for `eth_getLogs` (chart/trades/ATH). */
+export const LOG_RPC_URLS: string[] = (() => {
+  const fromEnv = envList("VITE_BSC_TESTNET_LOG_RPC_URLS");
+  return fromEnv.length ? [...new Set(fromEnv)] : TESTNET_LOG_DEFAULTS;
+})();
+
+/** Mainnet endpoints used exclusively for `eth_getLogs`. */
+export const MAINNET_LOG_RPC_URLS: string[] = (() => {
+  const fromEnv = envList("VITE_BSC_MAINNET_LOG_RPC_URLS");
+  return fromEnv.length ? [...new Set(fromEnv)] : MAINNET_LOG_DEFAULTS;
+})();
+
+/** True when a dedicated (non default) Mainnet log provider is configured. */
+export const HAS_DEDICATED_MAINNET_LOG_RPC = envList("VITE_BSC_MAINNET_LOG_RPC_URLS").length > 0;
 
 type Opts = { batch?: boolean };
 
