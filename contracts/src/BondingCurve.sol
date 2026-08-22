@@ -364,7 +364,7 @@ contract BondingCurve is ReentrancyGuard, Pausable {
         if (tokensOut < minTokensOut) revert SlippageExceeded();
         if (tokensSold + tokensOut > CURVE_ALLOC) revert InsufficientReserve();
 
-        _checkAntiBot(msg.sender, true, tokensOut, msg.value);
+        _checkAntiBotBuy(msg.sender, tokensOut, msg.value);
 
         tokensSold += tokensOut;
         bnbCollected += net;
@@ -409,7 +409,9 @@ contract BondingCurve is ReentrancyGuard, Pausable {
         uint256 bnbOut = gross - protoFee - creatorFee;
         if (bnbOut < minBnbOut) revert SlippageExceeded();
 
-        _checkAntiBot(msg.sender, false, tokensIn, gross);
+        // P-1: la venta NUNCA pasa por AntiBot. Sólo registra actividad para
+        // las protecciones de compra (anti-sandwich / cooldown en `buy()`).
+        _recordAction(msg.sender);
 
         require(token.transferFrom(msg.sender, address(this), tokensIn), "tok tx");
         tokensSold -= tokensIn;
