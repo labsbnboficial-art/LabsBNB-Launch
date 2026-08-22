@@ -187,6 +187,24 @@ export function networkSafetyCheck(net: NetworkConfig = ACTIVE_NETWORK): {
   if (!net.contracts.router) err("ROUTER", `Router address is missing on ${net.name}.`);
   if (!net.contracts.feeWallet) err("FEE_WALLET", "Fee wallet is not configured.");
   if (!net.contracts.treasury) err("TREASURY", "Treasury wallet is not configured.");
+  if (!net.contracts.owner) err("OWNER", "Owner wallet is not configured.");
+
+  // Mainnet must never reuse Testnet deployments or deprecated addresses.
+  const eq = (a: string | null, b: string | null) =>
+    !!a && !!b && a.toLowerCase() === b.toLowerCase();
+  if (!net.isTestnet) {
+    const t = NETWORKS.testnet.contracts;
+    if (eq(net.contracts.factory, t.factory)) err("FACTORY_TESTNET", "Mainnet is using the Testnet factory.");
+    if (eq(net.contracts.router, t.router)) err("ROUTER_TESTNET", "Mainnet is using the Testnet router.");
+    if (eq(net.contracts.wbnb, t.wbnb)) err("WBNB_TESTNET", "Mainnet is using the Testnet WBNB.");
+  }
+  const deprecated = new Set(DEPRECATED_ADDRESSES.map((d) => d.address.toLowerCase()));
+  for (const [role, addr] of Object.entries(net.contracts)) {
+    if (addr && deprecated.has(String(addr).toLowerCase())) {
+      err("DEPRECATED_ADDRESS", `Deprecated address configured as ${role} on ${net.name}.`);
+    }
+  }
+
 
   const wrongExplorer = net.isTestnet
     ? !net.explorer.includes("testnet.bscscan.com")
