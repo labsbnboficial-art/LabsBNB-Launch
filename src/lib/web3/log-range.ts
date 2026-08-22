@@ -11,8 +11,12 @@
 //  - results are sorted by (blockNumber, logIndex) → chronological order
 //  - bounded retries + per-request timeout → never blocks a run forever
 import { createPublicClient, http, type AbiEvent, type Log, type PublicClient } from "viem";
-import { bscTestnet } from "wagmi/chains";
-import { LOG_RPC_URLS } from "./rpc";
+import { bsc, bscTestnet } from "wagmi/chains";
+import { ACTIVE_NETWORK } from "./networks";
+
+/** Endpoints serving eth_getLogs for the ACTIVE network (see ./networks). */
+const logUrls = (): string[] => [...ACTIVE_NETWORK.logRpcUrls];
+const logChain = () => (ACTIVE_NETWORK.chainId === bsc.id ? bsc : bscTestnet);
 
 /** Starting window size: accepted by every endpoint we probe. */
 export const DEFAULT_WINDOW = 1_000n;
@@ -28,7 +32,7 @@ function clientFor(url: string): PublicClient {
   let c = clients.get(url);
   if (!c) {
     c = createPublicClient({
-      chain: bscTestnet,
+      chain: logChain(),
       transport: http(url, { batch: false, timeout: REQUEST_TIMEOUT_MS, retryCount: 0 }),
     }) as PublicClient;
     clients.set(url, c);
@@ -57,7 +61,8 @@ const windowByUrl = new Map<string, bigint>();
 let preferredRpc: string | null = null;
 
 function urls(): string[] {
-  return preferredRpc ? [preferredRpc, ...LOG_RPC_URLS.filter((u) => u !== preferredRpc)] : [...LOG_RPC_URLS];
+  const all = logUrls();
+  return preferredRpc ? [preferredRpc, ...all.filter((u) => u !== preferredRpc)] : all;
 }
 
 type Params = {

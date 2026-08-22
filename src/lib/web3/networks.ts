@@ -8,7 +8,13 @@
 // Switching to Mainnet later = fill `mainnet.contracts` + set
 // VITE_LAUNCHPAD_NETWORK=mainnet. No component change should be required.
 // ---------------------------------------------------------------------------
-import { TESTNET_RPC_URLS, MAINNET_RPC_URLS, LOG_RPC_URLS } from "./rpc";
+import {
+  TESTNET_RPC_URLS,
+  MAINNET_RPC_URLS,
+  LOG_RPC_URLS,
+  MAINNET_LOG_RPC_URLS,
+  HAS_DEDICATED_MAINNET_LOG_RPC,
+} from "./rpc";
 
 export type NetworkKey = "testnet" | "mainnet";
 export type Address = `0x${string}`;
@@ -67,7 +73,7 @@ export const NETWORKS: Record<NetworkKey, NetworkConfig> = {
     currency: { name: "BNB", symbol: "BNB", decimals: 18 },
     isTestnet: false,
     rpcUrls: MAINNET_RPC_URLS,
-    logRpcUrls: MAINNET_RPC_URLS,
+    logRpcUrls: MAINNET_LOG_RPC_URLS,
     explorer: "https://bscscan.com",
     contracts: {
       // PENDING — no Mainnet deployment exists yet. Never invent an address.
@@ -181,6 +187,13 @@ export function networkSafetyCheck(net: NetworkConfig = ACTIVE_NETWORK): {
   const testnetRpc = net.rpcUrls.some((u) => /testnet|prebsc/i.test(u));
   if (!net.isTestnet && testnetRpc) err("RPC", "Mainnet build is pointing at a Testnet RPC.");
   if (net.rpcUrls.length < 2) warn("RPC_FALLBACK", "No fallback RPC configured.");
+  if (net.logRpcUrls.length === 0) err("LOG_RPC", `No eth_getLogs endpoint configured on ${net.name}.`);
+  if (!net.isTestnet && !HAS_DEDICATED_MAINNET_LOG_RPC) {
+    warn(
+      "LOG_RPC_DEDICATED",
+      "Mainnet is using public log endpoints. Set VITE_BSC_MAINNET_LOG_RPC_URLS with a dedicated provider before launch.",
+    );
+  }
 
   if (!net.isTestnet && net.contracts.feeWallet === net.contracts.treasury) {
     warn("WALLETS", "Fee wallet and treasury are the same address on Mainnet.");
