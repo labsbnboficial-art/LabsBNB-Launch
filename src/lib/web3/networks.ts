@@ -41,10 +41,17 @@ export type NetworkConfig = {
     feeWallet: Address | null;
     /** Launchpad treasury (Impulso, campaigns, advanced creation fee). */
     treasury: Address | null;
+    /** Contract owner / admin wallet expected after deployment. */
+    owner: Address | null;
   };
 };
 
 const LABSBNB_WALLET = "0x60e655Fe39Bc7D17661f226bB44Dcc681cc4e05e" as Address;
+
+/** Mainnet role split (fee, treasury and owner are three distinct wallets). */
+const MAINNET_FEE_WALLET = "0xEA265D939E27863dC169Bfb0c21D84d4Ed374E59" as Address;
+const MAINNET_TREASURY = "0x236716d4287E9f8F0de291450E2bFd0e04260b94" as Address;
+const MAINNET_OWNER = "0x60e655fe39bc7d17661f226bb44dcc681cc4e05e" as Address;
 
 export const NETWORKS: Record<NetworkKey, NetworkConfig> = {
   testnet: {
