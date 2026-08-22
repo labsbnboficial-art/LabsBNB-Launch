@@ -294,9 +294,11 @@ contract BondingCurve is ReentrancyGuard, Pausable {
 
     // ---- AntiBot ----
 
-    function _checkAntiBot(address who, bool isBuy, uint256 tokenAmount, uint256 bnbAmount) internal {
+    /// @notice P-1: TODAS las validaciones AntiBot aplican EXCLUSIVAMENTE a `buy()`.
+    ///         Ninguna configuración de `setAntiBot()` puede bloquear una venta legítima.
+    function _checkAntiBotBuy(address who, uint256 tokenAmount, uint256 bnbAmount) internal {
         AntiBot memory a = antibot;
-        if (!a.enabled) return;
+        if (!a.enabled) { _recordAction(who); return; }
         if (a.antiFlashloan && !contractAllowed[who]) {
             uint256 size;
             assembly { size := extcodesize(who) }
@@ -308,19 +310,22 @@ contract BondingCurve is ReentrancyGuard, Pausable {
         if (a.cooldownSeconds > 0 && lastActionTs[who] != 0) {
             if (block.timestamp < lastActionTs[who] + a.cooldownSeconds) revert AntiBotViolation("cooldown");
         }
-        if (isBuy) {
-            if (a.maxBuyBnb > 0 && bnbAmount > a.maxBuyBnb) revert AntiBotViolation("maxBuy");
-            if (a.maxTxTokens > 0 && tokenAmount > a.maxTxTokens) revert AntiBotViolation("maxTx");
-            if (a.maxWalletTokens > 0) {
-                uint256 bal = token.balanceOf(who);
-                if (bal + tokenAmount > a.maxWalletTokens) revert AntiBotViolation("maxWallet");
-            }
-        } else {
-            if (a.maxTxTokens > 0 && tokenAmount > a.maxTxTokens) revert AntiBotViolation("maxTx");
+        if (a.maxBuyBnb > 0 && bnbAmount > a.maxBuyBnb) revert AntiBotViolation("maxBuy");
+        if (a.maxTxTokens > 0 && tokenAmount > a.maxTxTokens) revert AntiBotViolation("maxTx");
+        if (a.maxWalletTokens > 0) {
+            uint256 bal = token.balanceOf(who);
+            if (bal + tokenAmount > a.maxWalletTokens) revert AntiBotViolation("maxWallet");
         }
+        _recordAction(who);
+    }
+
+    /// @dev Registro de actividad. Se usa como referencia para las protecciones de COMPRA.
+    ///      Registrar una venta nunca bloquea otra venta.
+    function _recordAction(address who) internal {
         lastActionBlock[who] = block.number;
         lastActionTs[who] = block.timestamp;
     }
+
 
     // ---- Analytics helpers ----
 
@@ -359,7 +364,7 @@ contract BondingCurve is ReentrancyGuard, Pausable {
         if (tokensOut < minTokensOut) revert SlippageExceeded();
         if (tokensSold + tokensOut > CURVE_ALLOC) revert InsufficientReserve();
 
-        _checkAntiBot(msg.sender, true, tokensOut, msg.value);
+        _checkAntiBotBuy(msg.sender, tokensOut, msg.value);
 
         tokensSold += tokensOut;
         bnbCollected += net;
@@ -404,7 +409,9 @@ contract BondingCurve is ReentrancyGuard, Pausable {
         uint256 bnbOut = gross - protoFee - creatorFee;
         if (bnbOut < minBnbOut) revert SlippageExceeded();
 
-        _checkAntiBot(msg.sender, false, tokensIn, gross);
+        // P-1: la venta NUNCA pasa por AntiBot. Sólo registra actividad para
+        // las protecciones de compra (anti-sandwich / cooldown en `buy()`).
+        _recordAction(msg.sender);
 
         require(token.transferFrom(msg.sender, address(this), tokensIn), "tok tx");
         tokensSold -= tokensIn;
