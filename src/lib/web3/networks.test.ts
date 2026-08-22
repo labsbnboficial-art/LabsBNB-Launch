@@ -110,3 +110,28 @@ describe("no duplicated / stale critical config", () => {
     }
   });
 });
+
+describe("mainnet roles and isolation", () => {
+  it("uses the dedicated mainnet fee, treasury and owner wallets", () => {
+    const c = NETWORKS.mainnet.contracts;
+    expect(c.feeWallet?.toLowerCase()).toBe("0xea265d939e27863dc169bfb0c21d84d4ed374e59");
+    expect(c.treasury?.toLowerCase()).toBe("0x236716d4287e9f8f0de291450e2bfd0e04260b94");
+    expect(c.owner?.toLowerCase()).toBe("0x60e655fe39bc7d17661f226bb44dcc681cc4e05e");
+    expect(c.feeWallet).not.toBe(c.treasury);
+  });
+
+  it("never reuses testnet factory / router / wbnb", () => {
+    const r = networkSafetyCheck(NETWORKS.mainnet);
+    const codes = r.issues.map((i) => i.code);
+    expect(codes).not.toContain("FACTORY_TESTNET");
+    expect(codes).not.toContain("ROUTER_TESTNET");
+    expect(codes).not.toContain("WBNB_TESTNET");
+    expect(codes).not.toContain("DEPRECATED_ADDRESS");
+    expect(NETWORKS.mainnet.contracts.factory).toBeNull();
+  });
+
+  it("rejects chain id 97 as mainnet", () => {
+    const bad = { ...NETWORKS.mainnet, chainId: 97 };
+    expect(networkSafetyCheck(bad).issues.map((i) => i.code)).toContain("CHAIN_ID");
+  });
+});

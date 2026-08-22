@@ -41,10 +41,17 @@ export type NetworkConfig = {
     feeWallet: Address | null;
     /** Launchpad treasury (Impulso, campaigns, advanced creation fee). */
     treasury: Address | null;
+    /** Contract owner / admin wallet expected after deployment. */
+    owner: Address | null;
   };
 };
 
 const LABSBNB_WALLET = "0x60e655Fe39Bc7D17661f226bB44Dcc681cc4e05e" as Address;
+
+/** Mainnet role split (fee, treasury and owner are three distinct wallets). */
+const MAINNET_FEE_WALLET = "0xEA265D939E27863dC169Bfb0c21D84d4Ed374E59" as Address;
+const MAINNET_TREASURY = "0x236716d4287E9f8F0de291450E2bFd0e04260b94" as Address;
+const MAINNET_OWNER = "0x60e655fe39bc7d17661f226bb44dcc681cc4e05e" as Address;
 
 export const NETWORKS: Record<NetworkKey, NetworkConfig> = {
   testnet: {
@@ -63,6 +70,7 @@ export const NETWORKS: Record<NetworkKey, NetworkConfig> = {
       wbnb: "0xae13d989daC2f0dEbFf460aC112a837C89BAa7cd",
       feeWallet: LABSBNB_WALLET,
       treasury: LABSBNB_WALLET,
+      owner: LABSBNB_WALLET,
     },
   },
   mainnet: {
@@ -80,8 +88,9 @@ export const NETWORKS: Record<NetworkKey, NetworkConfig> = {
       factory: null,
       router: "0x10ED43C718714eb63d5aA57B78B54704E256024E",
       wbnb: "0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c",
-      feeWallet: LABSBNB_WALLET,
-      treasury: LABSBNB_WALLET,
+      feeWallet: MAINNET_FEE_WALLET,
+      treasury: MAINNET_TREASURY,
+      owner: MAINNET_OWNER,
     },
   },
 };
@@ -178,6 +187,24 @@ export function networkSafetyCheck(net: NetworkConfig = ACTIVE_NETWORK): {
   if (!net.contracts.router) err("ROUTER", `Router address is missing on ${net.name}.`);
   if (!net.contracts.feeWallet) err("FEE_WALLET", "Fee wallet is not configured.");
   if (!net.contracts.treasury) err("TREASURY", "Treasury wallet is not configured.");
+  if (!net.contracts.owner) err("OWNER", "Owner wallet is not configured.");
+
+  // Mainnet must never reuse Testnet deployments or deprecated addresses.
+  const eq = (a: string | null, b: string | null) =>
+    !!a && !!b && a.toLowerCase() === b.toLowerCase();
+  if (!net.isTestnet) {
+    const t = NETWORKS.testnet.contracts;
+    if (eq(net.contracts.factory, t.factory)) err("FACTORY_TESTNET", "Mainnet is using the Testnet factory.");
+    if (eq(net.contracts.router, t.router)) err("ROUTER_TESTNET", "Mainnet is using the Testnet router.");
+    if (eq(net.contracts.wbnb, t.wbnb)) err("WBNB_TESTNET", "Mainnet is using the Testnet WBNB.");
+  }
+  const deprecated = new Set(DEPRECATED_ADDRESSES.map((d) => d.address.toLowerCase()));
+  for (const [role, addr] of Object.entries(net.contracts)) {
+    if (addr && deprecated.has(String(addr).toLowerCase())) {
+      err("DEPRECATED_ADDRESS", `Deprecated address configured as ${role} on ${net.name}.`);
+    }
+  }
+
 
   const wrongExplorer = net.isTestnet
     ? !net.explorer.includes("testnet.bscscan.com")
