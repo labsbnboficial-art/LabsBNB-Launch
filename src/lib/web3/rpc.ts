@@ -28,7 +28,15 @@
 // the repo, never log it and never print it in the UI.
 import { fallback, http, type Transport } from "viem";
 
-/** Reads a client env var; falls back to `process.env` for server-side runs. */
+import { runtimeRpcEnv } from "./runtime-rpc";
+
+/**
+ * Resolves an RPC env var, in priority order:
+ *   1. build-time `import.meta.env.VITE_*`
+ *   2. the runtime config injected by the server (Lovable Cloud secrets, which
+ *      cannot be named `VITE_*`; see `runtime-rpc.ts`)
+ *   3. `process.env` — canonical `VITE_*` name, then its non-prefixed alias
+ */
 function env(name: string): string | undefined {
   const viteEnv =
     typeof import.meta !== "undefined"
@@ -36,10 +44,16 @@ function env(name: string): string | undefined {
       : undefined;
   const fromVite = viteEnv?.[name];
   if (fromVite && fromVite.trim()) return fromVite.trim();
-  const fromNode =
-    typeof process !== "undefined" ? (process.env?.[name] as string | undefined) : undefined;
+
+  const fromRuntime = runtimeRpcEnv(name);
+  if (fromRuntime) return fromRuntime;
+
+  const read = (key: string) =>
+    typeof process !== "undefined" ? (process.env?.[key] as string | undefined) : undefined;
+  const fromNode = read(name) ?? read(name.replace(/^VITE_/, ""));
   return fromNode && fromNode.trim() ? fromNode.trim() : undefined;
 }
+
 
 /** Splits a comma / whitespace separated env list into clean https URLs. */
 function envList(name: string): string[] {
