@@ -31,12 +31,14 @@ Single source of truth for all network data: `src/lib/web3/networks.ts`.
 
 ## 5. Treasury
 
-`0x60e655Fe39Bc7D17661f226bB44Dcc681cc4e05e` (Impulso, campaigns, advanced creation fee).
-Mainnet treasury **to be confirmed before launch** (currently the same wallet).
+Testnet: `0x60e655Fe39Bc7D17661f226bB44Dcc681cc4e05e`.
+Mainnet: `0x236716d4287E9f8F0de291450E2bFd0e04260b94` (Impulso, campaigns, advanced creation fee).
+Mainnet owner: `0x60e655fe39bc7d17661f226bb44dcc681cc4e05e`.
 
 ## 6. Fee wallet
 
-`0x60e655Fe39Bc7D17661f226bB44Dcc681cc4e05e` (buy/sell + creation fees).
+Testnet: `0x60e655Fe39Bc7D17661f226bB44Dcc681cc4e05e`.
+Mainnet: `0xEA265D939E27863dC169Bfb0c21D84d4Ed374E59` (buy/sell + creation fees).
 
 ## 7. RPC
 
@@ -80,7 +82,6 @@ because the factory is pending.
 1. **BLOCKER** — Mainnet `LabsBNBFactory` not deployed (address pending).
 2. **BLOCKER (contracts phase)** — Mainnet deployment must run the hardened
    BondingCurve/Factory audited in `docs/AUDIT_BONDING_CURVE_POST_FIX.md`.
-3. Confirm whether Mainnet fee wallet and treasury must be different addresses.
 4. Admin panel network-scoped settings: DB config rows are shared across
    environments; a Mainnet build should not read Testnet-written factory rows
    (mitigated today because the frontend forces the config factory to the
