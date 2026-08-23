@@ -16,6 +16,8 @@ import { Web3Provider } from "@/lib/web3/provider";
 import { AuthProvider } from "@/lib/auth";
 import { Toaster } from "@/components/ui/sonner";
 import { AiCopilot } from "@/components/labsbnb/AiCopilot";
+import { collectRuntimeRpcConfig, runtimeRpcScript } from "@/lib/web3/runtime-rpc";
+
 
 function NotFoundComponent() {
   return (
