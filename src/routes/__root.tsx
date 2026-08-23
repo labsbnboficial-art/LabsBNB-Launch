@@ -108,9 +108,16 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 });
 
 function RootShell({ children }: { children: ReactNode }) {
+  // Public RPC endpoints resolved on the server and made available to the
+  // browser bundle before it evaluates (see src/lib/web3/runtime-rpc.ts).
+  const rpcConfig = collectRuntimeRpcConfig();
   return (
     <html lang="en" className="dark">
       <head>
+        <script
+          id="labsbnb-runtime-rpc"
+          dangerouslySetInnerHTML={{ __html: runtimeRpcScript(rpcConfig) }}
+        />
         <HeadContent />
       </head>
       <body>
@@ -120,6 +127,7 @@ function RootShell({ children }: { children: ReactNode }) {
     </html>
   );
 }
+
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
