@@ -1,6 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { useI18n } from "@/lib/i18n";
-import { ACTIVE_NETWORK } from "@/lib/web3/networks";
+import { ACTIVE_NETWORK, explorerAddressUrl } from "@/lib/web3/networks";
+import { ExternalLink } from "lucide-react";
 
 // Only real, existing routes — no placeholder `#` destinations.
 const ECOSYSTEM: { label: string; to: string }[] = [
@@ -11,6 +12,19 @@ const ECOSYSTEM: { label: string; to: string }[] = [
   { label: "Missions", to: "/missions" },
   { label: "Campaigns", to: "/campaigns/new" },
 ];
+
+const SOCIALS: { label: string; href: string }[] = [
+  { label: "Telegram", href: "https://t.me/labsbnboficial" },
+  { label: "X", href: "https://x.com/labsbnboficial" },
+  { label: "Telegram Channel", href: "https://t.me/LabsBNBAdvertising" },
+  { label: "Discord", href: "https://discord.com/invite/K8q2bJdF" },
+  { label: "YouTube", href: "https://www.youtube.com/@LabsBnbOficial" },
+];
+
+const LABSBNB_TOKEN = {
+  buy: "https://four.meme/en/token/0x7172429982f93c381f93fdd7e908bd96bc55ffff",
+  contract: "0x7172429982f93c381f93fdd7e908bd96bc55ffff",
+};
 
 export function Footer() {
   const { t } = useI18n();
