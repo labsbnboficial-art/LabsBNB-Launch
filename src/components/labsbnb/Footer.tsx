@@ -32,14 +32,14 @@ export function Footer() {
   return (
     <footer className="mt-24 border-t border-white/5 bg-background/60">
       <div className="mx-auto max-w-7xl px-4 md:px-6 py-12">
-        <div className="grid gap-8 md:grid-cols-4">
-          <div>
+        <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-5">
+          <div className="lg:col-span-1">
             <div className="font-display text-lg font-bold">
               Labs<span className="text-gradient">BNB</span> Launchpad
             </div>
             <p className="mt-2 text-sm text-muted-foreground">{t("footer.tagline")}</p>
           </div>
-          <div className="md:col-span-2">
+          <div className="md:col-span-2 lg:col-span-2">
             <div className="text-xs uppercase tracking-widest text-muted-foreground mb-3">Ecosystem</div>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-1">
               {ECOSYSTEM.map((e) => (
@@ -53,10 +53,48 @@ export function Footer() {
               ))}
             </div>
           </div>
-          <div>
-            <div className="text-xs uppercase tracking-widest text-muted-foreground mb-3">Network</div>
-            <div className="text-sm text-muted-foreground">{net.name}</div>
-            <div className="mt-1 text-xs font-mono text-accent">Chain ID {net.chainId}</div>
+          <div className="lg:col-span-1">
+            <div className="text-xs uppercase tracking-widest text-muted-foreground mb-3">Community</div>
+            <div className="grid gap-1">
+              {SOCIALS.map((s) => (
+                <a
+                  key={s.href}
+                  href={s.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex min-h-9 items-center gap-1.5 text-sm text-muted-foreground hover:text-accent transition"
+                >
+                  {s.label}
+                  <ExternalLink className="h-3 w-3 opacity-60" />
+                </a>
+              ))}
+            </div>
+          </div>
+          <div className="lg:col-span-1">
+            <div className="text-xs uppercase tracking-widest text-muted-foreground mb-3">$LabsBNB</div>
+            <div className="grid gap-1">
+              <a
+                href={LABSBNB_TOKEN.buy}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex min-h-9 items-center gap-1.5 text-sm text-muted-foreground hover:text-accent transition"
+              >
+                Buy on four.meme
+                <ExternalLink className="h-3 w-3 opacity-60" />
+              </a>
+              <a
+                href={explorerAddressUrl(LABSBNB_TOKEN.contract)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex min-h-9 items-center gap-1.5 text-sm text-muted-foreground hover:text-accent transition"
+                title={LABSBNB_TOKEN.contract}
+              >
+                <span className="truncate max-w-[10rem] font-mono text-xs">
+                  {LABSBNB_TOKEN.contract.slice(0, 8)}…{LABSBNB_TOKEN.contract.slice(-6)}
+                </span>
+                <ExternalLink className="h-3 w-3 opacity-60" />
+              </a>
+            </div>
           </div>
         </div>
         <div className="mt-10 pt-6 border-t border-white/5 text-xs text-muted-foreground flex flex-wrap items-center justify-between gap-2">
