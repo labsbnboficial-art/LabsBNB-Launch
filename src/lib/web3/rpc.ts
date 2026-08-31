@@ -105,7 +105,15 @@ const TESTNET_LOG_DEFAULTS: string[] = [
  * dedicated provider MUST be supplied through `VITE_BSC_MAINNET_LOG_RPC_URLS`
  * before going live; until then these public nodes are used as a best effort.
  */
-const MAINNET_LOG_DEFAULTS: string[] = ["https://bsc.drpc.org", "https://bsc-dataseed.bnbchain.org"];
+const MAINNET_LOG_DEFAULTS: string[] = [
+  // PublicNode accepts the multi-thousand-block ranges used by the launchpad
+  // indexer. Keep it before the heavily capped public data-seeds so a browser
+  // does not need hundreds of 5-block requests just to reach a recent trade.
+  "https://bsc.publicnode.com",
+  "https://bsc-rpc.publicnode.com",
+  "https://bsc.drpc.org",
+  "https://bsc-dataseed.bnbchain.org",
+];
 
 /** BNB Smart Chain Testnet (97): [primary, ...fallbacks]. */
 export const TESTNET_RPC_URLS: string[] = buildList(
