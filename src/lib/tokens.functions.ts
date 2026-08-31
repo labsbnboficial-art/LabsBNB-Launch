@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
+import { ACTIVE_CHAIN_ID } from "@/lib/web3/networks";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { normalizeSocialRecord, OPTIONAL_SOCIAL_KEYS, SOCIAL_FIELDS, type SocialKey } from "@/lib/social";
 

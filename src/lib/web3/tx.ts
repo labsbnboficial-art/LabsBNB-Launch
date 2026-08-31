@@ -17,7 +17,9 @@ export function chainName(id: number) {
 }
 
 /** EIP-3085 payload so wallets that don't know the chain (Trust) can add it. */
-export const BSC_TESTNET_PARAMS = chainAddParams();
+export const ACTIVE_CHAIN_PARAMS = chainAddParams();
+/** @deprecated historical alias */
+export const BSC_TESTNET_PARAMS = ACTIVE_CHAIN_PARAMS;
 
 type Eip1193 = { request: (args: { method: string; params?: unknown[] }) => Promise<unknown> };
 
@@ -39,7 +41,7 @@ async function rawSwitch(target: number): Promise<void> {
     if (code === 4902 || code === -32603 || code === -32602) {
       await provider.request({
         method: "wallet_addEthereumChain",
-        params: [target === ACTIVE_CHAIN_ID ? BSC_TESTNET_PARAMS : { chainId: hex }],
+        params: [target === ACTIVE_CHAIN_ID ? ACTIVE_CHAIN_PARAMS : { chainId: hex }],
       });
       return;
     }
@@ -126,10 +128,10 @@ export function describeTxError(error: unknown): string {
     return "Ya hay una petición abierta en tu wallet. Ábrela y acéptala o recházala antes de reintentar.";
   }
   if (code === 4902 || lower.includes("unrecognized chain") || lower.includes("chain not")) {
-    return "Tu wallet no tiene añadida BNB Smart Chain Testnet (97). Añádela y reintenta.";
+    return `Tu wallet no tiene añadida ${chainLabel(ACTIVE_CHAIN_ID)} (${ACTIVE_CHAIN_ID}). Añádela y reintenta.`;
   }
   if (lower.includes("requested resource not available")) {
-    return "La wallet o el nodo RPC rechazaron la petición (recurso no disponible). Revisa que la wallet esté en BNB Testnet y que no tenga otra petición pendiente.";
+    return "La wallet o el nodo RPC rechazaron la petición (recurso no disponible). Revisa que la wallet esté en ${chainLabel(ACTIVE_CHAIN_ID)} y que no tenga otra petición pendiente.";
   }
   if (lower.includes("insufficient funds")) return "Saldo insuficiente de tBNB para el importe + gas.";
   if (lower.includes("nonce")) return "Conflicto de nonce: espera a que confirme tu transacción anterior o reinicia la cuenta en la wallet.";
@@ -254,7 +256,7 @@ export function describeTxErrorVerbose(error: unknown, ctx: TxContext): string {
       `La wallet devolvió un error RPC sin detalle (code ${String(code ?? "-32603")}). ` +
       `Suele ocurrir en Trust Wallet cuando la sesión WalletConnect quedó en otra red: ` +
       `abre Trust → Settings → WalletConnect, cierra la sesión de LabsBNB, ` +
-      `selecciona BNB Smart Chain Testnet (97) y vuelve a conectar. ` +
+      `selecciona ${chainLabel(ACTIVE_CHAIN_ID)} (${ACTIVE_CHAIN_ID}) y vuelve a conectar. ` +
       `Contexto: ${ctx.action}, chain ${ctx.chainId} (wallet ${ctx.walletChainId ?? "?"}), ` +
       `to ${ctx.to ?? ctx.contract ?? "?"}, value ${ctx.value?.toString() ?? "0"} wei` +
       (ctx.gas ? `, gas ${ctx.gas.toString()}` : "")
@@ -307,7 +309,8 @@ export function describeRpcError(error: unknown, ctx: TxContext): string {
 }
 
 /** Reads the chain id from the *wallet* (connector provider), never from a
- * public RPC — a public client always answers 97 and hides a wrong network. */
+ * public RPC — a public client always answers the active chain and hides a
+ * wrong wallet network. */
 export async function walletChainId(connector?: {
   getChainId?: () => Promise<number>;
   getProvider?: () => Promise<unknown>;

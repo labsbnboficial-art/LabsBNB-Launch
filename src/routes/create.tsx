@@ -134,7 +134,7 @@ function CreatePage() {
   const queryClient = useQueryClient();
   const { writeContractAsync } = useWriteContract();
   const { switchChainAsync } = useSwitchChain();
-  const chainId = cfg?.chain_id ?? 97;
+  const chainId = cfg?.chain_id ?? ACTIVE_CHAIN_ID;
   const publicClient = usePublicClient({ chainId });
   const factory = (cfg?.factory_address ?? null) as `0x${string}` | null;
   const walletChainId = useChainId();
@@ -278,6 +278,7 @@ function CreatePage() {
     try {
       // 1) Make sure the wallet is on BNB Smart Chain Testnet (97) before signing.
       await ensureChain(chainId, walletChainId, switchChainAsync);
+      assertTxTarget(walletChainId ?? chainId, factory);
 
       // 2) Simulate then send the real createToken() transaction.
       const rawUri = (form.metadata_uri || form.logo_url || form.website || "").trim();
@@ -458,7 +459,7 @@ function CreatePage() {
                   Your wallet ({address ?? "not connected"}) will sign <span className="font-mono text-accent">createToken()</span> on the LabsBNB factory.
                 </div>
                 <div>
-                  Factory: <span className="font-mono text-accent">{factory ?? "not configured"}</span> · BNB Testnet · Chain ID <span className="font-mono">{chainId}</span>
+                  Factory: <span className="font-mono text-accent">{factory ?? "not configured"}</span> · {ACTIVE_NETWORK.shortName} · Chain ID <span className="font-mono">{chainId}</span>
                 </div>
                 <div>Gas is paid in <span className="text-accent">tBNB</span>.</div>
               </div>

@@ -62,9 +62,12 @@ export const DEFAULT_CONFIG: LaunchpadConfig = {
   antibot_anti_flashloan: true,
 };
 
-/** Testing phase: the launchpad is locked to BNB Smart Chain Testnet (97). */
-export const TESTNET_CHAIN_ID = ACTIVE_NETWORK.chainId;
-export const TESTNET_FACTORY = (ACTIVE_NETWORK.contracts.factory ?? "0x") as `0x${string}`;
+/** Active launchpad network (Mainnet 56 by default). Historical names kept
+ *  for call-site compatibility; both resolve from `networks.ts`. */
+export const ACTIVE_CHAIN_ID = ACTIVE_NETWORK.chainId;
+export const ACTIVE_FACTORY = (ACTIVE_NETWORK.contracts.factory ?? "0x") as `0x${string}`;
+export const TESTNET_CHAIN_ID = ACTIVE_CHAIN_ID;
+export const TESTNET_FACTORY = ACTIVE_FACTORY;
 
 function coerce(cfg: Record<string, unknown>): LaunchpadConfig {
   const g = <T,>(k: keyof LaunchpadConfig, fallback: T): T => {
