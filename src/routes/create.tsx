@@ -277,7 +277,7 @@ function CreatePage() {
     setDeployedToken(null);
     setDeployedCurve(null);
     try {
-      // 1) Make sure the wallet is on BNB Smart Chain Testnet (97) before signing.
+      // 1) Make sure the wallet is on the ACTIVE chain before signing.
       await ensureChain(chainId, walletChainId, switchChainAsync);
       assertTxTarget(walletChainId ?? chainId, factory);
 
@@ -342,7 +342,7 @@ function CreatePage() {
         args: args as unknown as unknown[],
       });
       setDeployTx(hash);
-      setDeployState("Waiting for confirmation on BNB Testnet…");
+      setDeployState(`Waiting for confirmation on ${ACTIVE_NETWORK.shortName}…`);
 
       // 3) Wait for the receipt and read the TokenCreated event.
       const receipt = await publicClient!.waitForTransactionReceipt({ hash });
@@ -370,7 +370,7 @@ function CreatePage() {
       setDeployedToken(tokenAddress);
       setDeployedCurve(curveAddress);
       setDeployState("Deployed on-chain");
-      toast.success("Token deployed on BNB Testnet");
+      toast.success(`Token deployed on ${ACTIVE_NETWORK.shortName}`);
       // The Factory list is the source of truth: refresh it even if the DB save fails.
       queryClient.invalidateQueries({ queryKey: ["tokens", "onchain"] });
 
@@ -692,7 +692,7 @@ function AdvancedTokenomics({
       const live = await connector?.getChainId();
       if (live !== undefined && live !== ACTIVE_CHAIN_ID) {
         throw new Error(
-          `Tu wallet sigue en chain ${live}. Cambia manualmente a BNB Smart Chain Testnet (97) y reintenta.`,
+          `Tu wallet sigue en chain ${live}. Cambia manualmente a ${ACTIVE_NETWORK.name} (${ACTIVE_CHAIN_ID}) y reintenta.`,
         );
       }
 

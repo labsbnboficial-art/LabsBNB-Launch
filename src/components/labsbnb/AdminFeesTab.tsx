@@ -8,6 +8,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { getFeeDashboard } from "@/lib/fees.functions";
 import { saveAdminConfig } from "@/lib/config.functions";
 import { FACTORY_ABI, BSC_TESTNET } from "@/lib/web3/abis";
+import { ACTIVE_NETWORK, ACTIVE_CHAIN_ID } from "@/lib/web3/networks";
 import { ACTIVE_CHAIN_ID } from "@/lib/web3/config";
 import { describeTxError, ensureChain } from "@/lib/web3/tx";
 import { readClient } from "@/lib/web3/onchain-token";
@@ -138,6 +139,27 @@ export function AdminFeesTab({ csrf, cfg, onSaved }: {
 
   return (
     <div className="space-y-6">
+      <div className="glass-strong rounded-3xl p-6">
+        <h2 className="font-display text-lg font-semibold">Red activa</h2>
+        <div className="mt-3 grid gap-2 text-xs sm:grid-cols-2">
+          {[
+            ["Network", ACTIVE_NETWORK.name],
+            ["Chain ID", String(ACTIVE_CHAIN_ID)],
+            ["Factory", ACTIVE_NETWORK.contracts.factory ?? "not configured"],
+            ["Fee wallet", ACTIVE_NETWORK.contracts.feeWallet ?? "-"],
+            ["Treasury", ACTIVE_NETWORK.contracts.treasury ?? "-"],
+            ["Owner", ACTIVE_NETWORK.contracts.owner ?? "-"],
+            ["Router", ACTIVE_NETWORK.contracts.router ?? "-"],
+            ["Explorer", ACTIVE_NETWORK.explorer],
+          ].map(([k, v]) => (
+            <div key={k} className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-white/10 bg-white/[0.02] px-3 py-2">
+              <span className="uppercase tracking-widest text-muted-foreground">{k}</span>
+              <span className="font-mono break-all text-foreground">{v}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
       <div className="glass-strong rounded-3xl p-6">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <div>
