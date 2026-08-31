@@ -8,7 +8,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { getFeeDashboard } from "@/lib/fees.functions";
 import { saveAdminConfig } from "@/lib/config.functions";
 import { FACTORY_ABI, BSC_TESTNET } from "@/lib/web3/abis";
-import { ACTIVE_NETWORK, ACTIVE_CHAIN_ID } from "@/lib/web3/networks";
+import { ACTIVE_NETWORK } from "@/lib/web3/networks";
 import { ACTIVE_CHAIN_ID } from "@/lib/web3/config";
 import { describeTxError, ensureChain } from "@/lib/web3/tx";
 import { readClient } from "@/lib/web3/onchain-token";
