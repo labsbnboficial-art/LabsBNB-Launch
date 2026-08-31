@@ -5,6 +5,7 @@ import { AppShell } from "@/components/labsbnb/AppShell";
 import { useBnbPrice } from "@/lib/web3/useLabsBnbPrice";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchFactoryTokens, type FactoryToken } from "@/lib/web3/onchain-token";
+import { ACTIVE_CHAIN_ID } from "@/lib/web3/networks";
 import { tokenMediaUrl } from "@/lib/media-url";
 
 import { Button } from "@/components/ui/button";
@@ -46,12 +47,13 @@ function LandingPage() {
 
   // 1) Database rows (rich metadata) — 2) Factory `allTokens()` as source of truth.
   const dbTokens = useQuery({
-    queryKey: ["tokens", "latest"],
+    queryKey: ["tokens", "latest", ACTIVE_CHAIN_ID],
     refetchInterval: 30_000,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("tokens")
         .select("id,name,ticker,logo_url,contract_address,status,created_at,category")
+        .eq("chain_id", ACTIVE_CHAIN_ID)
         .order("created_at", { ascending: false })
         .limit(24);
       if (error) throw error;
@@ -166,13 +168,13 @@ function LandingPage() {
   }, [merged]);
 
   const statsQuery = useQuery({
-    queryKey: ["landing-stats"],
+    queryKey: ["landing-stats", ACTIVE_CHAIN_ID],
     queryFn: async () => {
       const [totalTokens, todayTokens, users, launched] = await Promise.all([
-        supabase.from("tokens").select("*", { count: "exact", head: true }),
-        supabase.from("tokens").select("*", { count: "exact", head: true }).gte("created_at", new Date(Date.now() - 86_400_000).toISOString()),
+        supabase.from("tokens").select("*", { count: "exact", head: true }).eq("chain_id", ACTIVE_CHAIN_ID),
+        supabase.from("tokens").select("*", { count: "exact", head: true }).eq("chain_id", ACTIVE_CHAIN_ID).gte("created_at", new Date(Date.now() - 86_400_000).toISOString()),
         supabase.from("profiles").select("*", { count: "exact", head: true }),
-        supabase.from("tokens").select("*", { count: "exact", head: true }).eq("status", "graduated"),
+        supabase.from("tokens").select("*", { count: "exact", head: true }).eq("chain_id", ACTIVE_CHAIN_ID).eq("status", "graduated"),
       ]);
       return {
         totalTokens: totalTokens.count ?? 0,
