@@ -241,3 +241,31 @@ export const FORBIDDEN_PUBLIC_ENV = [
   "LOVABLE_API_KEY",
   "TELEGRAM_BOT_TOKEN",
 ] as const;
+
+// --------------------------- Mainnet safety gate ---------------------------
+
+/** Production gate: true when the build targets BNB Smart Chain Mainnet. */
+export const MAINNET_ENABLED = ACTIVE_NETWORK_KEY === "mainnet";
+/** Factory the app is allowed to talk to. Never fall back to another network. */
+export const ACTIVE_FACTORY = ACTIVE_NETWORK.contracts.factory;
+
+/**
+ * Hard guard executed right before any write transaction (create / buy / sell).
+ * Throws with a clear message instead of letting a tx reach the wrong chain or
+ * an unknown factory. Read-only: signs nothing.
+ */
+export function assertTxTarget(walletChainId: number | undefined, factory?: string | null): void {
+  if (walletChainId !== ACTIVE_CHAIN_ID) {
+    throw new Error(
+      `Please switch to ${ACTIVE_NETWORK.name} (chain ${ACTIVE_CHAIN_ID}). Current: ${chainLabel(walletChainId)}.`,
+    );
+  }
+  if (!ACTIVE_FACTORY) {
+    throw new Error(`Factory is not configured on ${ACTIVE_NETWORK.name}. Transaction blocked.`);
+  }
+  if (factory && factory.toLowerCase() !== ACTIVE_FACTORY.toLowerCase()) {
+    throw new Error(
+      `Unknown factory ${factory}. Only ${ACTIVE_FACTORY} is allowed on ${ACTIVE_NETWORK.name}.`,
+    );
+  }
+}

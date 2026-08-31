@@ -23,6 +23,7 @@ import { useSiweSignIn } from "@/lib/use-siwe";
 import { useLaunchpadConfig } from "@/lib/launchpad-config";
 import { describeTxError, describeTxErrorVerbose, ensureChain } from "@/lib/web3/tx";
 import { ACTIVE_CHAIN_ID, BSC_TESTNET_RPC } from "@/lib/web3/config";
+import { ACTIVE_NETWORK, assertTxTarget } from "@/lib/web3/networks";
 import { toast } from "sonner";
 import { ImagePicker } from "@/components/labsbnb/ImagePicker";
 import { Rocket, Check, ArrowLeft, ArrowRight, Sparkles, Lock } from "lucide-react";

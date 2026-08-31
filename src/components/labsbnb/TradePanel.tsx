@@ -9,8 +9,7 @@ import { CURVE_ABI, TOKEN_ABI, FACTORY_ABI, BSC_TESTNET } from "@/lib/web3/abis"
 import { readClient, isAddress } from "@/lib/web3/onchain-token";
 import { DEFAULT_CONFIG } from "@/lib/launchpad-config";
 import { ACTIVE_CHAIN_ID } from "@/lib/web3/config";
-import { ACTIVE_NETWORK } from "@/lib/web3/networks";
-import { assertTxTarget } from "@/lib/web3/networks";
+import { ACTIVE_NETWORK, assertTxTarget } from "@/lib/web3/networks";
 import { invalidateTradeCache } from "@/lib/web3/curve-events";
 import { describeTxError, ensureChain } from "@/lib/web3/tx";
 
