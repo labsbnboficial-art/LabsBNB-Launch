@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
+import { ACTIVE_CHAIN_ID } from "@/lib/web3/networks";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { normalizeSocialRecord, OPTIONAL_SOCIAL_KEYS, SOCIAL_FIELDS, type SocialKey } from "@/lib/social";
 
@@ -38,7 +39,7 @@ export const ensureTokenRow = createServerFn({ method: "POST" })
         name: data.name,
         ticker: data.ticker,
         contract_address: address,
-        chain_id: 97,
+        chain_id: ACTIVE_CHAIN_ID,
         creator_id: context.userId,
       })
       .select("id")
@@ -99,7 +100,7 @@ export const saveTokenProfile = createServerFn({ method: "POST" })
       category: data.category || null,
       supply: data.supply ?? null,
       decimals: data.decimals ?? 18,
-      chain_id: data.chain_id ?? 97,
+      chain_id: data.chain_id ?? ACTIVE_CHAIN_ID,
       contract_address: address,
       deploy_tx_hash: data.deploy_tx_hash || null,
       status: "active",

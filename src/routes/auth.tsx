@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useAccount, useChainId, useConnect, useDisconnect, useSignMessage, useSwitchChain } from "wagmi";
-import { bscTestnet } from "wagmi/chains";
+import { ACTIVE_CHAIN_ID, ACTIVE_NETWORK } from "@/lib/web3/networks";
 import { useServerFn } from "@tanstack/react-start";
 import { AppShell } from "@/components/labsbnb/AppShell";
 import { supabase } from "@/integrations/supabase/client";
@@ -37,7 +37,7 @@ function AuthPage() {
   const { signMessageAsync } = useSignMessage();
   const chainId = useChainId();
   const { switchChainAsync } = useSwitchChain();
-  const onBsc = chainId === bscTestnet.id;
+  const onBsc = chainId === ACTIVE_CHAIN_ID;
   const [busy, setBusy] = useState(false);
   const navigate = useNavigate();
   const { redirect } = Route.useSearch();
@@ -53,16 +53,16 @@ function AuthPage() {
     setBusy(true);
     try {
       // Force BNB Smart Chain before signing (wallets often default to Ethereum).
-      if (chainId !== bscTestnet.id) {
+      if (chainId !== ACTIVE_CHAIN_ID) {
         try {
-          await switchChainAsync({ chainId: bscTestnet.id });
+          await switchChainAsync({ chainId: ACTIVE_CHAIN_ID });
         } catch {
-          toast.error("Switch your wallet to BNB Smart Chain Testnet (chain 97) to continue");
+          toast.error(`Please switch to ${ACTIVE_NETWORK.name} (chain ${ACTIVE_CHAIN_ID})`);
           return;
         }
       }
       const domain = typeof window !== "undefined" ? window.location.host : "labsbnb.app";
-      const { message } = await challenge({ data: { address, domain, chainId: bscTestnet.id } });
+      const { message } = await challenge({ data: { address, domain, chainId: ACTIVE_CHAIN_ID } });
       const signature = await signMessageAsync({ message });
       const { token_hash } = await verify({ data: { address, message, signature } });
       // Passing `email` alongside `token_hash` makes Supabase answer
@@ -117,13 +117,13 @@ function AuthPage() {
                 <div className="font-mono text-sm mt-1 break-all">{address}</div>
                 <div className="mt-2 text-[11px]">
                   {onBsc ? (
-                    <span className="text-accent">Network: BNB Smart Chain Testnet (97)</span>
+                    <span className="text-accent">Network: {ACTIVE_NETWORK.name} ({ACTIVE_CHAIN_ID})</span>
                   ) : (
                     <button
-                      onClick={() => switchChainAsync({ chainId: bscTestnet.id }).catch(() => toast.error("Could not switch network"))}
+                      onClick={() => switchChainAsync({ chainId: ACTIVE_CHAIN_ID }).catch(() => toast.error("Could not switch network"))}
                       className="text-destructive underline underline-offset-2"
                     >
-                      Wrong network (chain {chainId}) — switch to BNB Testnet
+                      Wrong network (chain {chainId}) — switch to {ACTIVE_NETWORK.shortName}
                     </button>
                   )}
                 </div>

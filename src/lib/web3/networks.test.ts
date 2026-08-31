@@ -62,11 +62,11 @@ describe("wrong network protection", () => {
 });
 
 describe("mainnet safety check", () => {
-  it("flags the pending mainnet factory instead of inventing one", () => {
+  it("uses the deployed mainnet factory and passes the safety check", () => {
     const r = networkSafetyCheck(NETWORKS.mainnet);
-    expect(NETWORKS.mainnet.contracts.factory).toBeNull();
-    expect(r.ok).toBe(false);
-    expect(r.issues.map((i) => i.code)).toContain("FACTORY");
+    expect(NETWORKS.mainnet.contracts.factory).toBe("0xF0fDbF6fCa4FDBe9A6533C56AAa26feC68E85988");
+    expect(r.issues.filter((i) => i.level === "error")).toEqual([]);
+    expect(r.ok).toBe(true);
   });
 
   it("mainnet config never carries testnet rpc or contracts", () => {
@@ -116,7 +116,7 @@ describe("mainnet roles and isolation", () => {
     const c = NETWORKS.mainnet.contracts;
     expect(c.feeWallet?.toLowerCase()).toBe("0xea265d939e27863dc169bfb0c21d84d4ed374e59");
     expect(c.treasury?.toLowerCase()).toBe("0x236716d4287e9f8f0de291450e2bfd0e04260b94");
-    expect(c.owner?.toLowerCase()).toBe("0x60e655fe39bc7d17661f226bb44dcc681cc4e05e");
+    expect(c.owner?.toLowerCase()).toBe("0xbd93228c75ee66692de048b05782dbf1c4bb53c4");
     expect(c.feeWallet).not.toBe(c.treasury);
   });
 
@@ -127,7 +127,7 @@ describe("mainnet roles and isolation", () => {
     expect(codes).not.toContain("ROUTER_TESTNET");
     expect(codes).not.toContain("WBNB_TESTNET");
     expect(codes).not.toContain("DEPRECATED_ADDRESS");
-    expect(NETWORKS.mainnet.contracts.factory).toBeNull();
+    expect(NETWORKS.mainnet.contracts.factory).not.toBe(NETWORKS.testnet.contracts.factory);
   });
 
   it("rejects chain id 97 as mainnet", () => {

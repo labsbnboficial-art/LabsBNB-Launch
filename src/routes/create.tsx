@@ -23,6 +23,7 @@ import { useSiweSignIn } from "@/lib/use-siwe";
 import { useLaunchpadConfig } from "@/lib/launchpad-config";
 import { describeTxError, describeTxErrorVerbose, ensureChain } from "@/lib/web3/tx";
 import { ACTIVE_CHAIN_ID, BSC_TESTNET_RPC } from "@/lib/web3/config";
+import { ACTIVE_NETWORK, assertTxTarget } from "@/lib/web3/networks";
 import { toast } from "sonner";
 import { ImagePicker } from "@/components/labsbnb/ImagePicker";
 import { Rocket, Check, ArrowLeft, ArrowRight, Sparkles, Lock } from "lucide-react";
@@ -134,7 +135,7 @@ function CreatePage() {
   const queryClient = useQueryClient();
   const { writeContractAsync } = useWriteContract();
   const { switchChainAsync } = useSwitchChain();
-  const chainId = cfg?.chain_id ?? 97;
+  const chainId = cfg?.chain_id ?? ACTIVE_CHAIN_ID;
   const publicClient = usePublicClient({ chainId });
   const factory = (cfg?.factory_address ?? null) as `0x${string}` | null;
   const walletChainId = useChainId();
@@ -276,8 +277,9 @@ function CreatePage() {
     setDeployedToken(null);
     setDeployedCurve(null);
     try {
-      // 1) Make sure the wallet is on BNB Smart Chain Testnet (97) before signing.
+      // 1) Make sure the wallet is on the ACTIVE chain before signing.
       await ensureChain(chainId, walletChainId, switchChainAsync);
+      assertTxTarget(walletChainId ?? chainId, factory);
 
       // 2) Simulate then send the real createToken() transaction.
       const rawUri = (form.metadata_uri || form.logo_url || form.website || "").trim();
@@ -340,7 +342,7 @@ function CreatePage() {
         args: args as unknown as unknown[],
       });
       setDeployTx(hash);
-      setDeployState("Waiting for confirmation on BNB Testnet…");
+      setDeployState(`Waiting for confirmation on ${ACTIVE_NETWORK.shortName}…`);
 
       // 3) Wait for the receipt and read the TokenCreated event.
       const receipt = await publicClient!.waitForTransactionReceipt({ hash });
@@ -368,7 +370,7 @@ function CreatePage() {
       setDeployedToken(tokenAddress);
       setDeployedCurve(curveAddress);
       setDeployState("Deployed on-chain");
-      toast.success("Token deployed on BNB Testnet");
+      toast.success(`Token deployed on ${ACTIVE_NETWORK.shortName}`);
       // The Factory list is the source of truth: refresh it even if the DB save fails.
       queryClient.invalidateQueries({ queryKey: ["tokens", "onchain"] });
 
@@ -458,7 +460,7 @@ function CreatePage() {
                   Your wallet ({address ?? "not connected"}) will sign <span className="font-mono text-accent">createToken()</span> on the LabsBNB factory.
                 </div>
                 <div>
-                  Factory: <span className="font-mono text-accent">{factory ?? "not configured"}</span> · BNB Testnet · Chain ID <span className="font-mono">{chainId}</span>
+                  Factory: <span className="font-mono text-accent">{factory ?? "not configured"}</span> · {ACTIVE_NETWORK.shortName} · Chain ID <span className="font-mono">{chainId}</span>
                 </div>
                 <div>Gas is paid in <span className="text-accent">tBNB</span>.</div>
               </div>
@@ -690,7 +692,7 @@ function AdvancedTokenomics({
       const live = await connector?.getChainId();
       if (live !== undefined && live !== ACTIVE_CHAIN_ID) {
         throw new Error(
-          `Tu wallet sigue en chain ${live}. Cambia manualmente a BNB Smart Chain Testnet (97) y reintenta.`,
+          `Tu wallet sigue en chain ${live}. Cambia manualmente a ${ACTIVE_NETWORK.name} (${ACTIVE_CHAIN_ID}) y reintenta.`,
         );
       }
 

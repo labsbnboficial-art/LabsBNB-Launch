@@ -1,6 +1,7 @@
 # Mainnet Frontend Checklist — LabsBNB Launchpad
 
-Phase: **pre-mainnet frontend hardening** (no contracts changed, no deploy).
+Phase: **MAINNET LIVE** — the app defaults to BNB Smart Chain Mainnet (56).
+Testnet (97) is only reachable with `VITE_LAUNCHPAD_NETWORK=testnet`.
 Single source of truth for all network data: `src/lib/web3/networks.ts`.
 
 ## 1. Network
@@ -8,7 +9,7 @@ Single source of truth for all network data: `src/lib/web3/networks.ts`.
 | Item | Testnet (active) | Mainnet |
 | --- | --- | --- |
 | Key | `testnet` | `mainnet` |
-| Selected by | `VITE_LAUNCHPAD_NETWORK` unset / `testnet` | `VITE_LAUNCHPAD_NETWORK=mainnet` |
+| Selected by | `VITE_LAUNCHPAD_NETWORK=testnet` | default (unset) / `mainnet` |
 | UI notice | Persistent "TESTNET" banner | none |
 
 ## 2. Chain ID
@@ -21,7 +22,7 @@ Single source of truth for all network data: `src/lib/web3/networks.ts`.
 ## 3. Factory
 
 - Testnet: `0x0738dA5824d03fF3E8BDDFd33cdb3728b6d8abD9`
-- Mainnet: **PENDING — not deployed. Do not invent an address.**
+- Mainnet: `0xF0fDbF6fCa4FDBe9A6533C56AAa26feC68E85988` (deployed, verified on-chain: owner `0xbd93…53c4`, feeBps 50, creatorFeeBps 20, referralFeeBps 10, totalFeeBps 80)
 
 ## 4. Router (PancakeSwap V2)
 
@@ -79,7 +80,7 @@ because the factory is pending.
 
 ## 12. Remaining blockers
 
-1. **BLOCKER** — Mainnet `LabsBNBFactory` not deployed (address pending).
+1. RESOLVED — Mainnet `LabsBNBFactory` deployed at `0xF0fDbF6fCa4FDBe9A6533C56AAa26feC68E85988`.
 2. **BLOCKER (contracts phase)** — Mainnet deployment must run the hardened
    BondingCurve/Factory audited in `docs/AUDIT_BONDING_CURVE_POST_FIX.md`.
 4. Admin panel network-scoped settings: DB config rows are shared across

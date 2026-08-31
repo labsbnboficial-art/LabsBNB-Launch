@@ -28,7 +28,7 @@ function rateLimited(ip: string) {
 
 function systemPrompt(ctx: { route?: string; tokenAddress?: string | null }) {
   return [
-    "Eres LabsBNB AI, el copiloto del launchpad LabsBNB en BNB Smart Chain Testnet (chain 97).",
+    "Eres LabsBNB AI, el copiloto del launchpad LabsBNB en BNB Smart Chain Mainnet (chain 56).",
     "Respondes en el idioma del usuario (por defecto español).",
     "REGLAS ESTRICTAS:",
     "- Usa SIEMPRE las tools para obtener datos. Nunca inventes precios, volumen, holders, ATH, market cap, trades ni velas.",

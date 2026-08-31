@@ -12,6 +12,7 @@ import { readClient } from "@/lib/web3/onchain-token";
 import { ACTIVE_CHAIN_ID } from "@/lib/web3/config";
 import { describeRpcError, describeWalletError, ensureChain, walletChainId } from "@/lib/web3/tx";
 import { BSC_TESTNET } from "@/lib/web3/abis";
+import { ACTIVE_NETWORK } from "@/lib/web3/networks";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -88,12 +89,12 @@ export function BoostPurchaseModal({ token, name, ticker }: Props) {
 
       setStep("Comprobando la red…");
       // The chain must be re-read from the WALLET (a public client always
-      // answers 97 and would hide a wrong network).
+      // answers the active chain and would hide a wrong wallet network).
       await ensureChain(ACTIVE_CHAIN_ID, chainId, switchChainAsync, () => walletChainId(connector));
       const onChain = await walletChainId(connector);
       console.info(tag, "chainId after switch =", onChain);
       if (onChain !== undefined && onChain !== ACTIVE_CHAIN_ID) {
-        throw new Error(`Tu wallet está en la red ${onChain}. Cambia a BNB Smart Chain Testnet (97).`);
+        throw new Error(`Tu wallet está en la red ${onChain}. Cambia a ${ACTIVE_NETWORK.name} (${ACTIVE_CHAIN_ID}).`);
       }
 
       setStep("Comprobando saldo y gas…");

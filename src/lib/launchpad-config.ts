@@ -62,9 +62,12 @@ export const DEFAULT_CONFIG: LaunchpadConfig = {
   antibot_anti_flashloan: true,
 };
 
-/** Testing phase: the launchpad is locked to BNB Smart Chain Testnet (97). */
-export const TESTNET_CHAIN_ID = ACTIVE_NETWORK.chainId;
-export const TESTNET_FACTORY = (ACTIVE_NETWORK.contracts.factory ?? "0x") as `0x${string}`;
+/** Active launchpad network (Mainnet 56 by default). Historical names kept
+ *  for call-site compatibility; both resolve from `networks.ts`. */
+export const ACTIVE_CHAIN_ID = ACTIVE_NETWORK.chainId;
+export const ACTIVE_FACTORY = (ACTIVE_NETWORK.contracts.factory ?? "0x") as `0x${string}`;
+export const TESTNET_CHAIN_ID = ACTIVE_CHAIN_ID;
+export const TESTNET_FACTORY = ACTIVE_FACTORY;
 
 function coerce(cfg: Record<string, unknown>): LaunchpadConfig {
   const g = <T,>(k: keyof LaunchpadConfig, fallback: T): T => {
@@ -72,9 +75,13 @@ function coerce(cfg: Record<string, unknown>): LaunchpadConfig {
     return (v ?? fallback) as T;
   };
   const rawFactory = String(g("factory_address", "") ?? "").trim();
-  const factory = /^0x[a-fA-F0-9]{40}$/.test(rawFactory)
-    ? (rawFactory as `0x${string}`)
-    : TESTNET_FACTORY;
+  // Hard network lock: DB config rows are shared between environments, so a
+  // factory written on another network must never win over the active one.
+  const dbFactory = /^0x[a-fA-F0-9]{40}$/.test(rawFactory) ? (rawFactory as `0x${string}`) : null;
+  const factory =
+    dbFactory && dbFactory.toLowerCase() === ACTIVE_FACTORY.toLowerCase()
+      ? dbFactory
+      : ACTIVE_FACTORY;
   return {
     admin_wallet: String(g("admin_wallet", DEFAULT_CONFIG.admin_wallet)),
     factory_address: factory,

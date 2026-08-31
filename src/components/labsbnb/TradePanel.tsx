@@ -9,6 +9,7 @@ import { CURVE_ABI, TOKEN_ABI, FACTORY_ABI, BSC_TESTNET } from "@/lib/web3/abis"
 import { readClient, isAddress } from "@/lib/web3/onchain-token";
 import { DEFAULT_CONFIG } from "@/lib/launchpad-config";
 import { ACTIVE_CHAIN_ID } from "@/lib/web3/config";
+import { ACTIVE_NETWORK, assertTxTarget } from "@/lib/web3/networks";
 import { invalidateTradeCache } from "@/lib/web3/curve-events";
 import { describeTxError, ensureChain } from "@/lib/web3/tx";
 
@@ -77,7 +78,7 @@ async function loadCurve(token: `0x${string}`, known?: string | null): Promise<C
   }
 
   const code = await client.getBytecode({ address: curve });
-  if (!code || code === "0x") throw new Error(`No hay contrato desplegado en ${curve} (red BSC Testnet 97).`);
+  if (!code || code === "0x") throw new Error(`No hay contrato desplegado en ${curve} en ${ACTIVE_NETWORK.name} (chain ${ACTIVE_CHAIN_ID}).`);
 
   const [progress, liquidity, marketCap, migrated, paused] = await Promise.all([
     client.readContract({ address: curve, abi: CURVE_ABI as Abi, functionName: "progress" }) as Promise<bigint>,
@@ -180,6 +181,7 @@ export function TradePanel({
     setBusy(true);
     try {
       await ensureChain(ACTIVE_CHAIN_ID, chainId, switchChainAsync);
+      assertTxTarget(chainId ?? ACTIVE_CHAIN_ID);
       const wei = parseEther(amount);
       const quoted = quoteQ.data?.out ?? 0n;
       const minOut = (quoted * (10000n - SLIPPAGE_BPS)) / 10000n;
