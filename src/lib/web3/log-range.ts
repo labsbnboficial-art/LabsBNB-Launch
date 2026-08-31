@@ -43,6 +43,22 @@ function clientFor(url: string): PublicClient {
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
+function rpcHost(url: string): string {
+  try {
+    return new URL(url).hostname;
+  } catch {
+    return "RPC provider";
+  }
+}
+
+function safeError(e: unknown): string {
+  const message = String((e as Error)?.message ?? e ?? "unknown error");
+  if (/failed to fetch/i.test(message)) return "network request failed";
+  if (/rate limit|compute units|capacity|too many requests|429/i.test(message)) return "rate limit reached";
+  if (isRangeError(e)) return "block range rejected";
+  return "RPC request failed";
+}
+
 /** True when the node refused because the block range (or result set) is too big. */
 export function isRangeError(e: unknown): boolean {
   const msg = String((e as Error)?.message ?? e ?? "").toLowerCase();
@@ -101,10 +117,10 @@ async function fetchWindow(address: `0x${string}`, event: AbiEvent, from: bigint
           const cur = windowByUrl.get(url) ?? DEFAULT_WINDOW;
           const next = cur / 2n > MIN_WINDOW ? cur / 2n : MIN_WINDOW;
           windowByUrl.set(url, next);
-          console.warn(`[logs] ${label} range ${from}-${to} rejected by ${url} → window ${next}`);
+          console.warn(`[logs] ${label} range ${from}-${to} rejected by ${rpcHost(url)} → window ${next}`);
           break; // no point retrying the same range on this endpoint
         }
-        console.warn(`[logs] ${label} ${from}-${to} attempt ${attempt} failed on ${url}: ${(e as Error).message}`);
+        console.warn(`[logs] ${label} ${from}-${to} attempt ${attempt} failed on ${rpcHost(url)}: ${safeError(e)}`);
         if (preferredRpc === url) preferredRpc = null;
         if (attempt < MAX_ATTEMPTS_PER_WINDOW) await sleep(BACKOFF_MS * attempt);
       }
@@ -114,17 +130,16 @@ async function fetchWindow(address: `0x${string}`, event: AbiEvent, from: bigint
     unhealthyUntilByUrl.set(url, Date.now() + RPC_COOLDOWN_MS);
   }
   throw new Error(
-    `eth_getLogs falló para ${label} (${from}-${to}). Último error: ${(lastError as Error)?.message ?? "desconocido"}`,
+    `No se pudo consultar ${label} (${from}-${to}): ${safeError(lastError)}. Intenta nuevamente.`,
   );
 }
 
-/** Smallest window agreed by the endpoints we already talked to. */
+/**
+ * Window of the provider that most recently succeeded. A restrictive provider
+ * must not globally force every healthy fallback down to 5-block requests.
+ */
 function currentWindow(): bigint {
-  let w = DEFAULT_WINDOW;
-  for (const url of urls()) {
-    const v = windowByUrl.get(url);
-    if (v && v < w) w = v;
-  }
+  const w = preferredRpc ? (windowByUrl.get(preferredRpc) ?? DEFAULT_WINDOW) : DEFAULT_WINDOW;
   return w < MIN_WINDOW ? MIN_WINDOW : w;
 }
 
