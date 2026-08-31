@@ -127,11 +127,21 @@ export const LOG_RPC_URLS: string[] = (() => {
   return fromEnv.length ? [...new Set(fromEnv)] : TESTNET_LOG_DEFAULTS;
 })();
 
-/** Mainnet endpoints used exclusively for `eth_getLogs`. */
-export const MAINNET_LOG_RPC_URLS: string[] = (() => {
-  const fromEnv = envList("VITE_BSC_MAINNET_LOG_RPC_URLS");
-  return fromEnv.length ? [...new Set(fromEnv)] : MAINNET_LOG_DEFAULTS;
-})();
+/**
+ * Mainnet endpoints used for `eth_getLogs`.
+ *
+ * A dedicated LOG RPC is preferred, but it must never become a single point
+ * of failure. Regular configured fallbacks (for example QuickNode) and the
+ * public log-capable nodes remain available when the dedicated provider is
+ * rate-limited, unreachable or blocked by the browser.
+ */
+export const MAINNET_LOG_RPC_URLS: string[] = [
+  ...new Set([
+    ...envList("VITE_BSC_MAINNET_LOG_RPC_URLS"),
+    ...envList("VITE_BSC_MAINNET_RPC_FALLBACKS"),
+    ...MAINNET_LOG_DEFAULTS,
+  ]),
+];
 
 /** True when a dedicated (non default) Mainnet log provider is configured. */
 export const HAS_DEDICATED_MAINNET_LOG_RPC = envList("VITE_BSC_MAINNET_LOG_RPC_URLS").length > 0;

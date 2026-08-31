@@ -23,8 +23,9 @@ export const DEFAULT_WINDOW = 1_000n;
 /** Never go below this: Alchemy Free tier caps eth_getLogs at 10 blocks. */
 const MIN_WINDOW = 10n;
 const REQUEST_TIMEOUT_MS = 12_000;
-const MAX_ATTEMPTS_PER_WINDOW = 3;
+const MAX_ATTEMPTS_PER_WINDOW = 2;
 const BACKOFF_MS = 350;
+const RPC_COOLDOWN_MS = 30_000;
 
 const clients = new Map<string, PublicClient>();
 
@@ -58,11 +59,20 @@ export function isRangeError(e: unknown): boolean {
 
 /** Window size currently known to work, per endpoint (shrinks on demand). */
 const windowByUrl = new Map<string, bigint>();
+const unhealthyUntilByUrl = new Map<string, number>();
 let preferredRpc: string | null = null;
 
 function urls(): string[] {
   const all = logUrls();
-  return preferredRpc ? [preferredRpc, ...all.filter((u) => u !== preferredRpc)] : all;
+  const ordered = preferredRpc ? [preferredRpc, ...all.filter((u) => u !== preferredRpc)] : all;
+  const now = Date.now();
+  const healthy = ordered.filter((url) => (unhealthyUntilByUrl.get(url) ?? 0) <= now);
+  // If every provider is cooling down, retry the one whose cooldown expires
+  // first instead of failing without making a request.
+  if (healthy.length) return healthy;
+  return [...ordered].sort(
+    (a, b) => (unhealthyUntilByUrl.get(a) ?? 0) - (unhealthyUntilByUrl.get(b) ?? 0),
+  ).slice(0, 1);
 }
 
 type Params = {
@@ -82,6 +92,7 @@ async function fetchWindow(address: `0x${string}`, event: AbiEvent, from: bigint
       try {
         const logs = await clientFor(url).getLogs({ address, event, fromBlock: from, toBlock: to });
         preferredRpc = url;
+        unhealthyUntilByUrl.delete(url);
         return logs;
       } catch (e) {
         lastError = e;
@@ -98,6 +109,9 @@ async function fetchWindow(address: `0x${string}`, event: AbiEvent, from: bigint
         if (attempt < MAX_ATTEMPTS_PER_WINDOW) await sleep(BACKOFF_MS * attempt);
       }
     }
+    // A transport failure should immediately move subsequent/parallel windows
+    // to another provider rather than hammering the same unavailable origin.
+    unhealthyUntilByUrl.set(url, Date.now() + RPC_COOLDOWN_MS);
   }
   throw new Error(
     `eth_getLogs falló para ${label} (${from}-${to}). Último error: ${(lastError as Error)?.message ?? "desconocido"}`,
