@@ -75,9 +75,13 @@ function coerce(cfg: Record<string, unknown>): LaunchpadConfig {
     return (v ?? fallback) as T;
   };
   const rawFactory = String(g("factory_address", "") ?? "").trim();
-  const factory = /^0x[a-fA-F0-9]{40}$/.test(rawFactory)
-    ? (rawFactory as `0x${string}`)
-    : TESTNET_FACTORY;
+  // Hard network lock: DB config rows are shared between environments, so a
+  // factory written on another network must never win over the active one.
+  const dbFactory = /^0x[a-fA-F0-9]{40}$/.test(rawFactory) ? (rawFactory as `0x${string}`) : null;
+  const factory =
+    dbFactory && dbFactory.toLowerCase() === ACTIVE_FACTORY.toLowerCase()
+      ? dbFactory
+      : ACTIVE_FACTORY;
   return {
     admin_wallet: String(g("admin_wallet", DEFAULT_CONFIG.admin_wallet)),
     factory_address: factory,
