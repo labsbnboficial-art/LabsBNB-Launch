@@ -194,6 +194,11 @@ export async function fetchTradePage(
 
     chunks += batch.length;
     index -= batch.length;
+    // A page is a recent-history slice. Return as soon as the newest non-empty
+    // chunk is found instead of continuing into older empty ranges merely to
+    // fill `pageSize`; callers can request the cursor when older history is
+    // explicitly needed. This keeps live data fast on rate-limited providers.
+    if (collected.length) break;
   }
 
 

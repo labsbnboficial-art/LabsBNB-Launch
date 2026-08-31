@@ -137,7 +137,9 @@ function TokenPage() {
       .sort((a, b) => (a.blockNumber === b.blockNumber ? 0 : a.blockNumber < b.blockNumber ? -1 : 1));
   }, [eventsQ.data]);
 
-  const eventsError = eventsQ.error as Error | null;
+  // A later historical page may fail after the latest confirmed events were
+  // loaded. Never replace those real trades with a global error state.
+  const eventsError = events.length === 0 ? (eventsQ.error as Error | null) : null;
   useEffect(() => {
     if (eventsError) console.error("[token] Trade events could not be read:", eventsError);
   }, [eventsError]);
