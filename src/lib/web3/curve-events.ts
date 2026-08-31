@@ -36,7 +36,10 @@ const MAX_CHUNKS_PER_PAGE = 36; // bounds latency once the page already has trad
 // A curve can be idle for days: keep scanning further back while nothing was
 // found yet, otherwise the very first page returns empty and the UI stops.
 const MAX_EMPTY_CHUNKS_PER_PAGE = 108;
-const PARALLEL_CHUNKS = 3; // grid chunks fetched at once (each one is chunked further)
+// Keep log ranges sequential. Free Mainnet providers aggressively throttle
+// concurrent eth_getLogs calls, which otherwise turns intermittent failures
+// into a complete chart/trades outage.
+const PARALLEL_CHUNKS = 1;
 const HEAD_MARGIN = 6n; // blocks near the head are not cached (may still reorg)
 
 
