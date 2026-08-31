@@ -4,8 +4,7 @@
 // is written. Nothing here is simulated.
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createPublicClient, formatEther, parseEther, type Abi } from "viem";
-import { bscTestnet } from "viem/chains";
-import { testnetTransport } from "@/lib/web3/rpc";
+import { activeTransport, activeViemChain } from "@/lib/web3/active-chain";
 import { FACTORY_ABI, TOKEN_ABI } from "@/lib/web3/abis";
 import { TESTNET_FACTORY } from "@/lib/launchpad-config";
 
@@ -45,7 +44,7 @@ export async function db(): Promise<SupabaseClient> {
 }
 
 export function client() {
-  return createPublicClient({ chain: bscTestnet, transport: testnetTransport() });
+  return createPublicClient({ chain: activeViemChain(), transport: activeTransport() });
 }
 
 export async function readSettings(): Promise<BoostSettings> {

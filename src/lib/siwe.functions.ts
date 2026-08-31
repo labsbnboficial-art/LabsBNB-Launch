@@ -44,7 +44,7 @@ export const siweChallenge = createServerFn({ method: "POST" })
     const nonce = crypto.randomUUID().replace(/-/g, "");
     const issuedAt = new Date().toISOString();
     const domain = data.domain || "labsbnb.app";
-    const chainId = data.chainId ?? 97;
+    const chainId = data.chainId ?? 56;
     const message = buildMessage(domain, data.address, nonce, issuedAt, chainId);
     return { message, nonce, issuedAt };
   });

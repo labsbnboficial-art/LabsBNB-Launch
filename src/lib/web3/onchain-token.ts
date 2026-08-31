@@ -1,8 +1,7 @@
 // On-chain fallback reader: lets a token page render even if the database row
 // is missing (save failed, RLS, offline backend). Everything here is read-only.
 import { createPublicClient, type Abi } from "viem";
-import { testnetTransport } from "./rpc";
-import { bscTestnet } from "wagmi/chains";
+import { activeTransport, activeViemChain } from "./active-chain";
 import { FACTORY_ABI, CURVE_ABI, TOKEN_ABI, BSC_TESTNET } from "./abis";
 import { DEFAULT_CONFIG } from "@/lib/launchpad-config";
 
@@ -17,8 +16,8 @@ let cachedClient: ReturnType<typeof createPublicClient> | null = null;
 export function readClient() {
   if (!cachedClient) {
     cachedClient = createPublicClient({
-      chain: bscTestnet,
-      transport: testnetTransport({ batch: true }),
+      chain: activeViemChain(),
+      transport: activeTransport({ batch: true }),
       batch: { multicall: { wait: 24 } },
     });
   }

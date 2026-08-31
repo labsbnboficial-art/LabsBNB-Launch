@@ -51,7 +51,9 @@ const LABSBNB_WALLET = "0x60e655Fe39Bc7D17661f226bB44Dcc681cc4e05e" as Address;
 /** Mainnet role split (fee, treasury and owner are three distinct wallets). */
 const MAINNET_FEE_WALLET = "0xEA265D939E27863dC169Bfb0c21D84d4Ed374E59" as Address;
 const MAINNET_TREASURY = "0x236716d4287E9f8F0de291450E2bFd0e04260b94" as Address;
-const MAINNET_OWNER = "0x60e655fe39bc7d17661f226bb44dcc681cc4e05e" as Address;
+const MAINNET_OWNER = "0xbd93228c75EE66692dE048B05782DBF1c4Bb53c4" as Address;
+/** Deployed LabsBNBFactory on BNB Smart Chain Mainnet (chain 56). */
+const MAINNET_FACTORY = "0xF0fDbF6fCa4FDBe9A6533C56AAa26feC68E85988" as Address;
 
 export const NETWORKS: Record<NetworkKey, NetworkConfig> = {
   testnet: {
@@ -84,8 +86,7 @@ export const NETWORKS: Record<NetworkKey, NetworkConfig> = {
     logRpcUrls: MAINNET_LOG_RPC_URLS,
     explorer: "https://bscscan.com",
     contracts: {
-      // PENDING — no Mainnet deployment exists yet. Never invent an address.
-      factory: null,
+      factory: MAINNET_FACTORY,
       router: "0x10ED43C718714eb63d5aA57B78B54704E256024E",
       wbnb: "0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c",
       feeWallet: MAINNET_FEE_WALLET,
@@ -111,10 +112,11 @@ function readEnvNetwork(): NetworkKey {
     (typeof import.meta !== "undefined"
       ? (import.meta.env?.["VITE_LAUNCHPAD_NETWORK"] as string | undefined)
       : undefined) ?? "";
-  return raw.trim().toLowerCase() === "mainnet" ? "mainnet" : "testnet";
+  // Mainnet is the default: only an explicit `testnet` opt-in leaves chain 56.
+  return raw.trim().toLowerCase() === "testnet" ? "testnet" : "mainnet";
 }
 
-/** Active network key for this build. Defaults to `testnet` (current phase). */
+/** Active network key for this build. Defaults to `mainnet` (chain 56). */
 export const ACTIVE_NETWORK_KEY: NetworkKey = readEnvNetwork();
 export const ACTIVE_NETWORK: NetworkConfig = NETWORKS[ACTIVE_NETWORK_KEY];
 export const ACTIVE_CHAIN_ID = ACTIVE_NETWORK.chainId;

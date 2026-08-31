@@ -3,7 +3,7 @@
 import { useCallback } from "react";
 import { useAccount, useSignMessage, useSwitchChain } from "wagmi";
 import { useServerFn } from "@tanstack/react-start";
-import { bscTestnet } from "wagmi/chains";
+import { ACTIVE_CHAIN_ID } from "@/lib/web3/networks";
 import { supabase } from "@/integrations/supabase/client";
 import { siweChallenge, siweVerify } from "@/lib/siwe.functions";
 
@@ -20,10 +20,10 @@ export function useSiweSignIn() {
     if (existing.session?.user) return existing.session.user;
     if (!address) throw new Error("Connect a wallet first");
 
-    try { await switchChainAsync({ chainId: bscTestnet.id }); } catch { /* already on it or refused */ }
+    try { await switchChainAsync({ chainId: ACTIVE_CHAIN_ID }); } catch { /* already on it or refused */ }
 
     const domain = typeof window !== "undefined" ? window.location.host : "labsbnb.app";
-    const { message } = await challenge({ data: { address, domain, chainId: bscTestnet.id } });
+    const { message } = await challenge({ data: { address, domain, chainId: ACTIVE_CHAIN_ID } });
     const signature = await signMessageAsync({ message });
     const { token_hash } = await verify({ data: { address, message, signature } });
     // Supabase rejects `email` + `token_hash` together with

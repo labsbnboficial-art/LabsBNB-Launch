@@ -4,8 +4,7 @@
 // tokenomics). No simulated data.
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createPublicClient, formatEther, parseAbiItem, type Abi } from "viem";
-import { bscTestnet } from "viem/chains";
-import { testnetTransport } from "@/lib/web3/rpc";
+import { activeTransport, activeViemChain } from "@/lib/web3/active-chain";
 import { FACTORY_ABI } from "@/lib/web3/abis";
 import { TESTNET_FACTORY } from "@/lib/launchpad-config";
 
@@ -29,7 +28,7 @@ export type FeeTx = {
 };
 
 export function publicClient() {
-  return createPublicClient({ chain: bscTestnet, transport: testnetTransport() });
+  return createPublicClient({ chain: activeViemChain(), transport: activeTransport() });
 }
 
 async function db(): Promise<SupabaseClient> {
