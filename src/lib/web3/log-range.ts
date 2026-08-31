@@ -20,8 +20,8 @@ const logChain = () => (ACTIVE_NETWORK.chainId === bsc.id ? bsc : bscTestnet);
 
 /** Starting window size: accepted by every endpoint we probe. */
 export const DEFAULT_WINDOW = 1_000n;
-/** Never go below this: further splitting would explode the request count. */
-const MIN_WINDOW = 100n;
+/** Never go below this: Alchemy Free tier caps eth_getLogs at 10 blocks. */
+const MIN_WINDOW = 10n;
 const REQUEST_TIMEOUT_MS = 12_000;
 const MAX_ATTEMPTS_PER_WINDOW = 3;
 const BACKOFF_MS = 350;
