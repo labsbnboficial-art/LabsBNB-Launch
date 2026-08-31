@@ -200,17 +200,16 @@ function TokenPage() {
   const [autoPages, setAutoPages] = useState(0);
   useEffect(() => setAutoPages(0), [timeframe, curveOk, visibleCount]);
   useEffect(() => {
-    if (eventsQ.isFetching || !eventsQ.hasNextPage) return;
+    if (eventsQ.isFetching || !eventsQ.hasNextPage || eventsQ.isError) return;
     if (autoPages >= 10) return;
     // An empty first page just means the curve has been idle: keep scanning back.
-    if (events.length) {
-      const oldest = events[0].timestamp;
-      const newest = events[events.length - 1].timestamp;
-      if (newest - oldest >= targetWindow) return;
-    }
+    // Once real trades are present, keep the first render stable. Older pages
+    // remain available through the explicit button/infinite-scroll instead of
+    // hammering free RPCs until a historical request fails and masks the data.
+    if (events.length) return;
     setAutoPages((n) => n + 1);
     eventsQ.fetchNextPage();
-  }, [events, targetWindow, autoPages, eventsQ.hasNextPage, eventsQ.isFetching, eventsQ.fetchNextPage, curveOk]);
+  }, [events, autoPages, eventsQ.hasNextPage, eventsQ.isFetching, eventsQ.isError, eventsQ.fetchNextPage, curveOk]);
 
 
   // Infinite scroll sentinel for the trades table.

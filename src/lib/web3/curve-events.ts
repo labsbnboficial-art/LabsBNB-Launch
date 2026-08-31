@@ -132,6 +132,26 @@ export type TradePage = {
 };
 
 /**
+ * A failed older range must not discard trades already recovered from newer
+ * ranges. This is especially important with free RPC tiers: the latest trade
+ * can be available even when a provider rate-limits a later history request.
+ */
+function partialPage(
+  collected: TradeEvent[],
+  index: number,
+  floorIndex: number,
+  head: bigint,
+): TradePage {
+  collected.sort((x, y) => (x.blockNumber === y.blockNumber ? 0 : x.blockNumber < y.blockNumber ? -1 : 1));
+  return {
+    events: collected,
+    nextCursor: index >= floorIndex ? String(index) : null,
+    scannedFrom: (BigInt(index + 1) * CHUNK).toString(),
+    scannedTo: head.toString(),
+  };
+}
+
+/**
  * Paginated history: scans backwards from `cursor` (a grid chunk index) or the
  * chain head, collecting `pageSize` trades at most, bounded by the lookback
  * window and the per-page chunk budget. Cached chunks resolve instantly.
@@ -161,7 +181,15 @@ export async function fetchTradePage(
     for (let i = 0; i < PARALLEL_CHUNKS && index - i >= floorIndex && chunks + i < budget(); i += 1) {
       batch.push(index - i);
     }
-    const results = await Promise.all(batch.map((i) => getChunk(curve, i, head)));
+    let results: TradeEvent[][];
+    try {
+      results = await Promise.all(batch.map((i) => getChunk(curve, i, head)));
+    } catch (error) {
+      // Preserve a valid partial page. The caller can retry the cursor later,
+      // while the chart and trades table continue displaying confirmed data.
+      if (collected.length) return partialPage(collected, index, floorIndex, head);
+      throw error;
+    }
     results.flat().forEach((e) => collected.push(e)); // ordered by the sort below
 
     chunks += batch.length;
@@ -169,14 +197,7 @@ export async function fetchTradePage(
   }
 
 
-  collected.sort((x, y) => (x.blockNumber === y.blockNumber ? 0 : x.blockNumber < y.blockNumber ? -1 : 1));
-
-  return {
-    events: collected,
-    nextCursor: index >= floorIndex ? String(index) : null,
-    scannedFrom: (BigInt(index + 1) * CHUNK).toString(),
-    scannedTo: head.toString(),
-  };
+  return partialPage(collected, index, floorIndex, head);
 }
 
 
