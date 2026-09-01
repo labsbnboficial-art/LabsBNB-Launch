@@ -69,6 +69,10 @@ export function isRangeError(e: unknown): boolean {
     msg.includes("too many results") ||
     msg.includes("query returned more than") ||
     msg.includes("response size") ||
+    msg.includes("block range") ||
+    msg.includes("blocks range") ||
+    msg.includes("limited to") ||
+    msg.includes("archive requests require") ||
     msg.includes("-32005")
   );
 }
@@ -77,6 +81,10 @@ export function isRangeError(e: unknown): boolean {
 const windowByUrl = new Map<string, bigint>();
 const unhealthyUntilByUrl = new Map<string, number>();
 let preferredRpc: string | null = null;
+// A range rejection is information about the request size, not an outage.
+// Keep one conservative global window so switching providers cannot reset a
+// just-learned 5/10-block limit back to DEFAULT_WINDOW.
+let learnedWindow = DEFAULT_WINDOW;
 
 function urls(): string[] {
   const all = logUrls();
@@ -104,6 +112,7 @@ type Params = {
 async function fetchWindow(address: `0x${string}`, event: AbiEvent, from: bigint, to: bigint, label: string) {
   let lastError: unknown = null;
   for (const url of urls()) {
+    let transportFailed = false;
     for (let attempt = 1; attempt <= MAX_ATTEMPTS_PER_WINDOW; attempt += 1) {
       try {
         const logs = await clientFor(url).getLogs({ address, event, fromBlock: from, toBlock: to });
@@ -117,9 +126,11 @@ async function fetchWindow(address: `0x${string}`, event: AbiEvent, from: bigint
           const cur = windowByUrl.get(url) ?? DEFAULT_WINDOW;
           const next = cur / 2n > MIN_WINDOW ? cur / 2n : MIN_WINDOW;
           windowByUrl.set(url, next);
+          if (next < learnedWindow) learnedWindow = next;
           console.warn(`[logs] ${label} range ${from}-${to} rejected by ${rpcHost(url)} → window ${next}`);
           break; // no point retrying the same range on this endpoint
         }
+        transportFailed = true;
         console.warn(`[logs] ${label} ${from}-${to} attempt ${attempt} failed on ${rpcHost(url)}: ${safeError(e)}`);
         if (preferredRpc === url) preferredRpc = null;
         if (attempt < MAX_ATTEMPTS_PER_WINDOW) await sleep(BACKOFF_MS * attempt);
@@ -127,7 +138,9 @@ async function fetchWindow(address: `0x${string}`, event: AbiEvent, from: bigint
     }
     // A transport failure should immediately move subsequent/parallel windows
     // to another provider rather than hammering the same unavailable origin.
-    unhealthyUntilByUrl.set(url, Date.now() + RPC_COOLDOWN_MS);
+    // Range-limited nodes are healthy and may answer the reduced retry. Only
+    // network/rate-limit failures should put a provider on cooldown.
+    if (transportFailed) unhealthyUntilByUrl.set(url, Date.now() + RPC_COOLDOWN_MS);
   }
   throw new Error(
     `No se pudo consultar ${label} (${from}-${to}): ${safeError(lastError)}. Intenta nuevamente.`,
@@ -139,7 +152,10 @@ async function fetchWindow(address: `0x${string}`, event: AbiEvent, from: bigint
  * must not globally force every healthy fallback down to 5-block requests.
  */
 function currentWindow(): bigint {
-  const w = preferredRpc ? (windowByUrl.get(preferredRpc) ?? DEFAULT_WINDOW) : DEFAULT_WINDOW;
+  const preferredWindow = preferredRpc ? windowByUrl.get(preferredRpc) : undefined;
+  const w = preferredWindow !== undefined && preferredWindow < learnedWindow
+    ? preferredWindow
+    : learnedWindow;
   return w < MIN_WINDOW ? MIN_WINDOW : w;
 }
 

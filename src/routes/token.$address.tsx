@@ -214,22 +214,6 @@ function TokenPage() {
   }, [events, autoPages, eventsQ.hasNextPage, eventsQ.isFetching, eventsQ.isError, eventsQ.fetchNextPage, curveOk]);
 
 
-  // Infinite scroll sentinel for the trades table.
-  const sentinel = useRef<HTMLDivElement | null>(null);
-  useEffect(() => {
-    const el = sentinel.current;
-    if (!el) return;
-    const io = new IntersectionObserver((entries) => {
-      if (entries[0].isIntersecting && eventsQ.hasNextPage && !eventsQ.isFetchingNextPage) {
-        eventsQ.fetchNextPage();
-      }
-    }, { rootMargin: "200px" });
-    io.observe(el);
-    return () => io.disconnect();
-  }, [eventsQ.hasNextPage, eventsQ.isFetchingNextPage, eventsQ.fetchNextPage, events.length]);
-
-
-
   // A token that only lives on-chain gets its row created on first comment;
   // keep that id so the thread loads right away (before it existed, the list
   // stayed disabled and the new comment looked lost).
@@ -569,7 +553,6 @@ function TokenPage() {
                       ))}
                     </tbody>
                   </table>
-                  <div ref={sentinel} className="h-8" />
                   <div className="pt-2 text-center">
                     {eventsQ.isFetchingNextPage ? (
                       <span className="text-xs text-muted-foreground">Cargando más bloques…</span>
@@ -824,11 +807,12 @@ function CommentBox({
 
 function TopHolders({ token, ticker }: { token: string | null; ticker: string }) {
   const valid = token && isAddress(token) ? (token as `0x${string}`) : null;
+  const [requested, setRequested] = useState(false);
   const q = useQuery({
     queryKey: ["holders", valid],
-    enabled: !!valid,
-    refetchInterval: 60_000,
-    retry: 1,
+    enabled: !!valid && requested,
+    staleTime: 60_000,
+    retry: 0,
     queryFn: () => withRpcTimeout("token holders", () => fetchTopHolders(valid!, 10)),
   });
 
@@ -846,10 +830,19 @@ function TopHolders({ token, ticker }: { token: string | null; ticker: string })
 
       {!valid ? (
         <p className="text-xs text-muted-foreground">Dirección de token no disponible.</p>
+      ) : !requested ? (
+        <Button variant="outline" size="sm" className="w-full border-white/10 bg-white/5" onClick={() => setRequested(true)}>
+          Consultar holders
+        </Button>
       ) : q.isLoading ? (
         <p className="text-xs text-muted-foreground">Leyendo transferencias on-chain…</p>
       ) : q.error ? (
-        <ChainError error={q.error as Error} onRetry={() => void q.refetch()} />
+        <div className="rounded-xl border border-white/10 p-3 text-xs text-muted-foreground">
+          <p>Los holders no están disponibles temporalmente.</p>
+          <Button variant="outline" size="sm" className="mt-2 border-white/10 bg-white/5" onClick={() => void q.refetch()}>
+            Reintentar
+          </Button>
+        </div>
       ) : !q.data?.holders.length ? (
         <p className="text-xs text-muted-foreground">Sin transferencias en el rango consultado.</p>
       ) : (
