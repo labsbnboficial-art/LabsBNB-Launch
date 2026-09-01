@@ -30,16 +30,21 @@ export type TradeEvent = {
 // Grid used for the in-memory cache. Each grid range is internally split by
 // `getLogsChunked` into windows the public RPCs accept, so this value is a
 // cache granularity, never a raw `eth_getLogs` range.
-const CHUNK = 3_000n;
+// Match the largest verified public-provider range. `getLogsChunked` still
+// shrinks this automatically for providers with smaller limits.
+const CHUNK = 5_000n;
 const MAX_LOOKBACK = 600_000n; // ~21 days on BSC (3s blocks)
-const MAX_CHUNKS_PER_PAGE = 36; // bounds latency once the page already has trades
+// Keep scanning after the newest event-bearing chunk. Stopping there made a
+// token with several purchases show only its latest purchase. At 5k blocks per
+// chunk this covers 240k blocks while remaining bounded.
+const MAX_CHUNKS_PER_PAGE = 48;
 // A curve can be idle for days: keep scanning further back while nothing was
 // found yet, otherwise the very first page returns empty and the UI stops.
 const MAX_EMPTY_CHUNKS_PER_PAGE = 108;
-// Keep log ranges sequential. Free Mainnet providers aggressively throttle
-// concurrent eth_getLogs calls, which otherwise turns intermittent failures
-// into a complete chart/trades outage.
-const PARALLEL_CHUNKS = 1;
+// The primary Mainnet log RPC accepts concurrent 5k-block requests. Four
+// workers recover the complete history before the UI deadline, while the
+// lower-level reader still rotates/retries restrictive fallback providers.
+const PARALLEL_CHUNKS = 12;
 const HEAD_MARGIN = 6n; // blocks near the head are not cached (may still reorg)
 
 
@@ -194,11 +199,6 @@ export async function fetchTradePage(
 
     chunks += batch.length;
     index -= batch.length;
-    // A page is a recent-history slice. Return as soon as the newest non-empty
-    // chunk is found instead of continuing into older empty ranges merely to
-    // fill `pageSize`; callers can request the cursor when older history is
-    // explicitly needed. This keeps live data fast on rate-limited providers.
-    if (collected.length) break;
   }
 
 

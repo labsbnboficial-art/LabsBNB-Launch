@@ -18,8 +18,11 @@ import { ACTIVE_NETWORK } from "./networks";
 const logUrls = (): string[] => [...ACTIVE_NETWORK.logRpcUrls];
 const logChain = () => (ACTIVE_NETWORK.chainId === bsc.id ? bsc : bscTestnet);
 
-/** Starting window size: accepted by every endpoint we probe. */
-export const DEFAULT_WINDOW = 1_000n;
+/**
+ * Starting window size. The primary Mainnet log endpoint accepts 5,000 blocks;
+ * restrictive fallbacks are reduced automatically by `fetchWindow`.
+ */
+export const DEFAULT_WINDOW = 5_000n;
 /** Some free providers cap eth_getLogs at only 5 blocks. */
 const MIN_WINDOW = 5n;
 const REQUEST_TIMEOUT_MS = 12_000;
