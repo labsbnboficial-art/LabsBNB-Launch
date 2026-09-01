@@ -807,11 +807,12 @@ function CommentBox({
 
 function TopHolders({ token, ticker }: { token: string | null; ticker: string }) {
   const valid = token && isAddress(token) ? (token as `0x${string}`) : null;
+  const [requested, setRequested] = useState(false);
   const q = useQuery({
     queryKey: ["holders", valid],
-    enabled: !!valid,
-    refetchInterval: 60_000,
-    retry: 1,
+    enabled: !!valid && requested,
+    staleTime: 60_000,
+    retry: 0,
     queryFn: () => withRpcTimeout("token holders", () => fetchTopHolders(valid!, 10)),
   });
 
@@ -829,6 +830,10 @@ function TopHolders({ token, ticker }: { token: string | null; ticker: string })
 
       {!valid ? (
         <p className="text-xs text-muted-foreground">Dirección de token no disponible.</p>
+      ) : !requested ? (
+        <Button variant="outline" size="sm" className="w-full border-white/10 bg-white/5" onClick={() => setRequested(true)}>
+          Consultar holders
+        </Button>
       ) : q.isLoading ? (
         <p className="text-xs text-muted-foreground">Leyendo transferencias on-chain…</p>
       ) : q.error ? (
