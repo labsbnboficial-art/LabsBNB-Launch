@@ -44,7 +44,7 @@ const MAX_EMPTY_CHUNKS_PER_PAGE = 108;
 // The primary Mainnet log RPC accepts concurrent 5k-block requests. Four
 // workers recover the complete history before the UI deadline, while the
 // lower-level reader still rotates/retries restrictive fallback providers.
-const PARALLEL_CHUNKS = 40;
+const PARALLEL_CHUNKS = 4;
 const HEAD_MARGIN = 6n; // blocks near the head are not cached (may still reorg)
 
 
