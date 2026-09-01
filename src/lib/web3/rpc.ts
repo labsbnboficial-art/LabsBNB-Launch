@@ -106,9 +106,11 @@ const TESTNET_LOG_DEFAULTS: string[] = [
  * before going live; until then these public nodes are used as a best effort.
  */
 const MAINNET_LOG_DEFAULTS: string[] = [
-  // PublicNode accepts the multi-thousand-block ranges used by the launchpad
-  // indexer. Keep it before the heavily capped public data-seeds so a browser
-  // does not need hundreds of 5-block requests just to reach a recent trade.
+  // This endpoint supports archive eth_getLogs ranges and browser CORS. Keep
+  // it ahead of providers that cap free requests to 5/10/25 blocks.
+  "https://rpc-bsc.48.club",
+  // PublicNode now requires a personal token for archive requests. It remains
+  // as a fallback for recent ranges, but must not be the primary log reader.
   "https://bsc.publicnode.com",
   "https://bsc-rpc.publicnode.com",
   "https://bsc.drpc.org",
@@ -145,6 +147,10 @@ export const LOG_RPC_URLS: string[] = (() => {
  */
 export const MAINNET_LOG_RPC_URLS: string[] = [
   ...new Set([
+    // Known archive + CORS-capable endpoint. It must remain first even when a
+    // configured free-tier URL exists, because Trade and Transfer history use
+    // ranges larger than those plans accept.
+    "https://rpc-bsc.48.club",
     ...envList("VITE_BSC_MAINNET_LOG_RPC_URLS"),
     ...envList("VITE_BSC_MAINNET_RPC_FALLBACKS"),
     ...MAINNET_LOG_DEFAULTS,
