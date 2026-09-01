@@ -22,7 +22,7 @@ const logChain = () => (ACTIVE_NETWORK.chainId === bsc.id ? bsc : bscTestnet);
  * Starting window size. The primary Mainnet log endpoint accepts 5,000 blocks;
  * restrictive fallbacks are reduced automatically by `fetchWindow`.
  */
-export const DEFAULT_WINDOW = 5_000n;
+export const DEFAULT_WINDOW = 4_000n;
 /** Some free providers cap eth_getLogs at only 5 blocks. */
 const MIN_WINDOW = 5n;
 const REQUEST_TIMEOUT_MS = 12_000;

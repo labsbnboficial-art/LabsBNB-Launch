@@ -32,19 +32,19 @@ export type TradeEvent = {
 // cache granularity, never a raw `eth_getLogs` range.
 // Match the largest verified public-provider range. `getLogsChunked` still
 // shrinks this automatically for providers with smaller limits.
-const CHUNK = 5_000n;
+const CHUNK = 4_000n;
 const MAX_LOOKBACK = 600_000n; // ~21 days on BSC (3s blocks)
 // Keep scanning after the newest event-bearing chunk. Stopping there made a
 // token with several purchases show only its latest purchase. At 5k blocks per
 // chunk this covers 240k blocks while remaining bounded.
-const MAX_CHUNKS_PER_PAGE = 32;
+const MAX_CHUNKS_PER_PAGE = 40;
 // A curve can be idle for days: keep scanning further back while nothing was
 // found yet, otherwise the very first page returns empty and the UI stops.
 const MAX_EMPTY_CHUNKS_PER_PAGE = 108;
 // The primary Mainnet log RPC accepts concurrent 5k-block requests. Four
 // workers recover the complete history before the UI deadline, while the
 // lower-level reader still rotates/retries restrictive fallback providers.
-const PARALLEL_CHUNKS = 32;
+const PARALLEL_CHUNKS = 40;
 const HEAD_MARGIN = 6n; // blocks near the head are not cached (may still reorg)
 
 
