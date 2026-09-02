@@ -210,6 +210,53 @@ function TokenPage() {
   const ath = useMemo(() => computeAth(events), [events]);
   const fromAth = distanceFromAth(live?.priceWei ?? null, ath?.priceWei ?? null);
 
+  // Connected wallet position + unrealized PnL, derived from its own
+  // Trade(...) events and valued at the live curve price.
+  const myPosition = useMemo(() => {
+    if (!wallet || !events.length) return null;
+    const mine = events.filter((e) => e.trader.toLowerCase() === wallet.toLowerCase());
+    if (!mine.length) return null;
+    let tokens = 0n;
+    let bnbSpent = 0n;
+    let bnbReceived = 0n;
+    let buys = 0;
+    let sells = 0;
+    for (const e of mine) {
+      if (e.isBuy) {
+        tokens += e.amountTokens;
+        bnbSpent += e.amountBnb;
+        buys++;
+      } else {
+        tokens -= e.amountTokens;
+        bnbReceived += e.amountBnb;
+        sells++;
+      }
+    }
+    const priceWei = live?.priceWei ?? null;
+    const valueWei = priceWei && tokens > 0n ? (tokens * priceWei) / 10n ** 18n : 0n;
+    const netInvested = bnbSpent - bnbReceived;
+    const pnlWei = valueWei - (netInvested > 0n ? netInvested : 0n);
+    const pnlPct =
+      netInvested > 0n ? Number((pnlWei * 10_000n) / netInvested) / 100 : null;
+    const avgEntryWei =
+      tokens > 0n && buys > 0
+        ? ((bnbSpent > bnbReceived ? bnbSpent - bnbReceived : 0n) * 10n ** 18n) / tokens
+        : null;
+    return {
+      tokens,
+      bnbSpent,
+      bnbReceived,
+      netInvested,
+      valueWei,
+      pnlWei,
+      pnlPct,
+      avgEntryWei,
+      buys,
+      sells,
+      trades: mine.length,
+    };
+  }, [events, wallet, live]);
+
 
   const [timeframe, setTimeframe] = useState<TimeframeId>("15m");
   const tfSeconds = TIMEFRAMES.find((t) => t.id === timeframe)!.seconds;
@@ -494,6 +541,55 @@ function TokenPage() {
           <FlowBar label="Traders" unit="wallets" buy={analytics.buyers} sell={analytics.sellers} digits={0} />
         </div>
 
+        {/* My position — unrealized PnL from the connected wallet's own trades */}
+        <div className="mt-3 glass rounded-2xl p-6">
+          <div className="flex items-center justify-between gap-2 mb-4">
+            <div className="flex items-center gap-2">
+              <TrendingUp className="h-4 w-4 text-accent" />
+              <h3 className="font-display text-lg font-semibold">Mi posición · PnL no realizado</h3>
+            </div>
+            {myPosition && (
+              <span className="text-[11px] font-mono text-muted-foreground">
+                {myPosition.buys} compras · {myPosition.sells} ventas
+              </span>
+            )}
+          </div>
+          {!wallet ? (
+            <p className="text-sm text-muted-foreground">Conecta tu wallet para ver tu posición y tu PnL en este token.</p>
+          ) : !myPosition ? (
+            <p className="text-sm text-muted-foreground">
+              {eventsQ.isLoading ? "Leyendo tus operaciones on-chain…" : "Todavía no registras operaciones en este token."}
+            </p>
+          ) : (
+            <div className="grid gap-3 grid-cols-2 md:grid-cols-5">
+              <StatCard
+                label="PnL no realizado"
+                value={`${myPosition.pnlWei >= 0n ? "+" : ""}${(Number(myPosition.pnlWei) / 1e18).toFixed(5)} BNB`}
+                accent={myPosition.pnlWei >= 0n ? "text-success" : "text-destructive"}
+              />
+              <StatCard
+                label="PnL %"
+                value={myPosition.pnlPct == null ? "—" : `${myPosition.pnlPct >= 0 ? "+" : ""}${myPosition.pnlPct.toFixed(2)}%`}
+                accent={(myPosition.pnlPct ?? 0) >= 0 ? "text-success" : "text-destructive"}
+              />
+              <StatCard
+                label={`Balance ${String(tk.ticker)}`}
+                value={(Number(myPosition.tokens) / 1e18).toLocaleString(undefined, { maximumFractionDigits: 2 })}
+              />
+              <StatCard label="Invertido neto" value={`${(Number(myPosition.netInvested) / 1e18).toFixed(5)} BNB`} />
+              <StatCard label="Valor actual" value={`${(Number(myPosition.valueWei) / 1e18).toFixed(5)} BNB`} />
+            </div>
+          )}
+          {myPosition && (
+            <p className="mt-3 text-[11px] text-muted-foreground">
+              Precio medio de entrada:{" "}
+              <span className="font-mono">
+                {myPosition.avgEntryWei ? (Number(myPosition.avgEntryWei) / 1e18).toPrecision(4) : "—"} BNB
+              </span>{" "}
+              · valorado al precio en vivo de la curva. Cálculo sobre el histórico on-chain cargado.
+            </p>
+          )}
+        </div>
 
 
         <div className="mt-6 grid gap-6 lg:grid-cols-3">
@@ -534,7 +630,7 @@ function TokenPage() {
                   <ArrowLeftRight className="h-4 w-4 text-accent" />
                   <h3 className="font-display text-lg font-semibold">Recent trades</h3>
                 </div>
-                <span className="text-[11px] font-mono text-muted-foreground">{events.length} eventos</span>
+                <span className="text-[11px] font-mono text-muted-foreground">últimas 10 de {events.length} eventos</span>
               </div>
               {eventsError ? (
                 <ChainError error={eventsError} onRetry={() => eventsQ.refetch()} />
@@ -552,7 +648,7 @@ function TokenPage() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-white/5">
-                      {[...events].reverse().map((tr) => (
+                      {[...events].reverse().slice(0, 10).map((tr) => (
                         <tr key={tr.key}>
                           <td className="py-2 font-mono">
                             <a
@@ -730,7 +826,7 @@ function FlowBar({
 }
 
 
-function StatCard({ icon, label, value, accent }: { icon: React.ReactNode; label: string; value: React.ReactNode; accent?: string }) {
+function StatCard({ icon, label, value, accent }: { icon?: React.ReactNode; label: string; value: React.ReactNode; accent?: string }) {
   return (
     <div className="glass rounded-xl p-3">
       <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-widest text-muted-foreground">{icon}{label}</div>
