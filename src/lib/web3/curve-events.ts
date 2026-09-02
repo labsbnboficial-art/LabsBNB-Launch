@@ -121,11 +121,26 @@ async function getChunk(curve: `0x${string}`, index: number, head: bigint): Prom
   return task;
 }
 
-/** Drops cached ranges for a curve (used after a trade to force a fresh read). */
+/**
+ * Drops only the newest cached range for a curve.
+ *
+ * A new trade can only change the range nearest the chain head. Clearing every
+ * finalised range made an ordinary refresh depend on downloading the complete
+ * history again; if an RPC then returned a partial page, yesterday's candles
+ * disappeared until the user manually loaded older pages.
+ */
 export function invalidateTradeCache(curve?: `0x${string}`) {
   if (!curve) return chunkCache.clear();
   const prefix = `${curve.toLowerCase()}:`;
-  for (const k of [...chunkCache.keys()]) if (k.startsWith(prefix)) chunkCache.delete(k);
+  const indexes = [...chunkCache.keys()]
+    .filter((key) => key.startsWith(prefix))
+    .map((key) => ({ key, index: Number(key.slice(prefix.length)) }))
+    .filter(({ index }) => Number.isFinite(index));
+  if (!indexes.length) return;
+  const newestIndex = Math.max(...indexes.map(({ index }) => index));
+  for (const entry of indexes) {
+    if (entry.index === newestIndex) chunkCache.delete(entry.key);
+  }
 }
 
 export type TradePage = {

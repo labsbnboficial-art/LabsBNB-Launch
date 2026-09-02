@@ -1,8 +1,8 @@
 import { createFileRoute, Link, notFound, useNavigate } from "@tanstack/react-router";
 import { SOCIAL_FIELDS, type SocialKey } from "@/lib/social";
 import { SocialLinks } from "@/components/labsbnb/SocialLinks";
-import { useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
+import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { AppShell } from "@/components/labsbnb/AppShell";
 import { useI18n } from "@/lib/i18n";
@@ -14,7 +14,7 @@ import { useAuth } from "@/lib/auth";
 import { useAccount } from "wagmi";
 import { useSiweSignIn } from "@/lib/use-siwe";
 import { fetchOnChainToken, isAddress, type OnChainToken } from "@/lib/web3/onchain-token";
-import { fetchTradePage, fetchCurveStats, buildCandles, TIMEFRAMES, type TimeframeId } from "@/lib/web3/curve-events";
+import { fetchTradePage, fetchCurveStats, buildCandles, TIMEFRAMES, type TimeframeId, type TradePage } from "@/lib/web3/curve-events";
 import { fetchLivePrice, formatPrice } from "@/lib/web3/live-price";
 import { computeAth, distanceFromAth, formatAthDate } from "@/lib/web3/ath";
 
@@ -33,6 +33,42 @@ import { BoostPurchaseModal } from "@/components/labsbnb/BoostPurchaseModal";
 import { ImagePicker } from "@/components/labsbnb/ImagePicker";
 import { withRpcTimeout } from "@/lib/web3/timeout";
 
+type TradeHistoryData = {
+  pages: TradePage[];
+  pageParams: unknown[];
+};
+
+function isTradeHistoryData(value: unknown): value is TradeHistoryData {
+  if (!value || typeof value !== "object") return false;
+  const candidate = value as Partial<TradeHistoryData>;
+  return Array.isArray(candidate.pages) && Array.isArray(candidate.pageParams);
+}
+
+/** Merge polling results into the confirmed history instead of replacing it. */
+function preserveTradeHistory(oldValue: unknown, newValue: unknown): unknown {
+  if (!isTradeHistoryData(oldValue) || !isTradeHistoryData(newValue) || !newValue.pages.length) return newValue;
+
+  const merged = new Map<string, TradePage["events"][number]>();
+  for (const page of oldValue.pages) for (const event of page.events) merged.set(event.key, event);
+  for (const page of newValue.pages) for (const event of page.events) merged.set(event.key, event);
+
+  const events = [...merged.values()].sort((a, b) =>
+    a.blockNumber === b.blockNumber ? 0 : a.blockNumber < b.blockNumber ? -1 : 1,
+  );
+  const pages = newValue.pages.map((page, index) => index === 0 ? { ...page, events } : page);
+
+  const cursors = [...oldValue.pages, ...newValue.pages]
+    .map((page) => page.nextCursor)
+    .filter((cursor): cursor is string => cursor !== null)
+    .map(Number)
+    .filter(Number.isFinite);
+  if (cursors.length) {
+    const lastIndex = pages.length - 1;
+    pages[lastIndex] = { ...pages[lastIndex], nextCursor: String(Math.min(...cursors)) };
+  }
+
+  return { ...newValue, pages };
+}
 
 
 
@@ -104,8 +140,15 @@ function TokenPage() {
     refetchInterval: 15_000,
     retry: 1,
     initialPageParam: null as string | null,
-    queryFn: ({ pageParam }) => withRpcTimeout("Trade events", () => fetchTradePage(curveOk!, pageParam, 25)),
+    // Read a broad history page so a busy day cannot displace yesterday's
+    // trades and reset the candles. Further pages still extend the 21-day
+    // on-chain lookback when a curve has more than 200 events in one range.
+    queryFn: ({ pageParam }) => {
+      if (!curveOk) throw new Error("Bonding curve unavailable");
+      return withRpcTimeout("Trade events", () => fetchTradePage(curveOk, pageParam, 200));
+    },
     getNextPageParam: (last) => last.nextCursor,
+    structuralSharing: preserveTradeHistory,
   });
 
   // volume24h() / priceChange() / holders() — the contract's own views.
@@ -143,22 +186,6 @@ function TokenPage() {
   useEffect(() => {
     if (eventsError) console.error("[token] Trade events could not be read:", eventsError);
   }, [eventsError]);
-
-  // Every time the chain head moves, refresh the trades feed so the chart and
-  // the table follow the live price without a page reload.
-  const queryClient = useQueryClient();
-  const lastBlock = useRef<bigint>(0n);
-  useEffect(() => {
-    if (!live?.blockNumber || !curveOk) return;
-    if (lastBlock.current === 0n) {
-      lastBlock.current = live.blockNumber;
-      return;
-    }
-    if (live.blockNumber > lastBlock.current) {
-      lastBlock.current = live.blockNumber;
-      queryClient.invalidateQueries({ queryKey: ["curveTrades", curveOk] });
-    }
-  }, [live?.blockNumber, curveOk, queryClient]);
 
   const analytics = useMemo(() => {
     const buys = events.filter((e) => e.isBuy).length;
@@ -204,11 +231,10 @@ function TokenPage() {
   useEffect(() => {
     if (eventsQ.isFetching || !eventsQ.hasNextPage || eventsQ.isError) return;
     if (autoPages >= 10) return;
-    // An empty first page just means the curve has been idle: keep scanning back.
-    // Once real trades are present, keep the first render stable. Older pages
-    // remain available through the explicit button/infinite-scroll instead of
-    // hammering free RPCs until a historical request fails and masks the data.
-    if (events.length) return;
+    // Keep following the cursor even after recent trades are found. Stopping at
+    // the first non-empty page made a new buy/sell look as if it had reset the
+    // chart: older pages still existed on-chain but were never requested.
+    // The page reader and this cap keep the scan bounded for public RPCs.
     setAutoPages((n) => n + 1);
     eventsQ.fetchNextPage();
   }, [events, autoPages, eventsQ.hasNextPage, eventsQ.isFetching, eventsQ.isError, eventsQ.fetchNextPage, curveOk]);
