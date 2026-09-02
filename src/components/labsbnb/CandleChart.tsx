@@ -148,24 +148,8 @@ export function CandleChart({
     return map;
   }, [trades, bucketSeconds]);
 
-  /** Discreet BUY/SELL markers: only the biggest trades, so the chart breathes. */
-  const markers = useMemo<SeriesMarker<Time>[]>(() => {
-    if (!trades?.length || !bucketSeconds || data.length === 0) return [];
-    const valid = new Set(data.map((c) => c.t));
-    const top = [...trades]
-      .filter((e) => valid.has(Math.floor(e.timestamp / bucketSeconds) * bucketSeconds))
-      .sort((a, b) => (a.amountBnb === b.amountBnb ? 0 : a.amountBnb > b.amountBnb ? -1 : 1))
-      .slice(0, 30);
-    return top
-      .map((e) => ({
-        time: (Math.floor(e.timestamp / bucketSeconds) * bucketSeconds) as UTCTimestamp,
-        position: e.isBuy ? ("belowBar" as const) : ("aboveBar" as const),
-        color: e.isBuy ? UP : DOWN,
-        shape: e.isBuy ? ("arrowUp" as const) : ("arrowDown" as const),
-        size: 0.7,
-      }))
-      .sort((a, b) => Number(a.time) - Number(b.time));
-  }, [trades, bucketSeconds, data]);
+  /** BUY/SELL markers disabled — user requested no green/red arrows on the chart. */
+  const markers = useMemo<SeriesMarker<Time>[]>(() => [], []);
 
 
 
