@@ -33,6 +33,42 @@ import { BoostPurchaseModal } from "@/components/labsbnb/BoostPurchaseModal";
 import { ImagePicker } from "@/components/labsbnb/ImagePicker";
 import { withRpcTimeout } from "@/lib/web3/timeout";
 
+type TradeHistoryData = {
+  pages: TradePage[];
+  pageParams: unknown[];
+};
+
+function isTradeHistoryData(value: unknown): value is TradeHistoryData {
+  if (!value || typeof value !== "object") return false;
+  const candidate = value as Partial<TradeHistoryData>;
+  return Array.isArray(candidate.pages) && Array.isArray(candidate.pageParams);
+}
+
+/** Merge polling results into the confirmed history instead of replacing it. */
+function preserveTradeHistory(oldValue: unknown, newValue: unknown): unknown {
+  if (!isTradeHistoryData(oldValue) || !isTradeHistoryData(newValue) || !newValue.pages.length) return newValue;
+
+  const merged = new Map<string, TradePage["events"][number]>();
+  for (const page of oldValue.pages) for (const event of page.events) merged.set(event.key, event);
+  for (const page of newValue.pages) for (const event of page.events) merged.set(event.key, event);
+
+  const events = [...merged.values()].sort((a, b) =>
+    a.blockNumber === b.blockNumber ? 0 : a.blockNumber < b.blockNumber ? -1 : 1,
+  );
+  const pages = newValue.pages.map((page, index) => index === 0 ? { ...page, events } : page);
+
+  const cursors = [...oldValue.pages, ...newValue.pages]
+    .map((page) => page.nextCursor)
+    .filter((cursor): cursor is string => cursor !== null)
+    .map(Number)
+    .filter(Number.isFinite);
+  if (cursors.length) {
+    const lastIndex = pages.length - 1;
+    pages[lastIndex] = { ...pages[lastIndex], nextCursor: String(Math.min(...cursors)) };
+  }
+
+  return { ...newValue, pages };
+}
 
 
 
