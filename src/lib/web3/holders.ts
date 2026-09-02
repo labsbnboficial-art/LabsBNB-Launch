@@ -15,7 +15,7 @@ const ZERO = "0x0000000000000000000000000000000000000000";
 // UI deadline while waiting for dozens of sequential RPC round-trips.
 const CHUNK = 4_000n;
 const MAX_CHUNKS = 150; // ~600k blocks (~21 days) upper bound
-const PARALLEL_CHUNKS = 6;
+const PARALLEL_CHUNKS = 16;
 
 async function transferLogs(token: `0x${string}`, from: bigint, to: bigint): Promise<Log[]> {
   return getLogsChunked({ address: token, event: TRANSFER_EVENT, from, to, label: `Transfer ${token.slice(0, 10)}` });

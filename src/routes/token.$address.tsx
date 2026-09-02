@@ -841,7 +841,7 @@ function TopHolders({ token, ticker }: { token: string | null; ticker: string })
     retry: 1,
     queryFn: () => {
       if (!valid) throw new Error("Dirección de token no disponible.");
-      return withRpcTimeout("token holders", () => fetchTopHolders(valid, 10), 60_000);
+      return withRpcTimeout("token holders", () => fetchTopHolders(valid, 10), 120_000);
     },
   });
 
