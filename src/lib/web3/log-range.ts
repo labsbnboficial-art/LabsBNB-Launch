@@ -156,9 +156,9 @@ async function fetchWindow(address: `0x${string}`, event: AbiEvent, from: bigint
  */
 function currentWindow(): bigint {
   const preferredWindow = preferredRpc ? windowByUrl.get(preferredRpc) : undefined;
-  const w = preferredWindow !== undefined && preferredWindow < learnedWindow
-    ? preferredWindow
-    : learnedWindow;
+  // Limits are provider-specific. Once an archive-capable endpoint succeeds,
+  // do not inherit the 5/10-block cap learned from a restrictive fallback.
+  const w = preferredRpc ? (preferredWindow ?? DEFAULT_WINDOW) : learnedWindow;
   return w < MIN_WINDOW ? MIN_WINDOW : w;
 }
 

@@ -838,8 +838,11 @@ function TopHolders({ token, ticker }: { token: string | null; ticker: string })
     queryKey: ["holders", valid],
     enabled: !!valid && requested,
     staleTime: 60_000,
-    retry: 0,
-    queryFn: () => withRpcTimeout("token holders", () => fetchTopHolders(valid!, 10)),
+    retry: 1,
+    queryFn: () => {
+      if (!valid) throw new Error("Dirección de token no disponible.");
+      return withRpcTimeout("token holders", () => fetchTopHolders(valid, 10), 60_000);
+    },
   });
 
   return (
@@ -894,7 +897,7 @@ function TopHolders({ token, ticker }: { token: string | null; ticker: string })
       )}
       {q.data && !q.data.complete && (
         <p className="mt-3 text-[10px] text-muted-foreground">
-          Ventana parcial de bloques: el reparto refleja las transferencias recientes de ${ticker}.
+          Ventana parcial de bloques: el reparto refleja las transferencias recientes de {ticker}.
         </p>
       )}
     </div>

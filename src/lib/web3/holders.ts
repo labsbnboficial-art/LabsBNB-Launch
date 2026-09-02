@@ -10,9 +10,12 @@ const TRANSFER_EVENT = parseAbiItem(
 );
 
 const ZERO = "0x0000000000000000000000000000000000000000";
-// Cache/scan granularity: each range is split further into RPC-safe windows.
-const CHUNK = 3_000n;
-const MAX_CHUNKS = 72; // ~216k blocks (~7 days) upper bound
+// Scan the same 21-day window used by trade history. Transfer ranges are read
+// in parallel batches so a token created several days ago does not exceed the
+// UI deadline while waiting for dozens of sequential RPC round-trips.
+const CHUNK = 4_000n;
+const MAX_CHUNKS = 150; // ~600k blocks (~21 days) upper bound
+const PARALLEL_CHUNKS = 6;
 
 async function transferLogs(token: `0x${string}`, from: bigint, to: bigint): Promise<Log[]> {
   return getLogsChunked({ address: token, event: TRANSFER_EVENT, from, to, label: `Transfer ${token.slice(0, 10)}` });
@@ -42,28 +45,54 @@ export async function fetchTopHolders(token: `0x${string}`, top = 10): Promise<H
   if (hit && Date.now() - hit.at < TTL) return hit.value;
 
   const head = await readClient().getBlockNumber();
-  const balances = new Map<string, bigint>();
+  const collected: Log[] = [];
   let complete = false;
 
   let index = Number(head / CHUNK);
-  for (let i = 0; i < MAX_CHUNKS && index >= 0; i++, index--) {
-    const from = BigInt(index) * CHUNK;
-    const to = from + CHUNK - 1n;
-    const logs = await transferLogs(token, from, to > head ? head : to);
-    for (const log of logs) {
-      const a = (log as Log & { args?: Record<string, unknown> }).args as {
-        from?: `0x${string}`;
-        to?: `0x${string}`;
-        value?: bigint;
-      };
-
-      const value = a.value ?? 0n;
-      if (!value) continue;
-      if (a.from && a.from !== ZERO) balances.set(a.from, (balances.get(a.from) ?? 0n) - value);
-      if (a.to && a.to !== ZERO) balances.set(a.to, (balances.get(a.to) ?? 0n) + value);
-      if (a.from === ZERO) complete = true;
+  let scanned = 0;
+  while (scanned < MAX_CHUNKS && index >= 0 && !complete) {
+    const ranges: Array<{ from: bigint; to: bigint }> = [];
+    for (let i = 0; i < PARALLEL_CHUNKS && scanned < MAX_CHUNKS && index >= 0; i += 1) {
+      const from = BigInt(index) * CHUNK;
+      const to = from + CHUNK - 1n;
+      ranges.push({ from, to: to > head ? head : to });
+      index -= 1;
+      scanned += 1;
     }
-    if (complete) break;
+
+    const batches = await Promise.all(ranges.map(({ from, to }) => transferLogs(token, from, to)));
+    for (const logs of batches) {
+      for (const log of logs) {
+        const a = (log as Log & { args?: Record<string, unknown> }).args as {
+          from?: `0x${string}`;
+        };
+        if (a.from === ZERO) complete = true;
+      }
+      collected.push(...logs);
+    }
+  }
+
+  // The scan runs newest → oldest to find the mint quickly, but balances must
+  // be reconstructed oldest → newest. Processing in scan order made sells and
+  // later transfers produce incorrect holder balances and percentages.
+  collected.sort((a, b) => {
+    const blockA = a.blockNumber ?? 0n;
+    const blockB = b.blockNumber ?? 0n;
+    if (blockA !== blockB) return blockA < blockB ? -1 : 1;
+    return (a.logIndex ?? 0) - (b.logIndex ?? 0);
+  });
+
+  const balances = new Map<string, bigint>();
+  for (const log of collected) {
+    const a = (log as Log & { args?: Record<string, unknown> }).args as {
+      from?: `0x${string}`;
+      to?: `0x${string}`;
+      value?: bigint;
+    };
+    const value = a.value ?? 0n;
+    if (!value) continue;
+    if (a.from && a.from !== ZERO) balances.set(a.from, (balances.get(a.from) ?? 0n) - value);
+    if (a.to && a.to !== ZERO) balances.set(a.to, (balances.get(a.to) ?? 0n) + value);
   }
 
   const list = [...balances.entries()]
