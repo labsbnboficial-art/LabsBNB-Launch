@@ -1,9 +1,10 @@
 // Top holders read directly from the blockchain (ERC-20 Transfer logs).
 // No indexer, no database: we scan backwards in grid-aligned chunks until the
 // mint (from = 0x0) shows up, which makes the reconstructed balances exact.
-import { parseAbiItem, type Log } from "viem";
+import { createPublicClient, http, parseAbiItem, type Log } from "viem";
+import { bsc, bscTestnet } from "wagmi/chains";
 import { readClient } from "./onchain-token";
-import { getLogsChunked } from "./log-range";
+import { ACTIVE_NETWORK } from "./networks";
 
 const TRANSFER_EVENT = parseAbiItem(
   "event Transfer(address indexed from, address indexed to, uint256 value)",
@@ -17,8 +18,25 @@ const CHUNK = 4_000n;
 const MAX_CHUNKS = 150; // ~600k blocks (~21 days) upper bound
 const PARALLEL_CHUNKS = 16;
 
+// Keep this scan isolated from the trade-history paginator. Sharing its
+// adaptive provider state caused a 5-block fallback limit to turn one holder
+// query into tens of thousands of requests.
+const holderClient = createPublicClient({
+  chain: ACTIVE_NETWORK.chainId === bsc.id ? bsc : bscTestnet,
+  transport: http(ACTIVE_NETWORK.logRpcUrls[0], {
+    batch: false,
+    timeout: 15_000,
+    retryCount: 1,
+  }),
+});
+
 async function transferLogs(token: `0x${string}`, from: bigint, to: bigint): Promise<Log[]> {
-  return getLogsChunked({ address: token, event: TRANSFER_EVENT, from, to, label: `Transfer ${token.slice(0, 10)}` });
+  return holderClient.getLogs({
+    address: token,
+    event: TRANSFER_EVENT,
+    fromBlock: from,
+    toBlock: to,
+  }) as Promise<Log[]>;
 }
 
 
