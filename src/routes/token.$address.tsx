@@ -104,7 +104,10 @@ function TokenPage() {
     refetchInterval: 15_000,
     retry: 1,
     initialPageParam: null as string | null,
-    queryFn: ({ pageParam }) => withRpcTimeout("Trade events", () => fetchTradePage(curveOk!, pageParam, 25)),
+    // Read a broad history page so a busy day cannot displace yesterday's
+    // trades and reset the candles. Further pages still extend the 21-day
+    // on-chain lookback when a curve has more than 200 events in one range.
+    queryFn: ({ pageParam }) => withRpcTimeout("Trade events", () => fetchTradePage(curveOk!, pageParam, 200)),
     getNextPageParam: (last) => last.nextCursor,
   });
 
