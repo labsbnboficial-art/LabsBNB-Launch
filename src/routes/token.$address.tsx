@@ -204,11 +204,10 @@ function TokenPage() {
   useEffect(() => {
     if (eventsQ.isFetching || !eventsQ.hasNextPage || eventsQ.isError) return;
     if (autoPages >= 10) return;
-    // An empty first page just means the curve has been idle: keep scanning back.
-    // Once real trades are present, keep the first render stable. Older pages
-    // remain available through the explicit button/infinite-scroll instead of
-    // hammering free RPCs until a historical request fails and masks the data.
-    if (events.length) return;
+    // Keep following the cursor even after recent trades are found. Stopping at
+    // the first non-empty page made a new buy/sell look as if it had reset the
+    // chart: older pages still existed on-chain but were never requested.
+    // The page reader and this cap keep the scan bounded for public RPCs.
     setAutoPages((n) => n + 1);
     eventsQ.fetchNextPage();
   }, [events, autoPages, eventsQ.hasNextPage, eventsQ.isFetching, eventsQ.isError, eventsQ.fetchNextPage, curveOk]);
