@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { AppShell } from "@/components/labsbnb/AppShell";
 import { useAuth } from "@/lib/auth";
 import { Bell, CheckCircle2, Rocket, TrendingUp, Coins } from "lucide-react";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/notifications")({
   head: () => ({
@@ -60,17 +61,36 @@ function NotificationsPage() {
     },
   });
 
+  async function refresh() {
+    await Promise.all([
+      qc.invalidateQueries({ queryKey: ["notifications"] }),
+      qc.invalidateQueries({ queryKey: ["notif-count"] }),
+    ]);
+  }
+
   async function markRead(id: string, payload: NotifPayload) {
-    await supabase.from("activity").update({ payload: { ...payload, read: true } as never }).eq("id", id);
-    qc.invalidateQueries({ queryKey: ["notifications"] });
+    if (payload.read) return;
+    const { error } = await supabase.from("activity").update({ payload: { ...payload, read: true } as never }).eq("id", id);
+    if (error) {
+      toast.error("No se pudo marcar la notificación como leída.");
+      console.error("[NOTIF_READ]", error);
+      return;
+    }
+    await refresh();
   }
 
   async function markAllRead() {
-    for (const n of q.data ?? []) {
-      const p = (n.payload ?? {}) as NotifPayload;
-      if (!p.read) await supabase.from("activity").update({ payload: { ...p, read: true } as never }).eq("id", n.id);
-    }
-    qc.invalidateQueries({ queryKey: ["notifications"] });
+    const unread = (q.data ?? []).filter((n) => !((n.payload ?? {}) as NotifPayload).read);
+    if (unread.length === 0) return;
+    await Promise.all(
+      unread.map((n) =>
+        supabase
+          .from("activity")
+          .update({ payload: { ...((n.payload ?? {}) as NotifPayload), read: true } as never })
+          .eq("id", n.id),
+      ),
+    );
+    await refresh();
   }
 
   if (loading || !user) return <AppShell><div className="p-12 text-center text-muted-foreground">…</div></AppShell>;
