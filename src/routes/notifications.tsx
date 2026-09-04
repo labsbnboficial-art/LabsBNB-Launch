@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { AppShell } from "@/components/labsbnb/AppShell";
 import { useAuth } from "@/lib/auth";
 import { Bell, CheckCircle2, Rocket, TrendingUp, Coins } from "lucide-react";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/notifications")({
   head: () => ({
