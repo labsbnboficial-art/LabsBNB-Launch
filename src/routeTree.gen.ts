@@ -15,16 +15,19 @@ import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as NotificationsRouteImport } from './routes/notifications'
 import { Route as MissionsRouteImport } from './routes/missions'
 import { Route as ExplorerRouteImport } from './routes/explorer'
+import { Route as CreatorsRouteImport } from './routes/creators'
 import { Route as CreateRouteImport } from './routes/create'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as TokenAddressRouteImport } from './routes/token.$address'
+import { Route as CreatorAddressRouteImport } from './routes/creator.$address'
 import { Route as CampaignsNewRouteImport } from './routes/campaigns.new'
 import { Route as CampaignsIdRouteImport } from './routes/campaigns.$id'
 import { Route as ApiAiCopilotRouteImport } from './routes/api/ai-copilot'
 import { Route as ApiPublicTrendingRouteImport } from './routes/api/public/trending'
 import { Route as ApiPublicTokenMediaRouteImport } from './routes/api/public/token-media'
+import { Route as ApiPublicCreatorsRouteImport } from './routes/api/public/creators'
 import { Route as ApiPublicTrendingRunRouteImport } from './routes/api/public/trending/run'
 import { Route as ApiPublicSignalsRunRouteImport } from './routes/api/public/signals/run'
 
@@ -58,6 +61,11 @@ const ExplorerRoute = ExplorerRouteImport.update({
   path: '/explorer',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CreatorsRoute = CreatorsRouteImport.update({
+  id: '/creators',
+  path: '/creators',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const CreateRoute = CreateRouteImport.update({
   id: '/create',
   path: '/create',
@@ -81,6 +89,11 @@ const IndexRoute = IndexRouteImport.update({
 const TokenAddressRoute = TokenAddressRouteImport.update({
   id: '/token/$address',
   path: '/token/$address',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CreatorAddressRoute = CreatorAddressRouteImport.update({
+  id: '/creator/$address',
+  path: '/creator/$address',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CampaignsNewRoute = CampaignsNewRouteImport.update({
@@ -108,6 +121,11 @@ const ApiPublicTokenMediaRoute = ApiPublicTokenMediaRouteImport.update({
   path: '/api/public/token-media',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicCreatorsRoute = ApiPublicCreatorsRouteImport.update({
+  id: '/api/public/creators',
+  path: '/api/public/creators',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicTrendingRunRoute = ApiPublicTrendingRunRouteImport.update({
   id: '/run',
   path: '/run',
@@ -124,6 +142,7 @@ export interface FileRoutesByFullPath {
   '/admin': typeof AdminRoute
   '/auth': typeof AuthRoute
   '/create': typeof CreateRoute
+  '/creators': typeof CreatorsRoute
   '/explorer': typeof ExplorerRoute
   '/missions': typeof MissionsRoute
   '/notifications': typeof NotificationsRoute
@@ -133,7 +152,9 @@ export interface FileRoutesByFullPath {
   '/api/ai-copilot': typeof ApiAiCopilotRoute
   '/campaigns/$id': typeof CampaignsIdRoute
   '/campaigns/new': typeof CampaignsNewRoute
+  '/creator/$address': typeof CreatorAddressRoute
   '/token/$address': typeof TokenAddressRoute
+  '/api/public/creators': typeof ApiPublicCreatorsRoute
   '/api/public/token-media': typeof ApiPublicTokenMediaRoute
   '/api/public/trending': typeof ApiPublicTrendingRouteWithChildren
   '/api/public/signals/run': typeof ApiPublicSignalsRunRoute
@@ -144,6 +165,7 @@ export interface FileRoutesByTo {
   '/admin': typeof AdminRoute
   '/auth': typeof AuthRoute
   '/create': typeof CreateRoute
+  '/creators': typeof CreatorsRoute
   '/explorer': typeof ExplorerRoute
   '/missions': typeof MissionsRoute
   '/notifications': typeof NotificationsRoute
@@ -153,7 +175,9 @@ export interface FileRoutesByTo {
   '/api/ai-copilot': typeof ApiAiCopilotRoute
   '/campaigns/$id': typeof CampaignsIdRoute
   '/campaigns/new': typeof CampaignsNewRoute
+  '/creator/$address': typeof CreatorAddressRoute
   '/token/$address': typeof TokenAddressRoute
+  '/api/public/creators': typeof ApiPublicCreatorsRoute
   '/api/public/token-media': typeof ApiPublicTokenMediaRoute
   '/api/public/trending': typeof ApiPublicTrendingRouteWithChildren
   '/api/public/signals/run': typeof ApiPublicSignalsRunRoute
@@ -165,6 +189,7 @@ export interface FileRoutesById {
   '/admin': typeof AdminRoute
   '/auth': typeof AuthRoute
   '/create': typeof CreateRoute
+  '/creators': typeof CreatorsRoute
   '/explorer': typeof ExplorerRoute
   '/missions': typeof MissionsRoute
   '/notifications': typeof NotificationsRoute
@@ -174,7 +199,9 @@ export interface FileRoutesById {
   '/api/ai-copilot': typeof ApiAiCopilotRoute
   '/campaigns/$id': typeof CampaignsIdRoute
   '/campaigns/new': typeof CampaignsNewRoute
+  '/creator/$address': typeof CreatorAddressRoute
   '/token/$address': typeof TokenAddressRoute
+  '/api/public/creators': typeof ApiPublicCreatorsRoute
   '/api/public/token-media': typeof ApiPublicTokenMediaRoute
   '/api/public/trending': typeof ApiPublicTrendingRouteWithChildren
   '/api/public/signals/run': typeof ApiPublicSignalsRunRoute
@@ -187,6 +214,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/auth'
     | '/create'
+    | '/creators'
     | '/explorer'
     | '/missions'
     | '/notifications'
@@ -196,7 +224,9 @@ export interface FileRouteTypes {
     | '/api/ai-copilot'
     | '/campaigns/$id'
     | '/campaigns/new'
+    | '/creator/$address'
     | '/token/$address'
+    | '/api/public/creators'
     | '/api/public/token-media'
     | '/api/public/trending'
     | '/api/public/signals/run'
@@ -207,6 +237,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/auth'
     | '/create'
+    | '/creators'
     | '/explorer'
     | '/missions'
     | '/notifications'
@@ -216,7 +247,9 @@ export interface FileRouteTypes {
     | '/api/ai-copilot'
     | '/campaigns/$id'
     | '/campaigns/new'
+    | '/creator/$address'
     | '/token/$address'
+    | '/api/public/creators'
     | '/api/public/token-media'
     | '/api/public/trending'
     | '/api/public/signals/run'
@@ -227,6 +260,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/auth'
     | '/create'
+    | '/creators'
     | '/explorer'
     | '/missions'
     | '/notifications'
@@ -236,7 +270,9 @@ export interface FileRouteTypes {
     | '/api/ai-copilot'
     | '/campaigns/$id'
     | '/campaigns/new'
+    | '/creator/$address'
     | '/token/$address'
+    | '/api/public/creators'
     | '/api/public/token-media'
     | '/api/public/trending'
     | '/api/public/signals/run'
@@ -248,6 +284,7 @@ export interface RootRouteChildren {
   AdminRoute: typeof AdminRoute
   AuthRoute: typeof AuthRoute
   CreateRoute: typeof CreateRoute
+  CreatorsRoute: typeof CreatorsRoute
   ExplorerRoute: typeof ExplorerRoute
   MissionsRoute: typeof MissionsRoute
   NotificationsRoute: typeof NotificationsRoute
@@ -257,7 +294,9 @@ export interface RootRouteChildren {
   ApiAiCopilotRoute: typeof ApiAiCopilotRoute
   CampaignsIdRoute: typeof CampaignsIdRoute
   CampaignsNewRoute: typeof CampaignsNewRoute
+  CreatorAddressRoute: typeof CreatorAddressRoute
   TokenAddressRoute: typeof TokenAddressRoute
+  ApiPublicCreatorsRoute: typeof ApiPublicCreatorsRoute
   ApiPublicTokenMediaRoute: typeof ApiPublicTokenMediaRoute
   ApiPublicTrendingRoute: typeof ApiPublicTrendingRouteWithChildren
   ApiPublicSignalsRunRoute: typeof ApiPublicSignalsRunRoute
@@ -307,6 +346,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ExplorerRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/creators': {
+      id: '/creators'
+      path: '/creators'
+      fullPath: '/creators'
+      preLoaderRoute: typeof CreatorsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/create': {
       id: '/create'
       path: '/create'
@@ -340,6 +386,13 @@ declare module '@tanstack/react-router' {
       path: '/token/$address'
       fullPath: '/token/$address'
       preLoaderRoute: typeof TokenAddressRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/creator/$address': {
+      id: '/creator/$address'
+      path: '/creator/$address'
+      fullPath: '/creator/$address'
+      preLoaderRoute: typeof CreatorAddressRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/campaigns/new': {
@@ -377,6 +430,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicTokenMediaRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/creators': {
+      id: '/api/public/creators'
+      path: '/api/public/creators'
+      fullPath: '/api/public/creators'
+      preLoaderRoute: typeof ApiPublicCreatorsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/trending/run': {
       id: '/api/public/trending/run'
       path: '/run'
@@ -410,6 +470,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminRoute: AdminRoute,
   AuthRoute: AuthRoute,
   CreateRoute: CreateRoute,
+  CreatorsRoute: CreatorsRoute,
   ExplorerRoute: ExplorerRoute,
   MissionsRoute: MissionsRoute,
   NotificationsRoute: NotificationsRoute,
@@ -419,7 +480,9 @@ const rootRouteChildren: RootRouteChildren = {
   ApiAiCopilotRoute: ApiAiCopilotRoute,
   CampaignsIdRoute: CampaignsIdRoute,
   CampaignsNewRoute: CampaignsNewRoute,
+  CreatorAddressRoute: CreatorAddressRoute,
   TokenAddressRoute: TokenAddressRoute,
+  ApiPublicCreatorsRoute: ApiPublicCreatorsRoute,
   ApiPublicTokenMediaRoute: ApiPublicTokenMediaRoute,
   ApiPublicTrendingRoute: ApiPublicTrendingRouteWithChildren,
   ApiPublicSignalsRunRoute: ApiPublicSignalsRunRoute,

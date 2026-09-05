@@ -202,6 +202,9 @@ export function Header() {
           <Link to="/trending" className="px-3 py-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-white/5 transition">
             <span className="inline-flex items-center gap-1.5"><Flame className="h-3.5 w-3.5" />Trending</span>
           </Link>
+          <Link to="/creators" className="px-3 py-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-white/5 transition">
+            <span className="inline-flex items-center gap-1.5"><Trophy className="h-3.5 w-3.5" />Creators</span>
+          </Link>
           <Link to="/explorer" className="px-3 py-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-white/5 transition">
             <span className="inline-flex items-center gap-1.5"><Search className="h-3.5 w-3.5" />Explorer</span>
           </Link>

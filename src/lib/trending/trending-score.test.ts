@@ -177,6 +177,7 @@ describe("badges + explanation", () => {
 const row = (over: Partial<TrendingRow>): TrendingRow => ({
   address: "0x1",
   curve: null,
+  creator: null,
   name: "T",
   symbol: "T",
   logo: null,
