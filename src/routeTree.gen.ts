@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as TrendingRouteImport } from './routes/trending'
 import { Route as RankingRouteImport } from './routes/ranking'
 import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as NotificationsRouteImport } from './routes/notifications'
@@ -27,6 +28,11 @@ import { Route as ApiPublicTokenMediaRouteImport } from './routes/api/public/tok
 import { Route as ApiPublicTrendingRunRouteImport } from './routes/api/public/trending/run'
 import { Route as ApiPublicSignalsRunRouteImport } from './routes/api/public/signals/run'
 
+const TrendingRoute = TrendingRouteImport.update({
+  id: '/trending',
+  path: '/trending',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const RankingRoute = RankingRouteImport.update({
   id: '/ranking',
   path: '/ranking',
@@ -123,6 +129,7 @@ export interface FileRoutesByFullPath {
   '/notifications': typeof NotificationsRoute
   '/profile': typeof ProfileRoute
   '/ranking': typeof RankingRoute
+  '/trending': typeof TrendingRoute
   '/api/ai-copilot': typeof ApiAiCopilotRoute
   '/campaigns/$id': typeof CampaignsIdRoute
   '/campaigns/new': typeof CampaignsNewRoute
@@ -142,6 +149,7 @@ export interface FileRoutesByTo {
   '/notifications': typeof NotificationsRoute
   '/profile': typeof ProfileRoute
   '/ranking': typeof RankingRoute
+  '/trending': typeof TrendingRoute
   '/api/ai-copilot': typeof ApiAiCopilotRoute
   '/campaigns/$id': typeof CampaignsIdRoute
   '/campaigns/new': typeof CampaignsNewRoute
@@ -162,6 +170,7 @@ export interface FileRoutesById {
   '/notifications': typeof NotificationsRoute
   '/profile': typeof ProfileRoute
   '/ranking': typeof RankingRoute
+  '/trending': typeof TrendingRoute
   '/api/ai-copilot': typeof ApiAiCopilotRoute
   '/campaigns/$id': typeof CampaignsIdRoute
   '/campaigns/new': typeof CampaignsNewRoute
@@ -183,6 +192,7 @@ export interface FileRouteTypes {
     | '/notifications'
     | '/profile'
     | '/ranking'
+    | '/trending'
     | '/api/ai-copilot'
     | '/campaigns/$id'
     | '/campaigns/new'
@@ -202,6 +212,7 @@ export interface FileRouteTypes {
     | '/notifications'
     | '/profile'
     | '/ranking'
+    | '/trending'
     | '/api/ai-copilot'
     | '/campaigns/$id'
     | '/campaigns/new'
@@ -221,6 +232,7 @@ export interface FileRouteTypes {
     | '/notifications'
     | '/profile'
     | '/ranking'
+    | '/trending'
     | '/api/ai-copilot'
     | '/campaigns/$id'
     | '/campaigns/new'
@@ -241,6 +253,7 @@ export interface RootRouteChildren {
   NotificationsRoute: typeof NotificationsRoute
   ProfileRoute: typeof ProfileRoute
   RankingRoute: typeof RankingRoute
+  TrendingRoute: typeof TrendingRoute
   ApiAiCopilotRoute: typeof ApiAiCopilotRoute
   CampaignsIdRoute: typeof CampaignsIdRoute
   CampaignsNewRoute: typeof CampaignsNewRoute
@@ -252,6 +265,13 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/trending': {
+      id: '/trending'
+      path: '/trending'
+      fullPath: '/trending'
+      preLoaderRoute: typeof TrendingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/ranking': {
       id: '/ranking'
       path: '/ranking'
@@ -395,6 +415,7 @@ const rootRouteChildren: RootRouteChildren = {
   NotificationsRoute: NotificationsRoute,
   ProfileRoute: ProfileRoute,
   RankingRoute: RankingRoute,
+  TrendingRoute: TrendingRoute,
   ApiAiCopilotRoute: ApiAiCopilotRoute,
   CampaignsIdRoute: CampaignsIdRoute,
   CampaignsNewRoute: CampaignsNewRoute,
