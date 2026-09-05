@@ -15,7 +15,7 @@ import {
   waitForInjectedProvider,
 } from "@/lib/web3/providers";
 import { Button } from "@/components/ui/button";
-import { Wallet, Rocket, Trophy, User, Globe, Search, Bell, Sparkles } from "lucide-react";
+import { Wallet, Rocket, Trophy, User, Globe, Search, Bell, Sparkles, Flame } from "lucide-react";
 import { RiskDisclaimer } from "@/components/labsbnb/RiskDisclaimer";
 import { MobileNav } from "@/components/labsbnb/MobileNav";
 
@@ -198,6 +198,9 @@ export function Header() {
           </Link>
           <Link to="/create" className="px-3 py-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-white/5 transition">
             {t("nav.create")}
+          </Link>
+          <Link to="/trending" className="px-3 py-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-white/5 transition">
+            <span className="inline-flex items-center gap-1.5"><Flame className="h-3.5 w-3.5" />Trending</span>
           </Link>
           <Link to="/explorer" className="px-3 py-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-white/5 transition">
             <span className="inline-flex items-center gap-1.5"><Search className="h-3.5 w-3.5" />Explorer</span>

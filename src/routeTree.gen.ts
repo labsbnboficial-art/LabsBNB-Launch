@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as TrendingRouteImport } from './routes/trending'
 import { Route as RankingRouteImport } from './routes/ranking'
 import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as NotificationsRouteImport } from './routes/notifications'
@@ -22,9 +23,16 @@ import { Route as TokenAddressRouteImport } from './routes/token.$address'
 import { Route as CampaignsNewRouteImport } from './routes/campaigns.new'
 import { Route as CampaignsIdRouteImport } from './routes/campaigns.$id'
 import { Route as ApiAiCopilotRouteImport } from './routes/api/ai-copilot'
+import { Route as ApiPublicTrendingRouteImport } from './routes/api/public/trending'
 import { Route as ApiPublicTokenMediaRouteImport } from './routes/api/public/token-media'
+import { Route as ApiPublicTrendingRunRouteImport } from './routes/api/public/trending/run'
 import { Route as ApiPublicSignalsRunRouteImport } from './routes/api/public/signals/run'
 
+const TrendingRoute = TrendingRouteImport.update({
+  id: '/trending',
+  path: '/trending',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const RankingRoute = RankingRouteImport.update({
   id: '/ranking',
   path: '/ranking',
@@ -90,10 +98,20 @@ const ApiAiCopilotRoute = ApiAiCopilotRouteImport.update({
   path: '/api/ai-copilot',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicTrendingRoute = ApiPublicTrendingRouteImport.update({
+  id: '/api/public/trending',
+  path: '/api/public/trending',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicTokenMediaRoute = ApiPublicTokenMediaRouteImport.update({
   id: '/api/public/token-media',
   path: '/api/public/token-media',
   getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicTrendingRunRoute = ApiPublicTrendingRunRouteImport.update({
+  id: '/run',
+  path: '/run',
+  getParentRoute: () => ApiPublicTrendingRoute,
 } as any)
 const ApiPublicSignalsRunRoute = ApiPublicSignalsRunRouteImport.update({
   id: '/api/public/signals/run',
@@ -111,12 +129,15 @@ export interface FileRoutesByFullPath {
   '/notifications': typeof NotificationsRoute
   '/profile': typeof ProfileRoute
   '/ranking': typeof RankingRoute
+  '/trending': typeof TrendingRoute
   '/api/ai-copilot': typeof ApiAiCopilotRoute
   '/campaigns/$id': typeof CampaignsIdRoute
   '/campaigns/new': typeof CampaignsNewRoute
   '/token/$address': typeof TokenAddressRoute
   '/api/public/token-media': typeof ApiPublicTokenMediaRoute
+  '/api/public/trending': typeof ApiPublicTrendingRouteWithChildren
   '/api/public/signals/run': typeof ApiPublicSignalsRunRoute
+  '/api/public/trending/run': typeof ApiPublicTrendingRunRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -128,12 +149,15 @@ export interface FileRoutesByTo {
   '/notifications': typeof NotificationsRoute
   '/profile': typeof ProfileRoute
   '/ranking': typeof RankingRoute
+  '/trending': typeof TrendingRoute
   '/api/ai-copilot': typeof ApiAiCopilotRoute
   '/campaigns/$id': typeof CampaignsIdRoute
   '/campaigns/new': typeof CampaignsNewRoute
   '/token/$address': typeof TokenAddressRoute
   '/api/public/token-media': typeof ApiPublicTokenMediaRoute
+  '/api/public/trending': typeof ApiPublicTrendingRouteWithChildren
   '/api/public/signals/run': typeof ApiPublicSignalsRunRoute
+  '/api/public/trending/run': typeof ApiPublicTrendingRunRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -146,12 +170,15 @@ export interface FileRoutesById {
   '/notifications': typeof NotificationsRoute
   '/profile': typeof ProfileRoute
   '/ranking': typeof RankingRoute
+  '/trending': typeof TrendingRoute
   '/api/ai-copilot': typeof ApiAiCopilotRoute
   '/campaigns/$id': typeof CampaignsIdRoute
   '/campaigns/new': typeof CampaignsNewRoute
   '/token/$address': typeof TokenAddressRoute
   '/api/public/token-media': typeof ApiPublicTokenMediaRoute
+  '/api/public/trending': typeof ApiPublicTrendingRouteWithChildren
   '/api/public/signals/run': typeof ApiPublicSignalsRunRoute
+  '/api/public/trending/run': typeof ApiPublicTrendingRunRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -165,12 +192,15 @@ export interface FileRouteTypes {
     | '/notifications'
     | '/profile'
     | '/ranking'
+    | '/trending'
     | '/api/ai-copilot'
     | '/campaigns/$id'
     | '/campaigns/new'
     | '/token/$address'
     | '/api/public/token-media'
+    | '/api/public/trending'
     | '/api/public/signals/run'
+    | '/api/public/trending/run'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -182,12 +212,15 @@ export interface FileRouteTypes {
     | '/notifications'
     | '/profile'
     | '/ranking'
+    | '/trending'
     | '/api/ai-copilot'
     | '/campaigns/$id'
     | '/campaigns/new'
     | '/token/$address'
     | '/api/public/token-media'
+    | '/api/public/trending'
     | '/api/public/signals/run'
+    | '/api/public/trending/run'
   id:
     | '__root__'
     | '/'
@@ -199,12 +232,15 @@ export interface FileRouteTypes {
     | '/notifications'
     | '/profile'
     | '/ranking'
+    | '/trending'
     | '/api/ai-copilot'
     | '/campaigns/$id'
     | '/campaigns/new'
     | '/token/$address'
     | '/api/public/token-media'
+    | '/api/public/trending'
     | '/api/public/signals/run'
+    | '/api/public/trending/run'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -217,16 +253,25 @@ export interface RootRouteChildren {
   NotificationsRoute: typeof NotificationsRoute
   ProfileRoute: typeof ProfileRoute
   RankingRoute: typeof RankingRoute
+  TrendingRoute: typeof TrendingRoute
   ApiAiCopilotRoute: typeof ApiAiCopilotRoute
   CampaignsIdRoute: typeof CampaignsIdRoute
   CampaignsNewRoute: typeof CampaignsNewRoute
   TokenAddressRoute: typeof TokenAddressRoute
   ApiPublicTokenMediaRoute: typeof ApiPublicTokenMediaRoute
+  ApiPublicTrendingRoute: typeof ApiPublicTrendingRouteWithChildren
   ApiPublicSignalsRunRoute: typeof ApiPublicSignalsRunRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/trending': {
+      id: '/trending'
+      path: '/trending'
+      fullPath: '/trending'
+      preLoaderRoute: typeof TrendingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/ranking': {
       id: '/ranking'
       path: '/ranking'
@@ -318,12 +363,26 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAiCopilotRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/trending': {
+      id: '/api/public/trending'
+      path: '/api/public/trending'
+      fullPath: '/api/public/trending'
+      preLoaderRoute: typeof ApiPublicTrendingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/token-media': {
       id: '/api/public/token-media'
       path: '/api/public/token-media'
       fullPath: '/api/public/token-media'
       preLoaderRoute: typeof ApiPublicTokenMediaRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/api/public/trending/run': {
+      id: '/api/public/trending/run'
+      path: '/run'
+      fullPath: '/api/public/trending/run'
+      preLoaderRoute: typeof ApiPublicTrendingRunRouteImport
+      parentRoute: typeof ApiPublicTrendingRoute
     }
     '/api/public/signals/run': {
       id: '/api/public/signals/run'
@@ -335,6 +394,17 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface ApiPublicTrendingRouteChildren {
+  ApiPublicTrendingRunRoute: typeof ApiPublicTrendingRunRoute
+}
+
+const ApiPublicTrendingRouteChildren: ApiPublicTrendingRouteChildren = {
+  ApiPublicTrendingRunRoute: ApiPublicTrendingRunRoute,
+}
+
+const ApiPublicTrendingRouteWithChildren =
+  ApiPublicTrendingRoute._addFileChildren(ApiPublicTrendingRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRoute: AdminRoute,
@@ -345,11 +415,13 @@ const rootRouteChildren: RootRouteChildren = {
   NotificationsRoute: NotificationsRoute,
   ProfileRoute: ProfileRoute,
   RankingRoute: RankingRoute,
+  TrendingRoute: TrendingRoute,
   ApiAiCopilotRoute: ApiAiCopilotRoute,
   CampaignsIdRoute: CampaignsIdRoute,
   CampaignsNewRoute: CampaignsNewRoute,
   TokenAddressRoute: TokenAddressRoute,
   ApiPublicTokenMediaRoute: ApiPublicTokenMediaRoute,
+  ApiPublicTrendingRoute: ApiPublicTrendingRouteWithChildren,
   ApiPublicSignalsRunRoute: ApiPublicSignalsRunRoute,
 }
 export const routeTree = rootRouteImport

@@ -21,6 +21,7 @@ import { computeAth, distanceFromAth, formatAthDate } from "@/lib/web3/ath";
 import { BSC_TESTNET } from "@/lib/web3/abis";
 import { CandleChart } from "@/components/labsbnb/CandleChart";
 import { TradePanel } from "@/components/labsbnb/TradePanel";
+import { TrendingAnalytics } from "@/components/labsbnb/TrendingAnalytics";
 import { useServerFn } from "@tanstack/react-start";
 import { ensureTokenRow } from "@/lib/tokens.functions";
 import { updateTokenMeta } from "@/lib/token-meta.functions";
@@ -770,10 +771,17 @@ function TokenPage() {
               curveAddress={curveAddress}
             />
 
+            {(() => {
+              const trendingAddress =
+                (tk.contract_address as string | null) ?? (isAddress(address) ? address : null);
+              return trendingAddress ? <TrendingAnalytics address={trendingAddress} /> : null;
+            })()}
+
             <TopHolders
               token={(tk.contract_address as string | null) ?? (isAddress(address) ? address : null)}
               ticker={String(tk.ticker)}
             />
+
 
 
             <div className="text-xs text-muted-foreground text-center">
