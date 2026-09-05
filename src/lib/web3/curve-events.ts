@@ -180,10 +180,13 @@ export async function fetchTradePage(
   curve: `0x${string}`,
   cursor?: string | null,
   pageSize = 25,
+  /** Optional shorter history window (Trending Engine only needs ~24h). */
+  lookbackBlocks?: bigint,
 ): Promise<TradePage> {
   const head = await readClient().getBlockNumber();
   const headIndex = Number(head / CHUNK);
-  const floorBlock = head > MAX_LOOKBACK ? head - MAX_LOOKBACK : 0n;
+  const lookback = lookbackBlocks && lookbackBlocks > 0n ? lookbackBlocks : MAX_LOOKBACK;
+  const floorBlock = head > lookback ? head - lookback : 0n;
   const floorIndex = Number(floorBlock / CHUNK);
 
   let index = cursor != null ? Number(cursor) : headIndex;
