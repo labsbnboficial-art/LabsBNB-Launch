@@ -15,7 +15,7 @@ import {
   waitForInjectedProvider,
 } from "@/lib/web3/providers";
 import { Button } from "@/components/ui/button";
-import { Wallet, Rocket, Trophy, User, Globe, Search, Bell, Sparkles } from "lucide-react";
+import { Wallet, Rocket, Trophy, User, Globe, Search, Bell, Sparkles, Flame } from "lucide-react";
 import { RiskDisclaimer } from "@/components/labsbnb/RiskDisclaimer";
 import { MobileNav } from "@/components/labsbnb/MobileNav";
 
