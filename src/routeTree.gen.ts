@@ -24,6 +24,7 @@ import { Route as CampaignsIdRouteImport } from './routes/campaigns.$id'
 import { Route as ApiAiCopilotRouteImport } from './routes/api/ai-copilot'
 import { Route as ApiPublicTrendingRouteImport } from './routes/api/public/trending'
 import { Route as ApiPublicTokenMediaRouteImport } from './routes/api/public/token-media'
+import { Route as ApiPublicTrendingRunRouteImport } from './routes/api/public/trending/run'
 import { Route as ApiPublicSignalsRunRouteImport } from './routes/api/public/signals/run'
 
 const RankingRoute = RankingRouteImport.update({
@@ -101,6 +102,11 @@ const ApiPublicTokenMediaRoute = ApiPublicTokenMediaRouteImport.update({
   path: '/api/public/token-media',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicTrendingRunRoute = ApiPublicTrendingRunRouteImport.update({
+  id: '/run',
+  path: '/run',
+  getParentRoute: () => ApiPublicTrendingRoute,
+} as any)
 const ApiPublicSignalsRunRoute = ApiPublicSignalsRunRouteImport.update({
   id: '/api/public/signals/run',
   path: '/api/public/signals/run',
@@ -122,8 +128,9 @@ export interface FileRoutesByFullPath {
   '/campaigns/new': typeof CampaignsNewRoute
   '/token/$address': typeof TokenAddressRoute
   '/api/public/token-media': typeof ApiPublicTokenMediaRoute
-  '/api/public/trending': typeof ApiPublicTrendingRoute
+  '/api/public/trending': typeof ApiPublicTrendingRouteWithChildren
   '/api/public/signals/run': typeof ApiPublicSignalsRunRoute
+  '/api/public/trending/run': typeof ApiPublicTrendingRunRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -140,8 +147,9 @@ export interface FileRoutesByTo {
   '/campaigns/new': typeof CampaignsNewRoute
   '/token/$address': typeof TokenAddressRoute
   '/api/public/token-media': typeof ApiPublicTokenMediaRoute
-  '/api/public/trending': typeof ApiPublicTrendingRoute
+  '/api/public/trending': typeof ApiPublicTrendingRouteWithChildren
   '/api/public/signals/run': typeof ApiPublicSignalsRunRoute
+  '/api/public/trending/run': typeof ApiPublicTrendingRunRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -159,8 +167,9 @@ export interface FileRoutesById {
   '/campaigns/new': typeof CampaignsNewRoute
   '/token/$address': typeof TokenAddressRoute
   '/api/public/token-media': typeof ApiPublicTokenMediaRoute
-  '/api/public/trending': typeof ApiPublicTrendingRoute
+  '/api/public/trending': typeof ApiPublicTrendingRouteWithChildren
   '/api/public/signals/run': typeof ApiPublicSignalsRunRoute
+  '/api/public/trending/run': typeof ApiPublicTrendingRunRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -181,6 +190,7 @@ export interface FileRouteTypes {
     | '/api/public/token-media'
     | '/api/public/trending'
     | '/api/public/signals/run'
+    | '/api/public/trending/run'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -199,6 +209,7 @@ export interface FileRouteTypes {
     | '/api/public/token-media'
     | '/api/public/trending'
     | '/api/public/signals/run'
+    | '/api/public/trending/run'
   id:
     | '__root__'
     | '/'
@@ -217,6 +228,7 @@ export interface FileRouteTypes {
     | '/api/public/token-media'
     | '/api/public/trending'
     | '/api/public/signals/run'
+    | '/api/public/trending/run'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -234,7 +246,7 @@ export interface RootRouteChildren {
   CampaignsNewRoute: typeof CampaignsNewRoute
   TokenAddressRoute: typeof TokenAddressRoute
   ApiPublicTokenMediaRoute: typeof ApiPublicTokenMediaRoute
-  ApiPublicTrendingRoute: typeof ApiPublicTrendingRoute
+  ApiPublicTrendingRoute: typeof ApiPublicTrendingRouteWithChildren
   ApiPublicSignalsRunRoute: typeof ApiPublicSignalsRunRoute
 }
 
@@ -345,6 +357,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicTokenMediaRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/trending/run': {
+      id: '/api/public/trending/run'
+      path: '/run'
+      fullPath: '/api/public/trending/run'
+      preLoaderRoute: typeof ApiPublicTrendingRunRouteImport
+      parentRoute: typeof ApiPublicTrendingRoute
+    }
     '/api/public/signals/run': {
       id: '/api/public/signals/run'
       path: '/api/public/signals/run'
@@ -354,6 +373,17 @@ declare module '@tanstack/react-router' {
     }
   }
 }
+
+interface ApiPublicTrendingRouteChildren {
+  ApiPublicTrendingRunRoute: typeof ApiPublicTrendingRunRoute
+}
+
+const ApiPublicTrendingRouteChildren: ApiPublicTrendingRouteChildren = {
+  ApiPublicTrendingRunRoute: ApiPublicTrendingRunRoute,
+}
+
+const ApiPublicTrendingRouteWithChildren =
+  ApiPublicTrendingRoute._addFileChildren(ApiPublicTrendingRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
@@ -370,7 +400,7 @@ const rootRouteChildren: RootRouteChildren = {
   CampaignsNewRoute: CampaignsNewRoute,
   TokenAddressRoute: TokenAddressRoute,
   ApiPublicTokenMediaRoute: ApiPublicTokenMediaRoute,
-  ApiPublicTrendingRoute: ApiPublicTrendingRoute,
+  ApiPublicTrendingRoute: ApiPublicTrendingRouteWithChildren,
   ApiPublicSignalsRunRoute: ApiPublicSignalsRunRoute,
 }
 export const routeTree = rootRouteImport
