@@ -1,11 +1,14 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
+import { useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { AppShell } from "@/components/labsbnb/AppShell";
 import { useAuth } from "@/lib/auth";
 import { Bell, CheckCircle2, Rocket, TrendingUp, Coins } from "lucide-react";
 import { toast } from "sonner";
+import { markNotificationsRead } from "@/lib/notifications.functions";
+import { Button } from "@/components/ui/button";
 
 export const Route = createFileRoute("/notifications")({
   head: () => ({
@@ -41,6 +44,8 @@ function NotificationsPage() {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
   const qc = useQueryClient();
+  const markReadOnServer = useServerFn(markNotificationsRead);
+  const autoMarked = useRef(false);
 
   useEffect(() => { if (!loading && !user) navigate({ to: "/auth", search: { redirect: "/notifications" } }); }, [loading, user, navigate]);
 
@@ -68,29 +73,31 @@ function NotificationsPage() {
     ]);
   }
 
+  const markMutation = useMutation({
+    mutationFn: markReadOnServer,
+    onSuccess: async () => refresh(),
+    onError: (error) => {
+      console.error("[NOTIF_READ]", error);
+      toast.error("No se pudo guardar el estado de las notificaciones.");
+    },
+  });
+
+  useEffect(() => {
+    if (!user || !q.data || autoMarked.current) return;
+    const hasUnread = q.data.some((n) => !((n.payload ?? {}) as NotifPayload).read);
+    autoMarked.current = true;
+    if (hasUnread) markMutation.mutate({ data: { mode: "all" } });
+  }, [user, q.data, markMutation]);
+
   async function markRead(id: string, payload: NotifPayload) {
     if (payload.read) return;
-    const { error } = await supabase.from("activity").update({ payload: { ...payload, read: true } as never }).eq("id", id);
-    if (error) {
-      toast.error("No se pudo marcar la notificación como leída.");
-      console.error("[NOTIF_READ]", error);
-      return;
-    }
-    await refresh();
+    await markMutation.mutateAsync({ data: { mode: "one", id } });
   }
 
   async function markAllRead() {
     const unread = (q.data ?? []).filter((n) => !((n.payload ?? {}) as NotifPayload).read);
     if (unread.length === 0) return;
-    await Promise.all(
-      unread.map((n) =>
-        supabase
-          .from("activity")
-          .update({ payload: { ...((n.payload ?? {}) as NotifPayload), read: true } as never })
-          .eq("id", n.id),
-      ),
-    );
-    await refresh();
+    await markMutation.mutateAsync({ data: { mode: "all" } });
   }
 
   if (loading || !user) return <AppShell><div className="p-12 text-center text-muted-foreground">…</div></AppShell>;
@@ -105,7 +112,9 @@ function NotificationsPage() {
             </div>
             <h1 className="font-display text-3xl font-bold">Notifications</h1>
           </div>
-          <button onClick={markAllRead} className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-4">Mark all read</button>
+          <Button type="button" variant="ghost" size="sm" onClick={() => void markAllRead()} disabled={markMutation.isPending}>
+            Mark all read
+          </Button>
         </div>
 
         <div className="glass-strong rounded-2xl divide-y divide-white/5">
