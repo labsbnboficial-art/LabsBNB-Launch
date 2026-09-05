@@ -18,6 +18,7 @@ import {
   Trophy,
   User,
   X,
+  Flame,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { useAuth } from "@/lib/auth";
@@ -45,7 +46,10 @@ const GROUPS: Group[] = [
   },
   {
     title: "Analytics",
-    items: [{ to: "/explorer", label: "Explorer", icon: Search }],
+    items: [
+      { to: "/trending", label: "🔥 Trending", icon: Flame },
+      { to: "/explorer", label: "Explorer", icon: Search },
+    ],
   },
   {
     title: "Account",
