@@ -10,7 +10,7 @@
 // Nothing is simulated: when a metric cannot be read on-chain it stays `null`
 // and its weight is redistributed over the metrics that ARE available.
 import { fetchFactoryTokens, type FactoryToken } from "@/lib/web3/onchain-token";
-import { fetchTradeEvents } from "@/lib/web3/curve-events";
+import { fetchRecentTradeEvents } from "@/lib/web3/curve-events";
 import { tokenMediaUrl } from "@/lib/media-url";
 import { withRpcTimeout } from "@/lib/web3/timeout";
 import { ACTIVE_CHAIN_ID } from "@/lib/web3/networks";
@@ -30,7 +30,7 @@ import {
   type WindowId,
 } from "./trending-types";
 
-const TOKEN_TIMEOUT_MS = 20_000;
+const TOKEN_TIMEOUT_MS = 45_000;
 const CONCURRENCY = 3;
 
 /** Last successful ranking, kept per worker instance so reads stay instant. */
@@ -68,7 +68,7 @@ async function scoreToken(
 ): Promise<Computed> {
   try {
     const events = token.curve
-      ? await withRpcTimeout(`trending ${token.ticker}`, () => fetchTradeEvents(token.curve!), TOKEN_TIMEOUT_MS)
+      ? await withRpcTimeout(`trending ${token.ticker}`, () => fetchRecentTradeEvents(token.curve!, 1), TOKEN_TIMEOUT_MS)
       : [];
 
     const m = token.metrics;
