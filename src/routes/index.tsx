@@ -13,6 +13,7 @@ import { ArrowRight, Rocket, Search, Sparkles, TrendingUp, Clock, LineChart, Zap
 import { useMemo, useState } from "react";
 import { BoostSection } from "@/components/labsbnb/BoostSection";
 import { KingOfTheHill } from "@/components/labsbnb/KingOfTheHill";
+import { TrendingNow } from "@/components/labsbnb/TrendingNow";
 import { TokenCard, TokenAvatar, fmtUsd, wei, timeAgo, type TokenView } from "@/components/labsbnb/TokenCard";
 
 export const Route = createFileRoute("/")({
@@ -254,6 +255,11 @@ function LandingPage() {
             />
           </div>
         </div>
+      </section>
+
+      {/* TRENDING NOW */}
+      <section className="mx-auto mt-10 max-w-7xl px-4 md:px-6">
+        <TrendingNow bnbUsd={bnbUsd} />
       </section>
 
       {/* KING OF THE HILL */}

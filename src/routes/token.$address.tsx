@@ -21,6 +21,7 @@ import { computeAth, distanceFromAth, formatAthDate } from "@/lib/web3/ath";
 import { BSC_TESTNET } from "@/lib/web3/abis";
 import { CandleChart } from "@/components/labsbnb/CandleChart";
 import { TradePanel } from "@/components/labsbnb/TradePanel";
+import { TrendingAnalytics } from "@/components/labsbnb/TrendingAnalytics";
 import { useServerFn } from "@tanstack/react-start";
 import { ensureTokenRow } from "@/lib/tokens.functions";
 import { updateTokenMeta } from "@/lib/token-meta.functions";
