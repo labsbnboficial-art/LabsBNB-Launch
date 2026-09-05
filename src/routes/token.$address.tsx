@@ -770,10 +770,17 @@ function TokenPage() {
               curveAddress={curveAddress}
             />
 
+            {(() => {
+              const trendingAddress =
+                (tk.contract_address as string | null) ?? (isAddress(address) ? address : null);
+              return trendingAddress ? <TrendingAnalytics address={trendingAddress} /> : null;
+            })()}
+
             <TopHolders
               token={(tk.contract_address as string | null) ?? (isAddress(address) ? address : null)}
               ticker={String(tk.ticker)}
             />
+
 
 
             <div className="text-xs text-muted-foreground text-center">
