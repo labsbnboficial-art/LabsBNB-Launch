@@ -22,6 +22,7 @@ import { Route as TokenAddressRouteImport } from './routes/token.$address'
 import { Route as CampaignsNewRouteImport } from './routes/campaigns.new'
 import { Route as CampaignsIdRouteImport } from './routes/campaigns.$id'
 import { Route as ApiAiCopilotRouteImport } from './routes/api/ai-copilot'
+import { Route as ApiPublicTrendingRouteImport } from './routes/api/public/trending'
 import { Route as ApiPublicTokenMediaRouteImport } from './routes/api/public/token-media'
 import { Route as ApiPublicSignalsRunRouteImport } from './routes/api/public/signals/run'
 
@@ -90,6 +91,11 @@ const ApiAiCopilotRoute = ApiAiCopilotRouteImport.update({
   path: '/api/ai-copilot',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicTrendingRoute = ApiPublicTrendingRouteImport.update({
+  id: '/api/public/trending',
+  path: '/api/public/trending',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicTokenMediaRoute = ApiPublicTokenMediaRouteImport.update({
   id: '/api/public/token-media',
   path: '/api/public/token-media',
@@ -116,6 +122,7 @@ export interface FileRoutesByFullPath {
   '/campaigns/new': typeof CampaignsNewRoute
   '/token/$address': typeof TokenAddressRoute
   '/api/public/token-media': typeof ApiPublicTokenMediaRoute
+  '/api/public/trending': typeof ApiPublicTrendingRoute
   '/api/public/signals/run': typeof ApiPublicSignalsRunRoute
 }
 export interface FileRoutesByTo {
@@ -133,6 +140,7 @@ export interface FileRoutesByTo {
   '/campaigns/new': typeof CampaignsNewRoute
   '/token/$address': typeof TokenAddressRoute
   '/api/public/token-media': typeof ApiPublicTokenMediaRoute
+  '/api/public/trending': typeof ApiPublicTrendingRoute
   '/api/public/signals/run': typeof ApiPublicSignalsRunRoute
 }
 export interface FileRoutesById {
@@ -151,6 +159,7 @@ export interface FileRoutesById {
   '/campaigns/new': typeof CampaignsNewRoute
   '/token/$address': typeof TokenAddressRoute
   '/api/public/token-media': typeof ApiPublicTokenMediaRoute
+  '/api/public/trending': typeof ApiPublicTrendingRoute
   '/api/public/signals/run': typeof ApiPublicSignalsRunRoute
 }
 export interface FileRouteTypes {
@@ -170,6 +179,7 @@ export interface FileRouteTypes {
     | '/campaigns/new'
     | '/token/$address'
     | '/api/public/token-media'
+    | '/api/public/trending'
     | '/api/public/signals/run'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -187,6 +197,7 @@ export interface FileRouteTypes {
     | '/campaigns/new'
     | '/token/$address'
     | '/api/public/token-media'
+    | '/api/public/trending'
     | '/api/public/signals/run'
   id:
     | '__root__'
@@ -204,6 +215,7 @@ export interface FileRouteTypes {
     | '/campaigns/new'
     | '/token/$address'
     | '/api/public/token-media'
+    | '/api/public/trending'
     | '/api/public/signals/run'
   fileRoutesById: FileRoutesById
 }
@@ -222,6 +234,7 @@ export interface RootRouteChildren {
   CampaignsNewRoute: typeof CampaignsNewRoute
   TokenAddressRoute: typeof TokenAddressRoute
   ApiPublicTokenMediaRoute: typeof ApiPublicTokenMediaRoute
+  ApiPublicTrendingRoute: typeof ApiPublicTrendingRoute
   ApiPublicSignalsRunRoute: typeof ApiPublicSignalsRunRoute
 }
 
@@ -318,6 +331,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAiCopilotRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/trending': {
+      id: '/api/public/trending'
+      path: '/api/public/trending'
+      fullPath: '/api/public/trending'
+      preLoaderRoute: typeof ApiPublicTrendingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/token-media': {
       id: '/api/public/token-media'
       path: '/api/public/token-media'
@@ -350,6 +370,7 @@ const rootRouteChildren: RootRouteChildren = {
   CampaignsNewRoute: CampaignsNewRoute,
   TokenAddressRoute: TokenAddressRoute,
   ApiPublicTokenMediaRoute: ApiPublicTokenMediaRoute,
+  ApiPublicTrendingRoute: ApiPublicTrendingRoute,
   ApiPublicSignalsRunRoute: ApiPublicSignalsRunRoute,
 }
 export const routeTree = rootRouteImport
