@@ -230,6 +230,23 @@ export async function fetchTradeEvents(curve: `0x${string}`): Promise<TradeEvent
   return page.events;
 }
 
+/** BSC produces a block roughly every 3 seconds. */
+export const BLOCKS_PER_DAY = 28_800n;
+
+/**
+ * Recent-history reader for the Trending Engine: the score only looks at the
+ * last 24h, so scanning the full 600k-block window per token (and burning the
+ * free-tier `eth_getLogs` budget) is unnecessary.
+ */
+export async function fetchRecentTradeEvents(
+  curve: `0x${string}`,
+  days = 1,
+  pageSize = 400,
+): Promise<TradeEvent[]> {
+  const page = await fetchTradePage(curve, null, pageSize, BLOCKS_PER_DAY * BigInt(Math.max(1, days)));
+  return page.events;
+}
+
 /* -------------------------------- candles --------------------------------- */
 
 export const TIMEFRAMES = [
