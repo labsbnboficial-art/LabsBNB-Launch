@@ -48,6 +48,7 @@ const GROUPS: Group[] = [
     title: "Analytics",
     items: [
       { to: "/trending", label: "🔥 Trending", icon: Flame },
+      { to: "/creators", label: "🏆 Top Creators", icon: Trophy },
       { to: "/explorer", label: "Explorer", icon: Search },
     ],
   },

@@ -124,6 +124,8 @@ export type TrendingScoreParts = {
 export type TrendingRow = {
   address: string;
   curve: string | null;
+  /** Factory `creatorOf(token)` — canonical creator identity (may be null). */
+  creator: string | null;
   name: string;
   symbol: string;
   logo: string | null;

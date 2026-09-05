@@ -98,6 +98,7 @@ async function scoreToken(
     const row: TrendingRow = {
       address: token.address,
       curve: token.curve,
+      creator: token.creator,
       name: token.name,
       symbol: token.ticker,
       logo: tokenMediaUrl(token.metadataURI),
