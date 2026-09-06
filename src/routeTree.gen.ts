@@ -31,6 +31,7 @@ import { Route as ApiPublicCreatorsRouteImport } from './routes/api/public/creat
 import { Route as ApiPublicCreatorPointsRouteImport } from './routes/api/public/creator-points'
 import { Route as ApiPublicTrendingRunRouteImport } from './routes/api/public/trending/run'
 import { Route as ApiPublicSignalsRunRouteImport } from './routes/api/public/signals/run'
+import { Route as ApiPublicCreatorPointsRunRouteImport } from './routes/api/public/creator-points/run'
 
 const TrendingRoute = TrendingRouteImport.update({
   id: '/trending',
@@ -142,6 +143,12 @@ const ApiPublicSignalsRunRoute = ApiPublicSignalsRunRouteImport.update({
   path: '/api/public/signals/run',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicCreatorPointsRunRoute =
+  ApiPublicCreatorPointsRunRouteImport.update({
+    id: '/run',
+    path: '/run',
+    getParentRoute: () => ApiPublicCreatorPointsRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -160,10 +167,11 @@ export interface FileRoutesByFullPath {
   '/campaigns/new': typeof CampaignsNewRoute
   '/creator/$address': typeof CreatorAddressRoute
   '/token/$address': typeof TokenAddressRoute
-  '/api/public/creator-points': typeof ApiPublicCreatorPointsRoute
+  '/api/public/creator-points': typeof ApiPublicCreatorPointsRouteWithChildren
   '/api/public/creators': typeof ApiPublicCreatorsRoute
   '/api/public/token-media': typeof ApiPublicTokenMediaRoute
   '/api/public/trending': typeof ApiPublicTrendingRouteWithChildren
+  '/api/public/creator-points/run': typeof ApiPublicCreatorPointsRunRoute
   '/api/public/signals/run': typeof ApiPublicSignalsRunRoute
   '/api/public/trending/run': typeof ApiPublicTrendingRunRoute
 }
@@ -184,10 +192,11 @@ export interface FileRoutesByTo {
   '/campaigns/new': typeof CampaignsNewRoute
   '/creator/$address': typeof CreatorAddressRoute
   '/token/$address': typeof TokenAddressRoute
-  '/api/public/creator-points': typeof ApiPublicCreatorPointsRoute
+  '/api/public/creator-points': typeof ApiPublicCreatorPointsRouteWithChildren
   '/api/public/creators': typeof ApiPublicCreatorsRoute
   '/api/public/token-media': typeof ApiPublicTokenMediaRoute
   '/api/public/trending': typeof ApiPublicTrendingRouteWithChildren
+  '/api/public/creator-points/run': typeof ApiPublicCreatorPointsRunRoute
   '/api/public/signals/run': typeof ApiPublicSignalsRunRoute
   '/api/public/trending/run': typeof ApiPublicTrendingRunRoute
 }
@@ -209,10 +218,11 @@ export interface FileRoutesById {
   '/campaigns/new': typeof CampaignsNewRoute
   '/creator/$address': typeof CreatorAddressRoute
   '/token/$address': typeof TokenAddressRoute
-  '/api/public/creator-points': typeof ApiPublicCreatorPointsRoute
+  '/api/public/creator-points': typeof ApiPublicCreatorPointsRouteWithChildren
   '/api/public/creators': typeof ApiPublicCreatorsRoute
   '/api/public/token-media': typeof ApiPublicTokenMediaRoute
   '/api/public/trending': typeof ApiPublicTrendingRouteWithChildren
+  '/api/public/creator-points/run': typeof ApiPublicCreatorPointsRunRoute
   '/api/public/signals/run': typeof ApiPublicSignalsRunRoute
   '/api/public/trending/run': typeof ApiPublicTrendingRunRoute
 }
@@ -239,6 +249,7 @@ export interface FileRouteTypes {
     | '/api/public/creators'
     | '/api/public/token-media'
     | '/api/public/trending'
+    | '/api/public/creator-points/run'
     | '/api/public/signals/run'
     | '/api/public/trending/run'
   fileRoutesByTo: FileRoutesByTo
@@ -263,6 +274,7 @@ export interface FileRouteTypes {
     | '/api/public/creators'
     | '/api/public/token-media'
     | '/api/public/trending'
+    | '/api/public/creator-points/run'
     | '/api/public/signals/run'
     | '/api/public/trending/run'
   id:
@@ -287,6 +299,7 @@ export interface FileRouteTypes {
     | '/api/public/creators'
     | '/api/public/token-media'
     | '/api/public/trending'
+    | '/api/public/creator-points/run'
     | '/api/public/signals/run'
     | '/api/public/trending/run'
   fileRoutesById: FileRoutesById
@@ -308,7 +321,7 @@ export interface RootRouteChildren {
   CampaignsNewRoute: typeof CampaignsNewRoute
   CreatorAddressRoute: typeof CreatorAddressRoute
   TokenAddressRoute: typeof TokenAddressRoute
-  ApiPublicCreatorPointsRoute: typeof ApiPublicCreatorPointsRoute
+  ApiPublicCreatorPointsRoute: typeof ApiPublicCreatorPointsRouteWithChildren
   ApiPublicCreatorsRoute: typeof ApiPublicCreatorsRoute
   ApiPublicTokenMediaRoute: typeof ApiPublicTokenMediaRoute
   ApiPublicTrendingRoute: typeof ApiPublicTrendingRouteWithChildren
@@ -471,8 +484,29 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicSignalsRunRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/creator-points/run': {
+      id: '/api/public/creator-points/run'
+      path: '/run'
+      fullPath: '/api/public/creator-points/run'
+      preLoaderRoute: typeof ApiPublicCreatorPointsRunRouteImport
+      parentRoute: typeof ApiPublicCreatorPointsRoute
+    }
   }
 }
+
+interface ApiPublicCreatorPointsRouteChildren {
+  ApiPublicCreatorPointsRunRoute: typeof ApiPublicCreatorPointsRunRoute
+}
+
+const ApiPublicCreatorPointsRouteChildren: ApiPublicCreatorPointsRouteChildren =
+  {
+    ApiPublicCreatorPointsRunRoute: ApiPublicCreatorPointsRunRoute,
+  }
+
+const ApiPublicCreatorPointsRouteWithChildren =
+  ApiPublicCreatorPointsRoute._addFileChildren(
+    ApiPublicCreatorPointsRouteChildren,
+  )
 
 interface ApiPublicTrendingRouteChildren {
   ApiPublicTrendingRunRoute: typeof ApiPublicTrendingRunRoute
@@ -502,7 +536,7 @@ const rootRouteChildren: RootRouteChildren = {
   CampaignsNewRoute: CampaignsNewRoute,
   CreatorAddressRoute: CreatorAddressRoute,
   TokenAddressRoute: TokenAddressRoute,
-  ApiPublicCreatorPointsRoute: ApiPublicCreatorPointsRoute,
+  ApiPublicCreatorPointsRoute: ApiPublicCreatorPointsRouteWithChildren,
   ApiPublicCreatorsRoute: ApiPublicCreatorsRoute,
   ApiPublicTokenMediaRoute: ApiPublicTokenMediaRoute,
   ApiPublicTrendingRoute: ApiPublicTrendingRouteWithChildren,
