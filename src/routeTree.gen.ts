@@ -20,6 +20,7 @@ import { Route as CreateRouteImport } from './routes/create'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as LeaderboardIndexRouteImport } from './routes/leaderboard.index'
 import { Route as TokenAddressRouteImport } from './routes/token.$address'
 import { Route as CreatorAddressRouteImport } from './routes/creator.$address'
 import { Route as CampaignsNewRouteImport } from './routes/campaigns.new'
@@ -92,6 +93,11 @@ const AdminRoute = AdminRouteImport.update({
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LeaderboardIndexRoute = LeaderboardIndexRouteImport.update({
+  id: '/leaderboard/',
+  path: '/leaderboard/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const TokenAddressRoute = TokenAddressRouteImport.update({
@@ -208,6 +214,7 @@ export interface FileRoutesByFullPath {
   '/campaigns/new': typeof CampaignsNewRoute
   '/creator/$address': typeof CreatorAddressRoute
   '/token/$address': typeof TokenAddressRoute
+  '/leaderboard/': typeof LeaderboardIndexRoute
   '/api/public/creator-points': typeof ApiPublicCreatorPointsRouteWithChildren
   '/api/public/creators': typeof ApiPublicCreatorsRoute
   '/api/public/leaderboard': typeof ApiPublicLeaderboardRouteWithChildren
@@ -239,6 +246,7 @@ export interface FileRoutesByTo {
   '/campaigns/new': typeof CampaignsNewRoute
   '/creator/$address': typeof CreatorAddressRoute
   '/token/$address': typeof TokenAddressRoute
+  '/leaderboard': typeof LeaderboardIndexRoute
   '/api/public/creator-points': typeof ApiPublicCreatorPointsRouteWithChildren
   '/api/public/creators': typeof ApiPublicCreatorsRoute
   '/api/public/leaderboard': typeof ApiPublicLeaderboardRouteWithChildren
@@ -271,6 +279,7 @@ export interface FileRoutesById {
   '/campaigns/new': typeof CampaignsNewRoute
   '/creator/$address': typeof CreatorAddressRoute
   '/token/$address': typeof TokenAddressRoute
+  '/leaderboard/': typeof LeaderboardIndexRoute
   '/api/public/creator-points': typeof ApiPublicCreatorPointsRouteWithChildren
   '/api/public/creators': typeof ApiPublicCreatorsRoute
   '/api/public/leaderboard': typeof ApiPublicLeaderboardRouteWithChildren
@@ -304,6 +313,7 @@ export interface FileRouteTypes {
     | '/campaigns/new'
     | '/creator/$address'
     | '/token/$address'
+    | '/leaderboard/'
     | '/api/public/creator-points'
     | '/api/public/creators'
     | '/api/public/leaderboard'
@@ -335,6 +345,7 @@ export interface FileRouteTypes {
     | '/campaigns/new'
     | '/creator/$address'
     | '/token/$address'
+    | '/leaderboard'
     | '/api/public/creator-points'
     | '/api/public/creators'
     | '/api/public/leaderboard'
@@ -366,6 +377,7 @@ export interface FileRouteTypes {
     | '/campaigns/new'
     | '/creator/$address'
     | '/token/$address'
+    | '/leaderboard/'
     | '/api/public/creator-points'
     | '/api/public/creators'
     | '/api/public/leaderboard'
@@ -398,6 +410,7 @@ export interface RootRouteChildren {
   CampaignsNewRoute: typeof CampaignsNewRoute
   CreatorAddressRoute: typeof CreatorAddressRoute
   TokenAddressRoute: typeof TokenAddressRoute
+  LeaderboardIndexRoute: typeof LeaderboardIndexRoute
   ApiPublicCreatorPointsRoute: typeof ApiPublicCreatorPointsRouteWithChildren
   ApiPublicCreatorsRoute: typeof ApiPublicCreatorsRoute
   ApiPublicLeaderboardRoute: typeof ApiPublicLeaderboardRouteWithChildren
@@ -486,6 +499,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/leaderboard/': {
+      id: '/leaderboard/'
+      path: '/leaderboard'
+      fullPath: '/leaderboard/'
+      preLoaderRoute: typeof LeaderboardIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/token/$address': {
@@ -672,6 +692,7 @@ const rootRouteChildren: RootRouteChildren = {
   CampaignsNewRoute: CampaignsNewRoute,
   CreatorAddressRoute: CreatorAddressRoute,
   TokenAddressRoute: TokenAddressRoute,
+  LeaderboardIndexRoute: LeaderboardIndexRoute,
   ApiPublicCreatorPointsRoute: ApiPublicCreatorPointsRouteWithChildren,
   ApiPublicCreatorsRoute: ApiPublicCreatorsRoute,
   ApiPublicLeaderboardRoute: ApiPublicLeaderboardRouteWithChildren,
