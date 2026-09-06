@@ -20,6 +20,7 @@ import {
   type PointsEngineState,
   type PointsEventType,
   type PointsExclusion,
+  type PointsMetadata,
   type PointsRunResult,
 } from "./points-types";
 import {
