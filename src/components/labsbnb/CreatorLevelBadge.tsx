@@ -1,7 +1,7 @@
 // 🏆 Creator Levels — reusable presentation components (Fase 2C).
 // All values arrive already calculated by the server. This file never derives
 // points, never writes anything and never touches on-chain state.
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
