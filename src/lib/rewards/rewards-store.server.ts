@@ -7,7 +7,7 @@
 //
 // Snapshots are NEVER updated nor deleted by the app: idempotency comes from a
 // UNIQUE fingerprint plus `ignoreDuplicates` upserts.
-import { DEFAULT_REWARD_RULES, type EligibilitySnapshotRow, type EvaluationWindow, type RewardProgram, type RewardProgramStatus, type RewardRuleVersion, type RewardRules } from "./rewards-types";
+import { DEFAULT_REWARD_RULES, type CriterionResult, type EligibilitySnapshotRow, type EvaluationWindow, type RewardProgram, type RewardProgramStatus, type RewardRuleVersion, type RewardRules } from "./rewards-types";
 import { validateRewardRules } from "./rewards-rules";
 
 async function db() {
@@ -335,7 +335,7 @@ export async function latestSnapshotFor(
       eligible: !!r["eligible"],
       eligibilityScore: Number(r["eligibility_score"] ?? 0),
       ruleVersion: Number(r["rule_version"] ?? 1),
-      criteriaResult: r["criteria_result"],
+      criteriaResult: (r["criteria_result"] as CriterionResult[] | null) ?? null,
       evaluatedAt: String(r["evaluated_at"]),
     };
   } catch {
@@ -397,7 +397,7 @@ export async function recentSnapshots(chainId: number, programId: string, limit 
       eligible: !!r["eligible"],
       eligibilityScore: Number(r["eligibility_score"] ?? 0),
       ruleVersion: Number(r["rule_version"] ?? 1),
-      criteriaResult: r["criteria_result"],
+      criteriaResult: (r["criteria_result"] as CriterionResult[] | null) ?? null,
       evaluatedAt: String(r["evaluated_at"]),
     }));
   } catch {
