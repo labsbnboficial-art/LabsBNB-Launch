@@ -14,6 +14,7 @@ import { getPointsOverview, runPointsEngine, savePointsConfig } from "@/lib/poin
 import { AdminLevelsPanel } from "@/components/labsbnb/AdminLevelsPanel";
 import { AdminLevelHistoryPanel } from "@/components/labsbnb/AdminLevelHistoryPanel";
 import { AdminAchievementsPanel } from "@/components/labsbnb/AdminAchievementsPanel";
+import { AdminLeaderboardPanel } from "@/components/labsbnb/AdminLeaderboardPanel";
 import {
   DEFAULT_POINTS_CONFIG,
   POINTS_EVENT_LABEL,
