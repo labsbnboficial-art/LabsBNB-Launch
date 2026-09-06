@@ -32,6 +32,7 @@ import { Route as ApiPublicCreatorsRouteImport } from './routes/api/public/creat
 import { Route as ApiPublicCreatorPointsRouteImport } from './routes/api/public/creator-points'
 import { Route as ApiPublicTrendingRunRouteImport } from './routes/api/public/trending/run'
 import { Route as ApiPublicSignalsRunRouteImport } from './routes/api/public/signals/run'
+import { Route as ApiPublicLeaderboardSeasonsRouteImport } from './routes/api/public/leaderboard/seasons'
 import { Route as ApiPublicCreatorPointsRunRouteImport } from './routes/api/public/creator-points/run'
 import { Route as ApiPublicCreatorAddressLevelHistoryRouteImport } from './routes/api/public/creator/$address/level-history'
 import { Route as ApiPublicCreatorAddressAchievementsRouteImport } from './routes/api/public/creator/$address/achievements'
@@ -151,6 +152,12 @@ const ApiPublicSignalsRunRoute = ApiPublicSignalsRunRouteImport.update({
   path: '/api/public/signals/run',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicLeaderboardSeasonsRoute =
+  ApiPublicLeaderboardSeasonsRouteImport.update({
+    id: '/seasons',
+    path: '/seasons',
+    getParentRoute: () => ApiPublicLeaderboardRoute,
+  } as any)
 const ApiPublicCreatorPointsRunRoute =
   ApiPublicCreatorPointsRunRouteImport.update({
     id: '/run',
@@ -189,10 +196,11 @@ export interface FileRoutesByFullPath {
   '/token/$address': typeof TokenAddressRoute
   '/api/public/creator-points': typeof ApiPublicCreatorPointsRouteWithChildren
   '/api/public/creators': typeof ApiPublicCreatorsRoute
-  '/api/public/leaderboard': typeof ApiPublicLeaderboardRoute
+  '/api/public/leaderboard': typeof ApiPublicLeaderboardRouteWithChildren
   '/api/public/token-media': typeof ApiPublicTokenMediaRoute
   '/api/public/trending': typeof ApiPublicTrendingRouteWithChildren
   '/api/public/creator-points/run': typeof ApiPublicCreatorPointsRunRoute
+  '/api/public/leaderboard/seasons': typeof ApiPublicLeaderboardSeasonsRoute
   '/api/public/signals/run': typeof ApiPublicSignalsRunRoute
   '/api/public/trending/run': typeof ApiPublicTrendingRunRoute
   '/api/public/creator/$address/achievements': typeof ApiPublicCreatorAddressAchievementsRoute
@@ -217,10 +225,11 @@ export interface FileRoutesByTo {
   '/token/$address': typeof TokenAddressRoute
   '/api/public/creator-points': typeof ApiPublicCreatorPointsRouteWithChildren
   '/api/public/creators': typeof ApiPublicCreatorsRoute
-  '/api/public/leaderboard': typeof ApiPublicLeaderboardRoute
+  '/api/public/leaderboard': typeof ApiPublicLeaderboardRouteWithChildren
   '/api/public/token-media': typeof ApiPublicTokenMediaRoute
   '/api/public/trending': typeof ApiPublicTrendingRouteWithChildren
   '/api/public/creator-points/run': typeof ApiPublicCreatorPointsRunRoute
+  '/api/public/leaderboard/seasons': typeof ApiPublicLeaderboardSeasonsRoute
   '/api/public/signals/run': typeof ApiPublicSignalsRunRoute
   '/api/public/trending/run': typeof ApiPublicTrendingRunRoute
   '/api/public/creator/$address/achievements': typeof ApiPublicCreatorAddressAchievementsRoute
@@ -246,10 +255,11 @@ export interface FileRoutesById {
   '/token/$address': typeof TokenAddressRoute
   '/api/public/creator-points': typeof ApiPublicCreatorPointsRouteWithChildren
   '/api/public/creators': typeof ApiPublicCreatorsRoute
-  '/api/public/leaderboard': typeof ApiPublicLeaderboardRoute
+  '/api/public/leaderboard': typeof ApiPublicLeaderboardRouteWithChildren
   '/api/public/token-media': typeof ApiPublicTokenMediaRoute
   '/api/public/trending': typeof ApiPublicTrendingRouteWithChildren
   '/api/public/creator-points/run': typeof ApiPublicCreatorPointsRunRoute
+  '/api/public/leaderboard/seasons': typeof ApiPublicLeaderboardSeasonsRoute
   '/api/public/signals/run': typeof ApiPublicSignalsRunRoute
   '/api/public/trending/run': typeof ApiPublicTrendingRunRoute
   '/api/public/creator/$address/achievements': typeof ApiPublicCreatorAddressAchievementsRoute
@@ -280,6 +290,7 @@ export interface FileRouteTypes {
     | '/api/public/token-media'
     | '/api/public/trending'
     | '/api/public/creator-points/run'
+    | '/api/public/leaderboard/seasons'
     | '/api/public/signals/run'
     | '/api/public/trending/run'
     | '/api/public/creator/$address/achievements'
@@ -308,6 +319,7 @@ export interface FileRouteTypes {
     | '/api/public/token-media'
     | '/api/public/trending'
     | '/api/public/creator-points/run'
+    | '/api/public/leaderboard/seasons'
     | '/api/public/signals/run'
     | '/api/public/trending/run'
     | '/api/public/creator/$address/achievements'
@@ -336,6 +348,7 @@ export interface FileRouteTypes {
     | '/api/public/token-media'
     | '/api/public/trending'
     | '/api/public/creator-points/run'
+    | '/api/public/leaderboard/seasons'
     | '/api/public/signals/run'
     | '/api/public/trending/run'
     | '/api/public/creator/$address/achievements'
@@ -361,7 +374,7 @@ export interface RootRouteChildren {
   TokenAddressRoute: typeof TokenAddressRoute
   ApiPublicCreatorPointsRoute: typeof ApiPublicCreatorPointsRouteWithChildren
   ApiPublicCreatorsRoute: typeof ApiPublicCreatorsRoute
-  ApiPublicLeaderboardRoute: typeof ApiPublicLeaderboardRoute
+  ApiPublicLeaderboardRoute: typeof ApiPublicLeaderboardRouteWithChildren
   ApiPublicTokenMediaRoute: typeof ApiPublicTokenMediaRoute
   ApiPublicTrendingRoute: typeof ApiPublicTrendingRouteWithChildren
   ApiPublicSignalsRunRoute: typeof ApiPublicSignalsRunRoute
@@ -532,6 +545,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicSignalsRunRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/leaderboard/seasons': {
+      id: '/api/public/leaderboard/seasons'
+      path: '/seasons'
+      fullPath: '/api/public/leaderboard/seasons'
+      preLoaderRoute: typeof ApiPublicLeaderboardSeasonsRouteImport
+      parentRoute: typeof ApiPublicLeaderboardRoute
+    }
     '/api/public/creator-points/run': {
       id: '/api/public/creator-points/run'
       path: '/run'
@@ -570,6 +590,17 @@ const ApiPublicCreatorPointsRouteWithChildren =
     ApiPublicCreatorPointsRouteChildren,
   )
 
+interface ApiPublicLeaderboardRouteChildren {
+  ApiPublicLeaderboardSeasonsRoute: typeof ApiPublicLeaderboardSeasonsRoute
+}
+
+const ApiPublicLeaderboardRouteChildren: ApiPublicLeaderboardRouteChildren = {
+  ApiPublicLeaderboardSeasonsRoute: ApiPublicLeaderboardSeasonsRoute,
+}
+
+const ApiPublicLeaderboardRouteWithChildren =
+  ApiPublicLeaderboardRoute._addFileChildren(ApiPublicLeaderboardRouteChildren)
+
 interface ApiPublicTrendingRouteChildren {
   ApiPublicTrendingRunRoute: typeof ApiPublicTrendingRunRoute
 }
@@ -600,7 +631,7 @@ const rootRouteChildren: RootRouteChildren = {
   TokenAddressRoute: TokenAddressRoute,
   ApiPublicCreatorPointsRoute: ApiPublicCreatorPointsRouteWithChildren,
   ApiPublicCreatorsRoute: ApiPublicCreatorsRoute,
-  ApiPublicLeaderboardRoute: ApiPublicLeaderboardRoute,
+  ApiPublicLeaderboardRoute: ApiPublicLeaderboardRouteWithChildren,
   ApiPublicTokenMediaRoute: ApiPublicTokenMediaRoute,
   ApiPublicTrendingRoute: ApiPublicTrendingRouteWithChildren,
   ApiPublicSignalsRunRoute: ApiPublicSignalsRunRoute,
