@@ -401,6 +401,17 @@ export async function runCreatorPointsEngine(trigger: string, opts: RunOptions =
         lastError = res.error;
       }
       awarded = eligible.slice(0, res.inserted).reduce((s, c) => s + c.points, 0);
+      // 🏆 Fase 2C.1 — level history sync reuses this cron (no parallel job).
+      try {
+        const lh = await import("@/lib/levels/level-history.server");
+        const sync = await lh.runLevelHistorySync("points-engine");
+        if (sync.milestonesInserted) {
+          notes.push(`${sync.milestonesInserted} nuevos milestones de nivel registrados.`);
+        }
+        if (sync.errors) notes.push(`Level history: ${sync.errors} errores (${sync.lastError ?? "?"}).`);
+      } catch (e) {
+        notes.push(`Level history sync no disponible: ${e instanceof Error ? e.message : "error"}.`);
+      }
       if (res.inserted !== eligible.length) {
         notes.push(`${eligible.length - res.inserted} eventos ya existían en el ledger (idempotencia).`);
       }

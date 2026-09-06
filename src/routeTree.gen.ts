@@ -32,6 +32,7 @@ import { Route as ApiPublicCreatorPointsRouteImport } from './routes/api/public/
 import { Route as ApiPublicTrendingRunRouteImport } from './routes/api/public/trending/run'
 import { Route as ApiPublicSignalsRunRouteImport } from './routes/api/public/signals/run'
 import { Route as ApiPublicCreatorPointsRunRouteImport } from './routes/api/public/creator-points/run'
+import { Route as ApiPublicCreatorAddressLevelHistoryRouteImport } from './routes/api/public/creator/$address/level-history'
 
 const TrendingRoute = TrendingRouteImport.update({
   id: '/trending',
@@ -149,6 +150,12 @@ const ApiPublicCreatorPointsRunRoute =
     path: '/run',
     getParentRoute: () => ApiPublicCreatorPointsRoute,
   } as any)
+const ApiPublicCreatorAddressLevelHistoryRoute =
+  ApiPublicCreatorAddressLevelHistoryRouteImport.update({
+    id: '/api/public/creator/$address/level-history',
+    path: '/api/public/creator/$address/level-history',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -174,6 +181,7 @@ export interface FileRoutesByFullPath {
   '/api/public/creator-points/run': typeof ApiPublicCreatorPointsRunRoute
   '/api/public/signals/run': typeof ApiPublicSignalsRunRoute
   '/api/public/trending/run': typeof ApiPublicTrendingRunRoute
+  '/api/public/creator/$address/level-history': typeof ApiPublicCreatorAddressLevelHistoryRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -199,6 +207,7 @@ export interface FileRoutesByTo {
   '/api/public/creator-points/run': typeof ApiPublicCreatorPointsRunRoute
   '/api/public/signals/run': typeof ApiPublicSignalsRunRoute
   '/api/public/trending/run': typeof ApiPublicTrendingRunRoute
+  '/api/public/creator/$address/level-history': typeof ApiPublicCreatorAddressLevelHistoryRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -225,6 +234,7 @@ export interface FileRoutesById {
   '/api/public/creator-points/run': typeof ApiPublicCreatorPointsRunRoute
   '/api/public/signals/run': typeof ApiPublicSignalsRunRoute
   '/api/public/trending/run': typeof ApiPublicTrendingRunRoute
+  '/api/public/creator/$address/level-history': typeof ApiPublicCreatorAddressLevelHistoryRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -252,6 +262,7 @@ export interface FileRouteTypes {
     | '/api/public/creator-points/run'
     | '/api/public/signals/run'
     | '/api/public/trending/run'
+    | '/api/public/creator/$address/level-history'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -277,6 +288,7 @@ export interface FileRouteTypes {
     | '/api/public/creator-points/run'
     | '/api/public/signals/run'
     | '/api/public/trending/run'
+    | '/api/public/creator/$address/level-history'
   id:
     | '__root__'
     | '/'
@@ -302,6 +314,7 @@ export interface FileRouteTypes {
     | '/api/public/creator-points/run'
     | '/api/public/signals/run'
     | '/api/public/trending/run'
+    | '/api/public/creator/$address/level-history'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -326,6 +339,7 @@ export interface RootRouteChildren {
   ApiPublicTokenMediaRoute: typeof ApiPublicTokenMediaRoute
   ApiPublicTrendingRoute: typeof ApiPublicTrendingRouteWithChildren
   ApiPublicSignalsRunRoute: typeof ApiPublicSignalsRunRoute
+  ApiPublicCreatorAddressLevelHistoryRoute: typeof ApiPublicCreatorAddressLevelHistoryRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -491,6 +505,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicCreatorPointsRunRouteImport
       parentRoute: typeof ApiPublicCreatorPointsRoute
     }
+    '/api/public/creator/$address/level-history': {
+      id: '/api/public/creator/$address/level-history'
+      path: '/api/public/creator/$address/level-history'
+      fullPath: '/api/public/creator/$address/level-history'
+      preLoaderRoute: typeof ApiPublicCreatorAddressLevelHistoryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -541,6 +562,8 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicTokenMediaRoute: ApiPublicTokenMediaRoute,
   ApiPublicTrendingRoute: ApiPublicTrendingRouteWithChildren,
   ApiPublicSignalsRunRoute: ApiPublicSignalsRunRoute,
+  ApiPublicCreatorAddressLevelHistoryRoute:
+    ApiPublicCreatorAddressLevelHistoryRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

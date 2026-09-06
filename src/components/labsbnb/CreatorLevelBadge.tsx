@@ -1,9 +1,9 @@
 // 🏆 Creator Levels — reusable presentation components (Fase 2C).
 // All values arrive already calculated by the server. This file never derives
 // points, never writes anything and never touches on-chain state.
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { toast } from "sonner";
+
 import {
   Dialog,
   DialogContent,
@@ -153,11 +153,8 @@ export function CreatorLevelsOverview({
 
 /* ------------------------- profile section (public) ------------------------ */
 
-const seenKey = (address: string) => `labsbnb.level.${address.toLowerCase()}`;
-
 export function CreatorLevelSection({ address }: { address: string }) {
   const [open, setOpen] = useState(false);
-  const notified = useRef(false);
 
   const q = useQuery({
     queryKey: ["creator-level", address.toLowerCase()],
@@ -168,21 +165,6 @@ export function CreatorLevelSection({ address }: { address: string }) {
   const data = q.data;
   const level = data?.level ?? null;
 
-  // 🎉 Level-up: purely visual, idempotent (persisted per address, once per browser).
-  useEffect(() => {
-    if (!level || notified.current) return;
-    try {
-      const key = seenKey(address);
-      const prev = Number(window.localStorage.getItem(key));
-      if (Number.isFinite(prev) && prev > 0 && level.level > prev) {
-        notified.current = true;
-        toast.success(`🎉 Level Up! You reached ${level.name}.`);
-      }
-      window.localStorage.setItem(key, String(level.level));
-    } catch {
-      /* storage unavailable — the badge still renders */
-    }
-  }, [address, level]);
 
   if (q.isLoading && !data) return <div className="mt-6 glass h-32 animate-pulse rounded-2xl" />;
 
