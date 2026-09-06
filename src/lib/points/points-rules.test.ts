@@ -37,54 +37,77 @@ describe("organic multiplier", () => {
 
 describe("milestones", () => {
   it("returns only the thresholds actually reached", () => {
-    expect(milestonesReached(12, [10, 25, 50])).toEqual([10]);
-    expect(milestonesReached(50, [10, 25, 50])).toEqual([10, 25, 50]);
-    expect(milestonesReached(0, [10, 25, 50])).toEqual([]);
+    const pts = [100, 250, 500];
+    expect(milestonesReached([10, 25, 50], pts, 12).map((m) => m.threshold)).toEqual([10]);
+    expect(milestonesReached([10, 25, 50], pts, 50).map((m) => m.points)).toEqual(pts);
+    expect(milestonesReached([10, 25, 50], pts, 0)).toEqual([]);
+    expect(milestonesReached([10, 25, 50], pts, null)).toEqual([]);
   });
 });
 
 describe("idempotency", () => {
   it("produces a stable fingerprint for the same fact", async () => {
-    const input = fingerprintInput(56, "0xAbC", "TOKEN_CREATED", "src-1", "0xToken");
-    const a = await fingerprint(input);
-    const b = await fingerprint(fingerprintInput(56, "0xabc", "TOKEN_CREATED", "src-1", "0xtoken"));
+    const a = await fingerprint({
+      chainId: 56,
+      creatorAddress: "0xAbC",
+      eventType: "TOKEN_CREATED",
+      sourceId: "src-1",
+      tokenAddress: "0xToken",
+    });
+    const b = await fingerprint({
+      chainId: 56,
+      creatorAddress: "0xabc",
+      eventType: "TOKEN_CREATED",
+      sourceId: "src-1",
+      tokenAddress: "0xtoken",
+    });
     expect(a).toBe(b);
+    expect(fingerprintInput({
+      chainId: 56,
+      creatorAddress: "0xABC",
+      eventType: "TOKEN_CREATED",
+      sourceId: "src-1",
+      tokenAddress: null,
+    })).toContain("0xabc");
     expect(a).toHaveLength(64);
   });
 
   it("changes when any component changes", async () => {
-    const a = await fingerprint(fingerprintInput(56, "0xa", "TOKEN_CREATED", "s", "0xt"));
-    const b = await fingerprint(fingerprintInput(56, "0xa", "GRADUATED", "s", "0xt"));
+    const base = { chainId: 56, creatorAddress: "0xa", sourceId: "s", tokenAddress: "0xt" } as const;
+    const a = await fingerprint({ ...base, eventType: "TOKEN_CREATED" });
+    const b = await fingerprint({ ...base, eventType: "GRADUATED" });
     expect(a).not.toBe(b);
   });
 });
 
 describe("anti-farming trade aggregation", () => {
   const creator = "0xcreator0000000000000000000000000000cafe";
-  const base = { at: "2026-01-01T00:00:00.000Z", bnb: 1 };
+  const one = 10n ** 18n;
 
   it("ignores trades made by the creator itself", () => {
     const agg = aggregateTrades(
       [
-        { ...base, trader: creator, isBuy: true },
-        { ...base, trader: "0xbuyer1", isBuy: true },
-      ],
+        { trader: creator, isBuy: true, amountBnb: one },
+        { trader: "0xbuyer1", isBuy: true, amountBnb: one },
+      ] as never,
       creator,
     );
     expect(agg.uniqueBuyers).toBe(1);
     expect(agg.selfTrades).toBe(1);
+    expect(agg.selfVolume).toBeCloseTo(1);
   });
 
-  it("discounts instant round-trips (wash trading)", () => {
+  it("discounts round-trips (wash trading) from the organic volume", () => {
     const agg = aggregateTrades(
       [
-        { at: "2026-01-01T00:00:00.000Z", trader: "0xwash", isBuy: true, bnb: 5 },
-        { at: "2026-01-01T00:00:30.000Z", trader: "0xwash", isBuy: false, bnb: 5 },
-      ],
+        { trader: "0xwash", isBuy: true, amountBnb: 5n * one },
+        { trader: "0xwash", isBuy: false, amountBnb: 5n * one },
+      ] as never,
       creator,
     );
-    expect(agg.roundTrips).toBeGreaterThan(0);
-    expect(agg.organicVolume).toBeLessThan(agg.volume);
+    expect(agg.roundTripShare).toBeGreaterThan(0);
+    expect(agg.organicVolume).toBe(0);
+    expect(agg.suspicious).toBe(true);
   });
 });
 
