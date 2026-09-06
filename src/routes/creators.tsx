@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Trophy } from "lucide-react";
 import { AppShell } from "@/components/labsbnb/AppShell";
 import { CreatorBadges, CreatorScoreChip } from "@/components/labsbnb/CreatorBadges";
+import { CreatorLevelBadge } from "@/components/labsbnb/CreatorLevelBadge";
 import { getTopCreators } from "@/lib/creator.functions";
 
 export const Route = createFileRoute("/creators")({

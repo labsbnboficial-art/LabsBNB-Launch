@@ -8,6 +8,7 @@ import { CreatorBadges, CreatorScoreChip } from "@/components/labsbnb/CreatorBad
 import { getCreator } from "@/lib/creator.functions";
 import { CREATOR_WEIGHTS, EVENT_LABEL, type CreatorProfile, type CreatorTokenRow } from "@/lib/creator/creator-types";
 import { CreatorPointsSection } from "@/components/labsbnb/CreatorPoints";
+import { CreatorLevelSection } from "@/components/labsbnb/CreatorLevelBadge";
 import { ACTIVE_NETWORK } from "@/lib/web3/networks";
 
 export const Route = createFileRoute("/creator/$address")({
@@ -320,6 +321,8 @@ function CreatorPage() {
                 )}
               </div>
             </div>
+
+            <CreatorLevelSection address={address} />
 
             <CreatorPointsSection address={address} />
 
