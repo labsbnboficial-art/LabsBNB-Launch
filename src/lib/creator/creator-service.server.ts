@@ -182,18 +182,55 @@ export async function getCreatorLeaderboard(
         return b.score - a.score;
     }
   });
-  const creators = sorted.slice(0, limit).map((p, i) => ({
-    address: p.address,
-    displayName: p.customization.displayName,
-    avatarUrl: p.customization.avatarUrl,
-    score: p.score,
-    tokensCreated: p.stats.tokensCreated,
-    graduatedTokens: p.stats.graduatedTokens,
-    organicVolume24h: p.stats.organicVolume24h,
-    bestTrendingRank: p.stats.bestTrendingRank,
-    badges: p.badges,
-    rank: i + 1,
-  }));
+  const page = sorted.slice(0, limit);
+
+  // Creator Points + derived Level. ONE batched query for the whole page
+  // (no N+1): `totalsByCreator` aggregates the ledger in a single request.
+  let pointsByCreator = new Map<string, number>();
+  let levelsConfig = null as null | Awaited<
+    ReturnType<typeof import("@/lib/levels/levels-config.server").loadLevelsConfig>
+  >;
+  try {
+    const [store, cfgMod] = await Promise.all([
+      import("@/lib/points/points-store.server"),
+      import("@/lib/levels/levels-config.server"),
+    ]);
+    const [totals, cfg] = await Promise.all([store.totalsByCreator(ACTIVE_CHAIN_ID), cfgMod.loadLevelsConfig()]);
+    pointsByCreator = totals;
+    levelsConfig = cfg;
+  } catch {
+    /* points/levels unavailable → the directory still renders reputation data */
+  }
+  const { calculateCreatorLevel } = await import("@/lib/levels/levels-rules");
+
+  const creators = page.map((p, i) => {
+    const creatorPoints = pointsByCreator.get(p.address) ?? 0;
+    const lvl = levelsConfig?.enabled ? calculateCreatorLevel(creatorPoints, levelsConfig) : null;
+    return {
+      address: p.address,
+      displayName: p.customization.displayName,
+      avatarUrl: p.customization.avatarUrl,
+      score: p.score,
+      tokensCreated: p.stats.tokensCreated,
+      graduatedTokens: p.stats.graduatedTokens,
+      organicVolume24h: p.stats.organicVolume24h,
+      bestTrendingRank: p.stats.bestTrendingRank,
+      badges: p.badges,
+      rank: i + 1,
+      creatorPoints,
+      creatorLevel: lvl
+        ? {
+            level: lvl.level,
+            name: lvl.name,
+            icon: lvl.icon,
+            progressPercent: lvl.progressPercent,
+            pointsToNextLevel: lvl.pointsToNextLevel,
+            nextLevelName: lvl.nextLevelName,
+          }
+        : null,
+    };
+  });
+
   return { creators, total: profiles.length, source };
 }
 
