@@ -34,6 +34,7 @@ import { Route as ApiPublicTrendingRunRouteImport } from './routes/api/public/tr
 import { Route as ApiPublicSignalsRunRouteImport } from './routes/api/public/signals/run'
 import { Route as ApiPublicLeaderboardSeasonsRouteImport } from './routes/api/public/leaderboard/seasons'
 import { Route as ApiPublicCreatorPointsRunRouteImport } from './routes/api/public/creator-points/run'
+import { Route as ApiPublicLeaderboardSeasonSlugRouteImport } from './routes/api/public/leaderboard/season.$slug'
 import { Route as ApiPublicCreatorAddressLevelHistoryRouteImport } from './routes/api/public/creator/$address/level-history'
 import { Route as ApiPublicCreatorAddressAchievementsRouteImport } from './routes/api/public/creator/$address/achievements'
 
@@ -164,6 +165,12 @@ const ApiPublicCreatorPointsRunRoute =
     path: '/run',
     getParentRoute: () => ApiPublicCreatorPointsRoute,
   } as any)
+const ApiPublicLeaderboardSeasonSlugRoute =
+  ApiPublicLeaderboardSeasonSlugRouteImport.update({
+    id: '/season/$slug',
+    path: '/season/$slug',
+    getParentRoute: () => ApiPublicLeaderboardRoute,
+  } as any)
 const ApiPublicCreatorAddressLevelHistoryRoute =
   ApiPublicCreatorAddressLevelHistoryRouteImport.update({
     id: '/api/public/creator/$address/level-history',
@@ -205,6 +212,7 @@ export interface FileRoutesByFullPath {
   '/api/public/trending/run': typeof ApiPublicTrendingRunRoute
   '/api/public/creator/$address/achievements': typeof ApiPublicCreatorAddressAchievementsRoute
   '/api/public/creator/$address/level-history': typeof ApiPublicCreatorAddressLevelHistoryRoute
+  '/api/public/leaderboard/season/$slug': typeof ApiPublicLeaderboardSeasonSlugRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -234,6 +242,7 @@ export interface FileRoutesByTo {
   '/api/public/trending/run': typeof ApiPublicTrendingRunRoute
   '/api/public/creator/$address/achievements': typeof ApiPublicCreatorAddressAchievementsRoute
   '/api/public/creator/$address/level-history': typeof ApiPublicCreatorAddressLevelHistoryRoute
+  '/api/public/leaderboard/season/$slug': typeof ApiPublicLeaderboardSeasonSlugRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -264,6 +273,7 @@ export interface FileRoutesById {
   '/api/public/trending/run': typeof ApiPublicTrendingRunRoute
   '/api/public/creator/$address/achievements': typeof ApiPublicCreatorAddressAchievementsRoute
   '/api/public/creator/$address/level-history': typeof ApiPublicCreatorAddressLevelHistoryRoute
+  '/api/public/leaderboard/season/$slug': typeof ApiPublicLeaderboardSeasonSlugRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -295,6 +305,7 @@ export interface FileRouteTypes {
     | '/api/public/trending/run'
     | '/api/public/creator/$address/achievements'
     | '/api/public/creator/$address/level-history'
+    | '/api/public/leaderboard/season/$slug'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -324,6 +335,7 @@ export interface FileRouteTypes {
     | '/api/public/trending/run'
     | '/api/public/creator/$address/achievements'
     | '/api/public/creator/$address/level-history'
+    | '/api/public/leaderboard/season/$slug'
   id:
     | '__root__'
     | '/'
@@ -353,6 +365,7 @@ export interface FileRouteTypes {
     | '/api/public/trending/run'
     | '/api/public/creator/$address/achievements'
     | '/api/public/creator/$address/level-history'
+    | '/api/public/leaderboard/season/$slug'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -559,6 +572,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicCreatorPointsRunRouteImport
       parentRoute: typeof ApiPublicCreatorPointsRoute
     }
+    '/api/public/leaderboard/season/$slug': {
+      id: '/api/public/leaderboard/season/$slug'
+      path: '/season/$slug'
+      fullPath: '/api/public/leaderboard/season/$slug'
+      preLoaderRoute: typeof ApiPublicLeaderboardSeasonSlugRouteImport
+      parentRoute: typeof ApiPublicLeaderboardRoute
+    }
     '/api/public/creator/$address/level-history': {
       id: '/api/public/creator/$address/level-history'
       path: '/api/public/creator/$address/level-history'
@@ -592,10 +612,12 @@ const ApiPublicCreatorPointsRouteWithChildren =
 
 interface ApiPublicLeaderboardRouteChildren {
   ApiPublicLeaderboardSeasonsRoute: typeof ApiPublicLeaderboardSeasonsRoute
+  ApiPublicLeaderboardSeasonSlugRoute: typeof ApiPublicLeaderboardSeasonSlugRoute
 }
 
 const ApiPublicLeaderboardRouteChildren: ApiPublicLeaderboardRouteChildren = {
   ApiPublicLeaderboardSeasonsRoute: ApiPublicLeaderboardSeasonsRoute,
+  ApiPublicLeaderboardSeasonSlugRoute: ApiPublicLeaderboardSeasonSlugRoute,
 }
 
 const ApiPublicLeaderboardRouteWithChildren =
