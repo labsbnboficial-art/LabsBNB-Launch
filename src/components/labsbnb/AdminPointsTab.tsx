@@ -13,6 +13,7 @@ import { Switch } from "@/components/ui/switch";
 import { getPointsOverview, runPointsEngine, savePointsConfig } from "@/lib/points.functions";
 import { AdminLevelsPanel } from "@/components/labsbnb/AdminLevelsPanel";
 import { AdminLevelHistoryPanel } from "@/components/labsbnb/AdminLevelHistoryPanel";
+import { AdminAchievementsPanel } from "@/components/labsbnb/AdminAchievementsPanel";
 import {
   DEFAULT_POINTS_CONFIG,
   POINTS_EVENT_LABEL,
