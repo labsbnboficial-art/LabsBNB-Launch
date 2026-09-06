@@ -167,7 +167,8 @@ export async function syncCreatorLevelHistory(
 ): Promise<SyncResult> {
   const chainId = opts.chainId ?? ACTIVE_CHAIN_ID;
   const address = normalizeAddress(creatorAddress);
-  const config = opts.config ?? (await import("./levels-config.server").then((m) => m.loadLevelsConfig()));
+  const cfgMod = await import("./levels-config.server");
+  const config: CreatorLevelsConfig = opts.config ?? (await cfgMod.loadLevelsConfig());
 
   let totalPoints = opts.totalPoints;
   if (totalPoints == null) {
