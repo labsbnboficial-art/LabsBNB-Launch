@@ -207,5 +207,7 @@ export type CreatorLeaderboardRow = {
   creatorPoints: number;
   /** Derived progression. `null` when Creator Levels are disabled by admin. */
   creatorLevel: CreatorLevelSummary | null;
+  /** Compact unlocked achievements (Fase 2D). Batched: never one query per row. */
+  achievementBadges: { key: string; icon: string; name: string; rarity: string }[];
 };
 

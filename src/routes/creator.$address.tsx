@@ -10,6 +10,7 @@ import { CREATOR_WEIGHTS, EVENT_LABEL, type CreatorProfile, type CreatorTokenRow
 import { CreatorPointsSection } from "@/components/labsbnb/CreatorPoints";
 import { CreatorLevelSection } from "@/components/labsbnb/CreatorLevelBadge";
 import { CreatorLevelHistorySection } from "@/components/labsbnb/CreatorLevelHistory";
+import { CreatorAchievementsSection } from "@/components/labsbnb/CreatorAchievements";
 import { ACTIVE_NETWORK } from "@/lib/web3/networks";
 
 export const Route = createFileRoute("/creator/$address")({
@@ -326,6 +327,8 @@ function CreatorPage() {
             <CreatorLevelSection address={address} />
 
             <CreatorLevelHistorySection address={address} />
+
+            <CreatorAchievementsSection address={address} />
 
             <CreatorPointsSection address={address} />
 

@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { Trophy } from "lucide-react";
 import { AppShell } from "@/components/labsbnb/AppShell";
+import { AchievementBadgeStrip } from "@/components/labsbnb/CreatorAchievements";
 import { CreatorBadges, CreatorScoreChip } from "@/components/labsbnb/CreatorBadges";
 import { CreatorLevelBadge } from "@/components/labsbnb/CreatorLevelBadge";
 import { getTopCreators } from "@/lib/creator.functions";
@@ -95,7 +96,10 @@ function CreatorsPage() {
                     <div className="truncate text-sm">
                       {c.displayName ?? `${c.address.slice(0, 6)}...${c.address.slice(-4)}`}
                     </div>
-                    <CreatorBadges badges={c.badges} limit={3} />
+                    <div className="flex flex-wrap items-center gap-2">
+                      <CreatorBadges badges={c.badges} limit={3} />
+                      <AchievementBadgeStrip badges={c.achievementBadges} />
+                    </div>
                   </div>
                 </div>
                 <div className="grid flex-1 grid-cols-2 gap-2 text-[11px] md:grid-cols-4">

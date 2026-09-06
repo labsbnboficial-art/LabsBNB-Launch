@@ -33,6 +33,7 @@ import { Route as ApiPublicTrendingRunRouteImport } from './routes/api/public/tr
 import { Route as ApiPublicSignalsRunRouteImport } from './routes/api/public/signals/run'
 import { Route as ApiPublicCreatorPointsRunRouteImport } from './routes/api/public/creator-points/run'
 import { Route as ApiPublicCreatorAddressLevelHistoryRouteImport } from './routes/api/public/creator/$address/level-history'
+import { Route as ApiPublicCreatorAddressAchievementsRouteImport } from './routes/api/public/creator/$address/achievements'
 
 const TrendingRoute = TrendingRouteImport.update({
   id: '/trending',
@@ -156,6 +157,12 @@ const ApiPublicCreatorAddressLevelHistoryRoute =
     path: '/api/public/creator/$address/level-history',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicCreatorAddressAchievementsRoute =
+  ApiPublicCreatorAddressAchievementsRouteImport.update({
+    id: '/api/public/creator/$address/achievements',
+    path: '/api/public/creator/$address/achievements',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -181,6 +188,7 @@ export interface FileRoutesByFullPath {
   '/api/public/creator-points/run': typeof ApiPublicCreatorPointsRunRoute
   '/api/public/signals/run': typeof ApiPublicSignalsRunRoute
   '/api/public/trending/run': typeof ApiPublicTrendingRunRoute
+  '/api/public/creator/$address/achievements': typeof ApiPublicCreatorAddressAchievementsRoute
   '/api/public/creator/$address/level-history': typeof ApiPublicCreatorAddressLevelHistoryRoute
 }
 export interface FileRoutesByTo {
@@ -207,6 +215,7 @@ export interface FileRoutesByTo {
   '/api/public/creator-points/run': typeof ApiPublicCreatorPointsRunRoute
   '/api/public/signals/run': typeof ApiPublicSignalsRunRoute
   '/api/public/trending/run': typeof ApiPublicTrendingRunRoute
+  '/api/public/creator/$address/achievements': typeof ApiPublicCreatorAddressAchievementsRoute
   '/api/public/creator/$address/level-history': typeof ApiPublicCreatorAddressLevelHistoryRoute
 }
 export interface FileRoutesById {
@@ -234,6 +243,7 @@ export interface FileRoutesById {
   '/api/public/creator-points/run': typeof ApiPublicCreatorPointsRunRoute
   '/api/public/signals/run': typeof ApiPublicSignalsRunRoute
   '/api/public/trending/run': typeof ApiPublicTrendingRunRoute
+  '/api/public/creator/$address/achievements': typeof ApiPublicCreatorAddressAchievementsRoute
   '/api/public/creator/$address/level-history': typeof ApiPublicCreatorAddressLevelHistoryRoute
 }
 export interface FileRouteTypes {
@@ -262,6 +272,7 @@ export interface FileRouteTypes {
     | '/api/public/creator-points/run'
     | '/api/public/signals/run'
     | '/api/public/trending/run'
+    | '/api/public/creator/$address/achievements'
     | '/api/public/creator/$address/level-history'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -288,6 +299,7 @@ export interface FileRouteTypes {
     | '/api/public/creator-points/run'
     | '/api/public/signals/run'
     | '/api/public/trending/run'
+    | '/api/public/creator/$address/achievements'
     | '/api/public/creator/$address/level-history'
   id:
     | '__root__'
@@ -314,6 +326,7 @@ export interface FileRouteTypes {
     | '/api/public/creator-points/run'
     | '/api/public/signals/run'
     | '/api/public/trending/run'
+    | '/api/public/creator/$address/achievements'
     | '/api/public/creator/$address/level-history'
   fileRoutesById: FileRoutesById
 }
@@ -339,6 +352,7 @@ export interface RootRouteChildren {
   ApiPublicTokenMediaRoute: typeof ApiPublicTokenMediaRoute
   ApiPublicTrendingRoute: typeof ApiPublicTrendingRouteWithChildren
   ApiPublicSignalsRunRoute: typeof ApiPublicSignalsRunRoute
+  ApiPublicCreatorAddressAchievementsRoute: typeof ApiPublicCreatorAddressAchievementsRoute
   ApiPublicCreatorAddressLevelHistoryRoute: typeof ApiPublicCreatorAddressLevelHistoryRoute
 }
 
@@ -512,6 +526,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicCreatorAddressLevelHistoryRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/creator/$address/achievements': {
+      id: '/api/public/creator/$address/achievements'
+      path: '/api/public/creator/$address/achievements'
+      fullPath: '/api/public/creator/$address/achievements'
+      preLoaderRoute: typeof ApiPublicCreatorAddressAchievementsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -562,6 +583,8 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicTokenMediaRoute: ApiPublicTokenMediaRoute,
   ApiPublicTrendingRoute: ApiPublicTrendingRouteWithChildren,
   ApiPublicSignalsRunRoute: ApiPublicSignalsRunRoute,
+  ApiPublicCreatorAddressAchievementsRoute:
+    ApiPublicCreatorAddressAchievementsRoute,
   ApiPublicCreatorAddressLevelHistoryRoute:
     ApiPublicCreatorAddressLevelHistoryRoute,
 }
