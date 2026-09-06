@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { getPointsOverview, runPointsEngine, savePointsConfig } from "@/lib/points.functions";
+import { AdminLevelsPanel } from "@/components/labsbnb/AdminLevelsPanel";
 import {
   DEFAULT_POINTS_CONFIG,
   POINTS_EVENT_LABEL,
@@ -368,6 +369,9 @@ export function AdminPointsTab({ csrf }: { csrf: string }) {
             )}
           </tbody>
         </table>
+      </div>
+      <div className="mt-6">
+        <AdminLevelsPanel csrf={csrf} />
       </div>
     </div>
   );
