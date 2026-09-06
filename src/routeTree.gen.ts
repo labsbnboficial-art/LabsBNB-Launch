@@ -22,6 +22,7 @@ import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as LeaderboardIndexRouteImport } from './routes/leaderboard.index'
 import { Route as TokenAddressRouteImport } from './routes/token.$address'
+import { Route as LeaderboardSeasonsRouteImport } from './routes/leaderboard.seasons'
 import { Route as CreatorAddressRouteImport } from './routes/creator.$address'
 import { Route as CampaignsNewRouteImport } from './routes/campaigns.new'
 import { Route as CampaignsIdRouteImport } from './routes/campaigns.$id'
@@ -103,6 +104,11 @@ const LeaderboardIndexRoute = LeaderboardIndexRouteImport.update({
 const TokenAddressRoute = TokenAddressRouteImport.update({
   id: '/token/$address',
   path: '/token/$address',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LeaderboardSeasonsRoute = LeaderboardSeasonsRouteImport.update({
+  id: '/leaderboard/seasons',
+  path: '/leaderboard/seasons',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CreatorAddressRoute = CreatorAddressRouteImport.update({
@@ -213,6 +219,7 @@ export interface FileRoutesByFullPath {
   '/campaigns/$id': typeof CampaignsIdRoute
   '/campaigns/new': typeof CampaignsNewRoute
   '/creator/$address': typeof CreatorAddressRoute
+  '/leaderboard/seasons': typeof LeaderboardSeasonsRoute
   '/token/$address': typeof TokenAddressRoute
   '/leaderboard/': typeof LeaderboardIndexRoute
   '/api/public/creator-points': typeof ApiPublicCreatorPointsRouteWithChildren
@@ -245,6 +252,7 @@ export interface FileRoutesByTo {
   '/campaigns/$id': typeof CampaignsIdRoute
   '/campaigns/new': typeof CampaignsNewRoute
   '/creator/$address': typeof CreatorAddressRoute
+  '/leaderboard/seasons': typeof LeaderboardSeasonsRoute
   '/token/$address': typeof TokenAddressRoute
   '/leaderboard': typeof LeaderboardIndexRoute
   '/api/public/creator-points': typeof ApiPublicCreatorPointsRouteWithChildren
@@ -278,6 +286,7 @@ export interface FileRoutesById {
   '/campaigns/$id': typeof CampaignsIdRoute
   '/campaigns/new': typeof CampaignsNewRoute
   '/creator/$address': typeof CreatorAddressRoute
+  '/leaderboard/seasons': typeof LeaderboardSeasonsRoute
   '/token/$address': typeof TokenAddressRoute
   '/leaderboard/': typeof LeaderboardIndexRoute
   '/api/public/creator-points': typeof ApiPublicCreatorPointsRouteWithChildren
@@ -312,6 +321,7 @@ export interface FileRouteTypes {
     | '/campaigns/$id'
     | '/campaigns/new'
     | '/creator/$address'
+    | '/leaderboard/seasons'
     | '/token/$address'
     | '/leaderboard/'
     | '/api/public/creator-points'
@@ -344,6 +354,7 @@ export interface FileRouteTypes {
     | '/campaigns/$id'
     | '/campaigns/new'
     | '/creator/$address'
+    | '/leaderboard/seasons'
     | '/token/$address'
     | '/leaderboard'
     | '/api/public/creator-points'
@@ -376,6 +387,7 @@ export interface FileRouteTypes {
     | '/campaigns/$id'
     | '/campaigns/new'
     | '/creator/$address'
+    | '/leaderboard/seasons'
     | '/token/$address'
     | '/leaderboard/'
     | '/api/public/creator-points'
@@ -409,6 +421,7 @@ export interface RootRouteChildren {
   CampaignsIdRoute: typeof CampaignsIdRoute
   CampaignsNewRoute: typeof CampaignsNewRoute
   CreatorAddressRoute: typeof CreatorAddressRoute
+  LeaderboardSeasonsRoute: typeof LeaderboardSeasonsRoute
   TokenAddressRoute: typeof TokenAddressRoute
   LeaderboardIndexRoute: typeof LeaderboardIndexRoute
   ApiPublicCreatorPointsRoute: typeof ApiPublicCreatorPointsRouteWithChildren
@@ -513,6 +526,13 @@ declare module '@tanstack/react-router' {
       path: '/token/$address'
       fullPath: '/token/$address'
       preLoaderRoute: typeof TokenAddressRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/leaderboard/seasons': {
+      id: '/leaderboard/seasons'
+      path: '/leaderboard/seasons'
+      fullPath: '/leaderboard/seasons'
+      preLoaderRoute: typeof LeaderboardSeasonsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/creator/$address': {
@@ -691,6 +711,7 @@ const rootRouteChildren: RootRouteChildren = {
   CampaignsIdRoute: CampaignsIdRoute,
   CampaignsNewRoute: CampaignsNewRoute,
   CreatorAddressRoute: CreatorAddressRoute,
+  LeaderboardSeasonsRoute: LeaderboardSeasonsRoute,
   TokenAddressRoute: TokenAddressRoute,
   LeaderboardIndexRoute: LeaderboardIndexRoute,
   ApiPublicCreatorPointsRoute: ApiPublicCreatorPointsRouteWithChildren,
