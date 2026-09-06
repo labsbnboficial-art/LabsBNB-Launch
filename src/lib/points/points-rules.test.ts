@@ -155,3 +155,86 @@ describe("security surface", () => {
     expect((store.match(/chain_id/g) ?? []).length).toBeGreaterThanOrEqual(3);
   });
 });
+
+describe("persistent configuration (single source of truth)", () => {
+  const cfgSrc = read("src/lib/points/points-config.server.ts");
+
+  it("stores the rules in admin_config, not in a second config table", () => {
+    expect(cfgSrc).toMatch(/POINTS_CONFIG_KEY = "creator_points"/);
+    expect((cfgSrc.match(/from\("admin_config"\)/g) ?? []).length).toBeGreaterThanOrEqual(3);
+    expect(cfgSrc).not.toMatch(/creator_points_config/);
+    expect(read("src/lib/points.functions.ts")).not.toMatch(/creator_points_config/);
+  });
+
+  it("keeps the configuration private (never exposed to anon readers)", () => {
+    expect(cfgSrc).toMatch(/is_public: false/);
+  });
+
+  it("requires an authenticated admin session + CSRF for every write", () => {
+    const fns = read("src/lib/points.functions.ts");
+    expect(fns).toMatch(/requireAdmin\(csrf\)/);
+    for (const fn of ["savePointsConfig", "getPointsOverview", "runPointsEngine"]) {
+      const body = fns.slice(fns.indexOf(`export const ${fn}`), fns.indexOf(`export const ${fn}`) + 900);
+      expect(body).toMatch(/admin\(data\.csrf\)/);
+      expect(body).toMatch(/csrf/);
+    }
+  });
+
+  it("validates every incoming value before persisting it", () => {
+    const fns = read("src/lib/points.functions.ts");
+    const save = fns.slice(fns.indexOf("export const savePointsConfig"));
+    expect(save.indexOf("validatePointsConfig")).toBeLessThan(save.indexOf("savePointsConfigValue"));
+  });
+
+  it("rejects invalid multipliers / milestone points", () => {
+    expect(() =>
+      validatePointsConfig({ ...DEFAULT_POINTS_CONFIG, milestone_points: [100, -1] }, DEFAULT_POINTS_CONFIG),
+    ).toThrow();
+    expect(() =>
+      validatePointsConfig({ ...DEFAULT_POINTS_CONFIG, scan_interval_min: 0 }, DEFAULT_POINTS_CONFIG),
+    ).toThrow();
+    expect(() =>
+      validatePointsConfig({ ...DEFAULT_POINTS_CONFIG, lookback_days: 999 }, DEFAULT_POINTS_CONFIG),
+    ).toThrow();
+  });
+
+  it("cannot hold duplicated rules for one event type", () => {
+    const merged = validatePointsConfig(
+      {
+        ...DEFAULT_POINTS_CONFIG,
+        events: {
+          ...DEFAULT_POINTS_CONFIG.events,
+          TOKEN_CREATED: { ...DEFAULT_POINTS_CONFIG.events.TOKEN_CREATED, base_points: 111 },
+        },
+      },
+      DEFAULT_POINTS_CONFIG,
+    );
+    const keys = Object.keys(merged.events);
+    expect(new Set(keys).size).toBe(keys.length);
+    expect(merged.events.TOKEN_CREATED.base_points).toBe(111);
+  });
+
+  it("round-trips unchanged (config survives a reload)", () => {
+    const changed = validatePointsConfig(
+      { ...DEFAULT_POINTS_CONFIG, engine_enabled: false, max_token_creations_per_day: 3 },
+      DEFAULT_POINTS_CONFIG,
+    );
+    const reloaded = validatePointsConfig(JSON.parse(JSON.stringify(changed)), DEFAULT_POINTS_CONFIG);
+    expect(reloaded).toEqual(changed);
+  });
+
+  it("never rewrites ledger history when the configuration changes", () => {
+    expect(cfgSrc).not.toMatch(/creator_points_ledger/);
+    expect(read("src/lib/points.functions.ts")).not.toMatch(/\.(update|delete)\(/);
+  });
+
+  it("keeps the defaults required by the spec", () => {
+    const e = DEFAULT_POINTS_CONFIG.events;
+    expect(e.TOKEN_CREATED.base_points).toBe(100);
+    expect(e.TRENDING_TOP10.base_points).toBe(250);
+    expect(e.TRENDING_TOP5.base_points).toBe(1000);
+    expect(e.RISING_FAST.base_points).toBe(500);
+    expect(e.NEAR_GRADUATION.base_points).toBe(1000);
+    expect(e.GRADUATED.base_points).toBe(5000);
+  });
+});
