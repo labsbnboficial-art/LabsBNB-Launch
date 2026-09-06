@@ -7,6 +7,7 @@ import { AppShell } from "@/components/labsbnb/AppShell";
 import { CreatorBadges, CreatorScoreChip } from "@/components/labsbnb/CreatorBadges";
 import { getCreator } from "@/lib/creator.functions";
 import { CREATOR_WEIGHTS, EVENT_LABEL, type CreatorProfile, type CreatorTokenRow } from "@/lib/creator/creator-types";
+import { CreatorPointsSection } from "@/components/labsbnb/CreatorPoints";
 import { ACTIVE_NETWORK } from "@/lib/web3/networks";
 
 export const Route = createFileRoute("/creator/$address")({
@@ -319,6 +320,8 @@ function CreatorPage() {
                 )}
               </div>
             </div>
+
+            <CreatorPointsSection address={address} />
 
             <div className="mt-6 glass rounded-2xl p-4">
               <h2 className="mb-3 font-display text-sm font-semibold">📊 Creator Activity</h2>

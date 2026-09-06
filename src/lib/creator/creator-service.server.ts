@@ -147,6 +147,11 @@ async function index(): Promise<{ profiles: CreatorProfile[]; source: string }> 
   return built;
 }
 
+/** Full creator index (used by the Creator Points Engine). Read-only. */
+export async function getCreatorIndex(): Promise<{ profiles: CreatorProfile[]; source: string }> {
+  return index();
+}
+
 export async function getCreatorProfile(
   addressInput: string,
 ): Promise<{ profile: CreatorProfile | null; source: string }> {
