@@ -183,6 +183,15 @@ export type CreatorProfile = {
   updatedAt: string;
 };
 
+export type CreatorLevelSummary = {
+  level: number;
+  name: string;
+  icon: string;
+  progressPercent: number;
+  pointsToNextLevel: number;
+  nextLevelName: string | null;
+};
+
 export type CreatorLeaderboardRow = {
   address: string;
   displayName: string | null;
@@ -194,4 +203,9 @@ export type CreatorLeaderboardRow = {
   bestTrendingRank: number | null;
   badges: CreatorBadge[];
   rank: number;
+  /** Accumulated Creator Points (SUM of the ledger). Never confused with score. */
+  creatorPoints: number;
+  /** Derived progression. `null` when Creator Levels are disabled by admin. */
+  creatorLevel: CreatorLevelSummary | null;
 };
+
