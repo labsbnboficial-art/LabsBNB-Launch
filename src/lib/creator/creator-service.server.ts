@@ -203,6 +203,15 @@ export async function getCreatorLeaderboard(
   }
   const { calculateCreatorLevel } = await import("@/lib/levels/levels-rules");
 
+  // 🏅 Achievements badges — ONE batched query for the whole page (no N+1).
+  let badgesByCreator = new Map<string, { key: string; icon: string; name: string; rarity: string }[]>();
+  try {
+    const { achievementBadgesFor } = await import("@/lib/achievements/achievement-engine.server");
+    badgesByCreator = await achievementBadgesFor(page.map((p) => p.address), ACTIVE_CHAIN_ID);
+  } catch {
+    /* achievements not migrated yet → directory still renders */
+  }
+
   const creators = page.map((p, i) => {
     const creatorPoints = pointsByCreator.get(p.address) ?? 0;
     const lvl = levelsConfig?.enabled ? calculateCreatorLevel(creatorPoints, levelsConfig) : null;
@@ -228,6 +237,7 @@ export async function getCreatorLeaderboard(
             nextLevelName: lvl.nextLevelName,
           }
         : null,
+      achievementBadges: badgesByCreator.get(p.address.toLowerCase()) ?? [],
     };
   });
 
