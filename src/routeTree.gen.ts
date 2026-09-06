@@ -23,6 +23,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as RewardsIndexRouteImport } from './routes/rewards.index'
 import { Route as LeaderboardIndexRouteImport } from './routes/leaderboard.index'
 import { Route as TokenAddressRouteImport } from './routes/token.$address'
+import { Route as RewardsSlugRouteImport } from './routes/rewards.$slug'
 import { Route as LeaderboardSeasonsRouteImport } from './routes/leaderboard.seasons'
 import { Route as CreatorAddressRouteImport } from './routes/creator.$address'
 import { Route as CampaignsNewRouteImport } from './routes/campaigns.new'
@@ -116,6 +117,11 @@ const LeaderboardIndexRoute = LeaderboardIndexRouteImport.update({
 const TokenAddressRoute = TokenAddressRouteImport.update({
   id: '/token/$address',
   path: '/token/$address',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RewardsSlugRoute = RewardsSlugRouteImport.update({
+  id: '/rewards/$slug',
+  path: '/rewards/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LeaderboardSeasonsRoute = LeaderboardSeasonsRouteImport.update({
@@ -264,6 +270,7 @@ export interface FileRoutesByFullPath {
   '/campaigns/new': typeof CampaignsNewRoute
   '/creator/$address': typeof CreatorAddressRoute
   '/leaderboard/seasons': typeof LeaderboardSeasonsRoute
+  '/rewards/$slug': typeof RewardsSlugRoute
   '/token/$address': typeof TokenAddressRoute
   '/leaderboard/': typeof LeaderboardIndexRoute
   '/rewards/': typeof RewardsIndexRoute
@@ -304,6 +311,7 @@ export interface FileRoutesByTo {
   '/campaigns/new': typeof CampaignsNewRoute
   '/creator/$address': typeof CreatorAddressRoute
   '/leaderboard/seasons': typeof LeaderboardSeasonsRoute
+  '/rewards/$slug': typeof RewardsSlugRoute
   '/token/$address': typeof TokenAddressRoute
   '/leaderboard': typeof LeaderboardIndexRoute
   '/rewards': typeof RewardsIndexRoute
@@ -345,6 +353,7 @@ export interface FileRoutesById {
   '/campaigns/new': typeof CampaignsNewRoute
   '/creator/$address': typeof CreatorAddressRoute
   '/leaderboard/seasons': typeof LeaderboardSeasonsRoute
+  '/rewards/$slug': typeof RewardsSlugRoute
   '/token/$address': typeof TokenAddressRoute
   '/leaderboard/': typeof LeaderboardIndexRoute
   '/rewards/': typeof RewardsIndexRoute
@@ -387,6 +396,7 @@ export interface FileRouteTypes {
     | '/campaigns/new'
     | '/creator/$address'
     | '/leaderboard/seasons'
+    | '/rewards/$slug'
     | '/token/$address'
     | '/leaderboard/'
     | '/rewards/'
@@ -427,6 +437,7 @@ export interface FileRouteTypes {
     | '/campaigns/new'
     | '/creator/$address'
     | '/leaderboard/seasons'
+    | '/rewards/$slug'
     | '/token/$address'
     | '/leaderboard'
     | '/rewards'
@@ -467,6 +478,7 @@ export interface FileRouteTypes {
     | '/campaigns/new'
     | '/creator/$address'
     | '/leaderboard/seasons'
+    | '/rewards/$slug'
     | '/token/$address'
     | '/leaderboard/'
     | '/rewards/'
@@ -508,6 +520,7 @@ export interface RootRouteChildren {
   CampaignsNewRoute: typeof CampaignsNewRoute
   CreatorAddressRoute: typeof CreatorAddressRoute
   LeaderboardSeasonsRoute: typeof LeaderboardSeasonsRoute
+  RewardsSlugRoute: typeof RewardsSlugRoute
   TokenAddressRoute: typeof TokenAddressRoute
   LeaderboardIndexRoute: typeof LeaderboardIndexRoute
   RewardsIndexRoute: typeof RewardsIndexRoute
@@ -623,6 +636,13 @@ declare module '@tanstack/react-router' {
       path: '/token/$address'
       fullPath: '/token/$address'
       preLoaderRoute: typeof TokenAddressRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/rewards/$slug': {
+      id: '/rewards/$slug'
+      path: '/rewards/$slug'
+      fullPath: '/rewards/$slug'
+      preLoaderRoute: typeof RewardsSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/leaderboard/seasons': {
@@ -875,6 +895,7 @@ const rootRouteChildren: RootRouteChildren = {
   CampaignsNewRoute: CampaignsNewRoute,
   CreatorAddressRoute: CreatorAddressRoute,
   LeaderboardSeasonsRoute: LeaderboardSeasonsRoute,
+  RewardsSlugRoute: RewardsSlugRoute,
   TokenAddressRoute: TokenAddressRoute,
   LeaderboardIndexRoute: LeaderboardIndexRoute,
   RewardsIndexRoute: RewardsIndexRoute,
