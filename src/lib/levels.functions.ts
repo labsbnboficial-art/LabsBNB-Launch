@@ -152,7 +152,18 @@ export const getLevelHistoryOverview = createServerFn({ method: "POST" })
       storageReady: ready.ready,
       storageError: ready.error,
       total: recent.total,
-      entries: recent.entries,
+      entries: recent.entries.map((e) => ({
+        id: e.id,
+        creatorAddress: e.creatorAddress,
+        previousLevel: e.previousLevel,
+        newLevel: e.newLevel,
+        pointsAtLevelUp: e.pointsAtLevelUp,
+        milestoneKey: e.milestoneKey,
+        source: e.source,
+        fingerprint: e.fingerprint,
+        backfill: e.metadata?.["backfill"] === true,
+        createdAt: e.createdAt,
+      })),
     };
   });
 
