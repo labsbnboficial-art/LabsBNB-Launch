@@ -235,3 +235,33 @@ export async function totalsByCreator(chainId: number): Promise<Map<string, numb
     return out;
   }
 }
+
+/**
+ * 🏆 Fase 2E — Season points. Filters the EXISTING ledger by the season window
+ * (`created_at >= starts_at AND created_at < ends_at`). The ledger itself is
+ * never modified or duplicated: a season is only a read-time filter.
+ */
+export async function seasonTotalsByCreator(
+  chainId: number,
+  startsAt: string,
+  endsAt: string,
+): Promise<Map<string, number>> {
+  const out = new Map<string, number>();
+  try {
+    const c = await db();
+    const { data, error } = await c
+      .from(TABLE)
+      .select("creator_address,points")
+      .eq("chain_id", chainId)
+      .gte("created_at", startsAt)
+      .lt("created_at", endsAt)
+      .limit(20_000);
+    if (error || !data) return out;
+    for (const r of data as { creator_address: string; points: number }[]) {
+      out.set(r.creator_address.toLowerCase(), (out.get(r.creator_address.toLowerCase()) ?? 0) + Number(r.points));
+    }
+    return out;
+  } catch {
+    return out;
+  }
+}

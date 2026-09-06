@@ -174,3 +174,41 @@ export async function creatorProfilesReady(): Promise<{ ready: boolean; error: s
 }
 
 export { EMPTY_CUSTOMIZATION };
+
+/**
+ * 🏆 Fase 2E — Trending facts restricted to a time window (a season).
+ * Reuses `trending_snapshots`: no second Trending Engine is created.
+ */
+export async function trendingCountsInWindow(
+  chainId: number,
+  startsAt: string,
+  endsAt: string,
+): Promise<Map<string, { top5: number; top10: number; risingFast: number; bestRank: number | null }>> {
+  const out = new Map<string, { top5: number; top10: number; risingFast: number; bestRank: number | null }>();
+  try {
+    const c = await db();
+    const { data, error } = await c
+      .from("trending_snapshots")
+      .select("token_address,velocity_score,payload")
+      .eq("chain_id", chainId)
+      .gte("timestamp", startsAt)
+      .lt("timestamp", endsAt)
+      .limit(20_000);
+    if (error || !data) return out;
+    for (const raw of data as { token_address: string; velocity_score: number | null; payload: TrendingRow | null }[]) {
+      const key = raw.token_address.toLowerCase();
+      const cur = out.get(key) ?? { top5: 0, top10: 0, risingFast: 0, bestRank: null as number | null };
+      const rank = raw.payload?.rank && raw.payload.rank > 0 ? raw.payload.rank : null;
+      if (rank != null) {
+        if (cur.bestRank == null || rank < cur.bestRank) cur.bestRank = rank;
+        if (rank <= 10) cur.top10 += 1;
+        if (rank <= 5) cur.top5 += 1;
+      }
+      if ((raw.payload?.badges ?? []).includes("rising_fast") || (raw.velocity_score ?? 0) >= 50) cur.risingFast += 1;
+      out.set(key, cur);
+    }
+  } catch {
+    /* trending history unavailable → the metric stays `null` (unknown) */
+  }
+  return out;
+}
