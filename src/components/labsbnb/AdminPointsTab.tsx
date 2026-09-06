@@ -374,6 +374,8 @@ export function AdminPointsTab({ csrf }: { csrf: string }) {
       <div className="mt-6">
         <AdminLevelsPanel csrf={csrf} />
         <AdminLevelHistoryPanel csrf={csrf} />
+
+        <AdminAchievementsPanel csrf={csrf} />
       </div>
     </div>
   );
