@@ -27,6 +27,7 @@ import { Route as CreatorAddressRouteImport } from './routes/creator.$address'
 import { Route as CampaignsNewRouteImport } from './routes/campaigns.new'
 import { Route as CampaignsIdRouteImport } from './routes/campaigns.$id'
 import { Route as ApiAiCopilotRouteImport } from './routes/api/ai-copilot'
+import { Route as LeaderboardSeasonSlugRouteImport } from './routes/leaderboard.season.$slug'
 import { Route as ApiPublicTrendingRouteImport } from './routes/api/public/trending'
 import { Route as ApiPublicTokenMediaRouteImport } from './routes/api/public/token-media'
 import { Route as ApiPublicLeaderboardRouteImport } from './routes/api/public/leaderboard'
@@ -131,6 +132,11 @@ const ApiAiCopilotRoute = ApiAiCopilotRouteImport.update({
   path: '/api/ai-copilot',
   getParentRoute: () => rootRouteImport,
 } as any)
+const LeaderboardSeasonSlugRoute = LeaderboardSeasonSlugRouteImport.update({
+  id: '/leaderboard/season/$slug',
+  path: '/leaderboard/season/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicTrendingRoute = ApiPublicTrendingRouteImport.update({
   id: '/api/public/trending',
   path: '/api/public/trending',
@@ -227,6 +233,7 @@ export interface FileRoutesByFullPath {
   '/api/public/leaderboard': typeof ApiPublicLeaderboardRouteWithChildren
   '/api/public/token-media': typeof ApiPublicTokenMediaRoute
   '/api/public/trending': typeof ApiPublicTrendingRouteWithChildren
+  '/leaderboard/season/$slug': typeof LeaderboardSeasonSlugRoute
   '/api/public/creator-points/run': typeof ApiPublicCreatorPointsRunRoute
   '/api/public/leaderboard/seasons': typeof ApiPublicLeaderboardSeasonsRoute
   '/api/public/signals/run': typeof ApiPublicSignalsRunRoute
@@ -260,6 +267,7 @@ export interface FileRoutesByTo {
   '/api/public/leaderboard': typeof ApiPublicLeaderboardRouteWithChildren
   '/api/public/token-media': typeof ApiPublicTokenMediaRoute
   '/api/public/trending': typeof ApiPublicTrendingRouteWithChildren
+  '/leaderboard/season/$slug': typeof LeaderboardSeasonSlugRoute
   '/api/public/creator-points/run': typeof ApiPublicCreatorPointsRunRoute
   '/api/public/leaderboard/seasons': typeof ApiPublicLeaderboardSeasonsRoute
   '/api/public/signals/run': typeof ApiPublicSignalsRunRoute
@@ -294,6 +302,7 @@ export interface FileRoutesById {
   '/api/public/leaderboard': typeof ApiPublicLeaderboardRouteWithChildren
   '/api/public/token-media': typeof ApiPublicTokenMediaRoute
   '/api/public/trending': typeof ApiPublicTrendingRouteWithChildren
+  '/leaderboard/season/$slug': typeof LeaderboardSeasonSlugRoute
   '/api/public/creator-points/run': typeof ApiPublicCreatorPointsRunRoute
   '/api/public/leaderboard/seasons': typeof ApiPublicLeaderboardSeasonsRoute
   '/api/public/signals/run': typeof ApiPublicSignalsRunRoute
@@ -329,6 +338,7 @@ export interface FileRouteTypes {
     | '/api/public/leaderboard'
     | '/api/public/token-media'
     | '/api/public/trending'
+    | '/leaderboard/season/$slug'
     | '/api/public/creator-points/run'
     | '/api/public/leaderboard/seasons'
     | '/api/public/signals/run'
@@ -362,6 +372,7 @@ export interface FileRouteTypes {
     | '/api/public/leaderboard'
     | '/api/public/token-media'
     | '/api/public/trending'
+    | '/leaderboard/season/$slug'
     | '/api/public/creator-points/run'
     | '/api/public/leaderboard/seasons'
     | '/api/public/signals/run'
@@ -395,6 +406,7 @@ export interface FileRouteTypes {
     | '/api/public/leaderboard'
     | '/api/public/token-media'
     | '/api/public/trending'
+    | '/leaderboard/season/$slug'
     | '/api/public/creator-points/run'
     | '/api/public/leaderboard/seasons'
     | '/api/public/signals/run'
@@ -429,6 +441,7 @@ export interface RootRouteChildren {
   ApiPublicLeaderboardRoute: typeof ApiPublicLeaderboardRouteWithChildren
   ApiPublicTokenMediaRoute: typeof ApiPublicTokenMediaRoute
   ApiPublicTrendingRoute: typeof ApiPublicTrendingRouteWithChildren
+  LeaderboardSeasonSlugRoute: typeof LeaderboardSeasonSlugRoute
   ApiPublicSignalsRunRoute: typeof ApiPublicSignalsRunRoute
   ApiPublicCreatorAddressAchievementsRoute: typeof ApiPublicCreatorAddressAchievementsRoute
   ApiPublicCreatorAddressLeaderboardRoute: typeof ApiPublicCreatorAddressLeaderboardRoute
@@ -561,6 +574,13 @@ declare module '@tanstack/react-router' {
       path: '/api/ai-copilot'
       fullPath: '/api/ai-copilot'
       preLoaderRoute: typeof ApiAiCopilotRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/leaderboard/season/$slug': {
+      id: '/leaderboard/season/$slug'
+      path: '/leaderboard/season/$slug'
+      fullPath: '/leaderboard/season/$slug'
+      preLoaderRoute: typeof LeaderboardSeasonSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/public/trending': {
@@ -719,6 +739,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicLeaderboardRoute: ApiPublicLeaderboardRouteWithChildren,
   ApiPublicTokenMediaRoute: ApiPublicTokenMediaRoute,
   ApiPublicTrendingRoute: ApiPublicTrendingRouteWithChildren,
+  LeaderboardSeasonSlugRoute: LeaderboardSeasonSlugRoute,
   ApiPublicSignalsRunRoute: ApiPublicSignalsRunRoute,
   ApiPublicCreatorAddressAchievementsRoute:
     ApiPublicCreatorAddressAchievementsRoute,
