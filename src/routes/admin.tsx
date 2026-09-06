@@ -15,6 +15,7 @@ import { AdminBoostTab } from "@/components/labsbnb/AdminBoostTab";
 import { AdminFeesTab } from "@/components/labsbnb/AdminFeesTab";
 import { AdminTelegramTab } from "@/components/labsbnb/AdminTelegramTab";
 import { AdminTrendingTab } from "@/components/labsbnb/AdminTrendingTab";
+import { AdminPointsTab } from "@/components/labsbnb/AdminPointsTab";
 import {
   adminAuthStatus,
   adminBootstrap,
@@ -495,6 +496,7 @@ function AdminBody({
           <TabsTrigger value="boost"><Rocket className="mr-2 h-4 w-4" />🚀 Impulso</TabsTrigger>
           <TabsTrigger value="telegram"><Send className="mr-2 h-4 w-4" />Telegram Signals</TabsTrigger>
           <TabsTrigger value="trending"><Flame className="mr-2 h-4 w-4" />🔥 Trending Engine</TabsTrigger>
+          <TabsTrigger value="points"><Trophy className="mr-2 h-4 w-4" />🏆 Creator Points</TabsTrigger>
           <TabsTrigger value="account"><KeyRound className="mr-2 h-4 w-4" />Cuenta y seguridad</TabsTrigger>
           <TabsTrigger value="audit"><ScrollText className="mr-2 h-4 w-4" />Auditoría</TabsTrigger>
         </TabsList>
@@ -513,6 +515,9 @@ function AdminBody({
 
         <TabsContent value="trending" className="mt-6">
           <AdminTrendingTab csrf={csrf} />
+        </TabsContent>
+        <TabsContent value="points" className="mt-6">
+          <AdminPointsTab csrf={csrf} />
         </TabsContent>
         <TabsContent value="account" className="mt-6">
           <AccountSettings csrf={csrf} username={username} email={email} totpEnabled={totpEnabled} onChanged={onSignedOut} />
