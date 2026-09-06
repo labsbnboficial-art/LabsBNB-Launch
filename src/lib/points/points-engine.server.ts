@@ -88,7 +88,7 @@ async function buildCandidate(input: {
   basePoints: number;
   multiplier: number;
   reason: string;
-  metadata: Record<string, unknown>;
+  metadata: PointsMetadata;
 }): Promise<PointsCandidate> {
   const tokenAddress = input.token ? input.token.address.toLowerCase() : null;
   const fp = await fingerprint({
@@ -218,7 +218,7 @@ export async function runCreatorPointsEngine(trigger: string, opts: RunOptions =
         sourceId: string,
         basePoints: number,
         reason: string,
-        metadata: Record<string, unknown>,
+        metadata: PointsMetadata,
         occurredAt: string | null,
       ) => {
         const rule = cfg.events[eventType];

@@ -24,7 +24,7 @@ type Row = {
   base_points: number;
   multiplier: number | string;
   reason: string | null;
-  metadata: Record<string, unknown> | null;
+  metadata: PointsMetadata | null;
   fingerprint: string;
   created_at: string;
 };

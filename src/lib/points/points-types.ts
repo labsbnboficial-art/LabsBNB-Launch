@@ -128,6 +128,9 @@ export const DEFAULT_POINTS_CONFIG: CreatorPointsConfig = {
 };
 
 /** One row of the append-only ledger, as read back by the app. */
+/** JSON-serialisable metadata (crosses the RPC boundary). */
+export type PointsMetadata = Record<string, string | number | boolean | null>;
+
 export type PointsLedgerEntry = {
   id: string;
   creatorAddress: string;
@@ -140,7 +143,7 @@ export type PointsLedgerEntry = {
   basePoints: number;
   multiplier: number;
   reason: string | null;
-  metadata: Record<string, unknown> | null;
+  metadata: PointsMetadata | null;
   fingerprint: string;
   createdAt: string;
 };
@@ -157,7 +160,7 @@ export type PointsCandidate = {
   multiplier: number;
   points: number;
   reason: string;
-  metadata: Record<string, unknown>;
+  metadata: PointsMetadata;
   fingerprint: string;
 };
 
