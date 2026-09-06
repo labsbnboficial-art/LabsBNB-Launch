@@ -82,7 +82,7 @@ async function creatorLevelOf(address: string): Promise<{ level: number | null; 
       cfgMod.loadLevelsConfig(),
     ]);
     if (!cfg.enabled) return { level: null, milestones: [] };
-    const level = rules.calculateCreatorLevel(totals.total, cfg).level;
+    const level = rules.calculateCreatorLevel(totals.totalPoints, cfg).level;
     let milestones: number[] = [];
     try {
       milestones = (await history.getCreatorLevelHistory(address, ACTIVE_CHAIN_ID)).map((e) => e.newLevel);
