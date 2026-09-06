@@ -306,7 +306,7 @@ export type SnapshotRecord = {
   eligible: boolean;
   eligibilityScore: number;
   ruleVersion: number;
-  criteriaResult: unknown;
+  criteriaResult: CriterionResult[] | null;
   evaluatedAt: string;
 };
 
