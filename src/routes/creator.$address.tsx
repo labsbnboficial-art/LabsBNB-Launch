@@ -324,6 +324,8 @@ function CreatorPage() {
               </div>
             </div>
 
+            <CreatorLeaderboardSection address={address} />
+
             <CreatorLevelSection address={address} />
 
             <CreatorLevelHistorySection address={address} />
