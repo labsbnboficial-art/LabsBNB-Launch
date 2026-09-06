@@ -36,6 +36,7 @@ import { Route as ApiPublicLeaderboardSeasonsRouteImport } from './routes/api/pu
 import { Route as ApiPublicCreatorPointsRunRouteImport } from './routes/api/public/creator-points/run'
 import { Route as ApiPublicLeaderboardSeasonSlugRouteImport } from './routes/api/public/leaderboard/season.$slug'
 import { Route as ApiPublicCreatorAddressLevelHistoryRouteImport } from './routes/api/public/creator/$address/level-history'
+import { Route as ApiPublicCreatorAddressLeaderboardRouteImport } from './routes/api/public/creator/$address/leaderboard'
 import { Route as ApiPublicCreatorAddressAchievementsRouteImport } from './routes/api/public/creator/$address/achievements'
 
 const TrendingRoute = TrendingRouteImport.update({
@@ -177,6 +178,12 @@ const ApiPublicCreatorAddressLevelHistoryRoute =
     path: '/api/public/creator/$address/level-history',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicCreatorAddressLeaderboardRoute =
+  ApiPublicCreatorAddressLeaderboardRouteImport.update({
+    id: '/api/public/creator/$address/leaderboard',
+    path: '/api/public/creator/$address/leaderboard',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicCreatorAddressAchievementsRoute =
   ApiPublicCreatorAddressAchievementsRouteImport.update({
     id: '/api/public/creator/$address/achievements',
@@ -211,6 +218,7 @@ export interface FileRoutesByFullPath {
   '/api/public/signals/run': typeof ApiPublicSignalsRunRoute
   '/api/public/trending/run': typeof ApiPublicTrendingRunRoute
   '/api/public/creator/$address/achievements': typeof ApiPublicCreatorAddressAchievementsRoute
+  '/api/public/creator/$address/leaderboard': typeof ApiPublicCreatorAddressLeaderboardRoute
   '/api/public/creator/$address/level-history': typeof ApiPublicCreatorAddressLevelHistoryRoute
   '/api/public/leaderboard/season/$slug': typeof ApiPublicLeaderboardSeasonSlugRoute
 }
@@ -241,6 +249,7 @@ export interface FileRoutesByTo {
   '/api/public/signals/run': typeof ApiPublicSignalsRunRoute
   '/api/public/trending/run': typeof ApiPublicTrendingRunRoute
   '/api/public/creator/$address/achievements': typeof ApiPublicCreatorAddressAchievementsRoute
+  '/api/public/creator/$address/leaderboard': typeof ApiPublicCreatorAddressLeaderboardRoute
   '/api/public/creator/$address/level-history': typeof ApiPublicCreatorAddressLevelHistoryRoute
   '/api/public/leaderboard/season/$slug': typeof ApiPublicLeaderboardSeasonSlugRoute
 }
@@ -272,6 +281,7 @@ export interface FileRoutesById {
   '/api/public/signals/run': typeof ApiPublicSignalsRunRoute
   '/api/public/trending/run': typeof ApiPublicTrendingRunRoute
   '/api/public/creator/$address/achievements': typeof ApiPublicCreatorAddressAchievementsRoute
+  '/api/public/creator/$address/leaderboard': typeof ApiPublicCreatorAddressLeaderboardRoute
   '/api/public/creator/$address/level-history': typeof ApiPublicCreatorAddressLevelHistoryRoute
   '/api/public/leaderboard/season/$slug': typeof ApiPublicLeaderboardSeasonSlugRoute
 }
@@ -304,6 +314,7 @@ export interface FileRouteTypes {
     | '/api/public/signals/run'
     | '/api/public/trending/run'
     | '/api/public/creator/$address/achievements'
+    | '/api/public/creator/$address/leaderboard'
     | '/api/public/creator/$address/level-history'
     | '/api/public/leaderboard/season/$slug'
   fileRoutesByTo: FileRoutesByTo
@@ -334,6 +345,7 @@ export interface FileRouteTypes {
     | '/api/public/signals/run'
     | '/api/public/trending/run'
     | '/api/public/creator/$address/achievements'
+    | '/api/public/creator/$address/leaderboard'
     | '/api/public/creator/$address/level-history'
     | '/api/public/leaderboard/season/$slug'
   id:
@@ -364,6 +376,7 @@ export interface FileRouteTypes {
     | '/api/public/signals/run'
     | '/api/public/trending/run'
     | '/api/public/creator/$address/achievements'
+    | '/api/public/creator/$address/leaderboard'
     | '/api/public/creator/$address/level-history'
     | '/api/public/leaderboard/season/$slug'
   fileRoutesById: FileRoutesById
@@ -392,6 +405,7 @@ export interface RootRouteChildren {
   ApiPublicTrendingRoute: typeof ApiPublicTrendingRouteWithChildren
   ApiPublicSignalsRunRoute: typeof ApiPublicSignalsRunRoute
   ApiPublicCreatorAddressAchievementsRoute: typeof ApiPublicCreatorAddressAchievementsRoute
+  ApiPublicCreatorAddressLeaderboardRoute: typeof ApiPublicCreatorAddressLeaderboardRoute
   ApiPublicCreatorAddressLevelHistoryRoute: typeof ApiPublicCreatorAddressLevelHistoryRoute
 }
 
@@ -586,6 +600,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicCreatorAddressLevelHistoryRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/creator/$address/leaderboard': {
+      id: '/api/public/creator/$address/leaderboard'
+      path: '/api/public/creator/$address/leaderboard'
+      fullPath: '/api/public/creator/$address/leaderboard'
+      preLoaderRoute: typeof ApiPublicCreatorAddressLeaderboardRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/creator/$address/achievements': {
       id: '/api/public/creator/$address/achievements'
       path: '/api/public/creator/$address/achievements'
@@ -659,6 +680,8 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicSignalsRunRoute: ApiPublicSignalsRunRoute,
   ApiPublicCreatorAddressAchievementsRoute:
     ApiPublicCreatorAddressAchievementsRoute,
+  ApiPublicCreatorAddressLeaderboardRoute:
+    ApiPublicCreatorAddressLeaderboardRoute,
   ApiPublicCreatorAddressLevelHistoryRoute:
     ApiPublicCreatorAddressLevelHistoryRoute,
 }
