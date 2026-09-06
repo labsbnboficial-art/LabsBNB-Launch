@@ -103,7 +103,20 @@ function CreatorsPage() {
                   <Cell label="Organic vol" value={`${c.organicVolume24h.toFixed(4)} BNB`} />
                   <Cell label="Best trending" value={c.bestTrendingRank == null ? "N/A" : `#${c.bestTrendingRank}`} />
                 </div>
-                <CreatorScoreChip score={c.score} />
+                <div className="flex shrink-0 flex-wrap items-center gap-2">
+                  {c.creatorLevel && (
+                    <CreatorLevelBadge
+                      level={c.creatorLevel.level}
+                      name={c.creatorLevel.name}
+                      icon={c.creatorLevel.icon}
+                      size="sm"
+                      showPoints
+                      points={c.creatorPoints}
+                    />
+                  )}
+                  <CreatorScoreChip score={c.score} />
+                </div>
+
               </Link>
             ))
           ) : (
