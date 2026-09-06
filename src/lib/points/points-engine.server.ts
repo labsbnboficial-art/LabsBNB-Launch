@@ -412,6 +412,15 @@ export async function runCreatorPointsEngine(trigger: string, opts: RunOptions =
       } catch (e) {
         notes.push(`Level history sync no disponible: ${e instanceof Error ? e.message : "error"}.`);
       }
+      // 🏅 Fase 2D — achievements engine reuses this same cron (no new job).
+      try {
+        const ac = await import("@/lib/achievements/achievement-engine.server");
+        const run = await ac.runAchievementsEngine("points-engine");
+        if (run.achievementsUnlocked) notes.push(`${run.achievementsUnlocked} achievements desbloqueados.`);
+        if (run.skipped && run.skippedReason) notes.push(`Achievements: ${run.skippedReason}`);
+      } catch (e) {
+        notes.push(`Achievements engine no disponible: ${e instanceof Error ? e.message : "error"}.`);
+      }
       if (res.inserted !== eligible.length) {
         notes.push(`${eligible.length - res.inserted} eventos ya existían en el ledger (idempotencia).`);
       }
