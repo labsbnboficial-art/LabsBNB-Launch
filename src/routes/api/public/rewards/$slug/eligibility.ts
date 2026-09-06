@@ -17,7 +17,7 @@ export const Route = createFileRoute("/api/public/rewards/$slug/eligibility")({
         try {
           const rules = await import("@/lib/rewards/rewards-rules");
           const engine = await import("@/lib/rewards/rewards-engine.server");
-          const { page, pageSize } = rules.clampPagination(url.searchParams.get("page"), url.searchParams.get("pageSize"));
+          const { page, pageSize } = rules.clampPagination(url.searchParams.get("page") ?? undefined, url.searchParams.get("pageSize") ?? undefined);
           const result = await engine.getEligibilityPage({
             slug,
             filter: filter as "all",

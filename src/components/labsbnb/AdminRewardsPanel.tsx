@@ -364,9 +364,9 @@ export function AdminRewardsPanel({ csrf }: { csrf: string }) {
               </div>
 
               <div className="mt-2 grid grid-cols-2 gap-2 text-[11px] md:grid-cols-4">
-                <Cell label="Evaluados" value={stats.evaluated == null ? "N/A" : String(stats.evaluated)} />
-                <Cell label="Elegibles" value={stats.eligible == null ? "N/A" : String(stats.eligible)} />
-                <Cell label="Última evaluación" value={fmt(stats.lastEvaluatedAt)} />
+                <Cell label="Evaluados" value={stats?.evaluated == null ? "N/A" : String(stats.evaluated)} />
+                <Cell label="Elegibles" value={stats?.eligible == null ? "N/A" : String(stats.eligible)} />
+                <Cell label="Última evaluación" value={fmt(stats?.lastEvaluatedAt ?? null)} />
                 <Cell label="Fin" value={fmt(program.endsAt)} />
               </div>
 
