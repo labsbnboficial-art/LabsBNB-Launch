@@ -3,7 +3,7 @@
 // The table is created by `docs/SQL_CREATOR_POINTS.md`. The app NEVER updates or
 // deletes ledger rows: corrections are made with a compensating
 // `ADMIN_ADJUSTMENT` entry so history stays immutable and auditable.
-import type { PointsCandidate, PointsEventType, PointsLedgerEntry } from "./points-types";
+import type { PointsCandidate, PointsEventType, PointsLedgerEntry, PointsMetadata } from "./points-types";
 
 async function db() {
   const { adminClient } = await import("@/integrations/supabase/admin.server");
