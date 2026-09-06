@@ -327,6 +327,8 @@ function CreatorPage() {
 
             <CreatorLevelHistorySection address={address} />
 
+            <CreatorAchievementsSection address={address} />
+
             <CreatorPointsSection address={address} />
 
             <div className="mt-6 glass rounded-2xl p-4">
