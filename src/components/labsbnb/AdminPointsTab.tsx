@@ -15,6 +15,7 @@ import { AdminLevelsPanel } from "@/components/labsbnb/AdminLevelsPanel";
 import { AdminLevelHistoryPanel } from "@/components/labsbnb/AdminLevelHistoryPanel";
 import { AdminAchievementsPanel } from "@/components/labsbnb/AdminAchievementsPanel";
 import { AdminLeaderboardPanel } from "@/components/labsbnb/AdminLeaderboardPanel";
+import { AdminRewardsPanel } from "@/components/labsbnb/AdminRewardsPanel";
 import {
   DEFAULT_POINTS_CONFIG,
   POINTS_EVENT_LABEL,
@@ -380,6 +381,8 @@ export function AdminPointsTab({ csrf }: { csrf: string }) {
         <AdminAchievementsPanel csrf={csrf} />
 
         <AdminLeaderboardPanel csrf={csrf} />
+
+        <AdminRewardsPanel csrf={csrf} />
 
       </div>
     </div>

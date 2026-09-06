@@ -9,6 +9,7 @@ import { getCreator } from "@/lib/creator.functions";
 import { CREATOR_WEIGHTS, EVENT_LABEL, type CreatorProfile, type CreatorTokenRow } from "@/lib/creator/creator-types";
 import { CreatorPointsSection } from "@/components/labsbnb/CreatorPoints";
 import { CreatorLevelSection } from "@/components/labsbnb/CreatorLevelBadge";
+import { RewardsEligibilitySection } from "@/components/labsbnb/RewardsEligibilitySection";
 import { CreatorLevelHistorySection } from "@/components/labsbnb/CreatorLevelHistory";
 import { CreatorAchievementsSection } from "@/components/labsbnb/CreatorAchievements";
 import { CreatorLeaderboardSection } from "@/components/labsbnb/CreatorLeaderboardSection";
@@ -326,6 +327,8 @@ function CreatorPage() {
             </div>
 
             <CreatorLeaderboardSection address={address} />
+
+            <RewardsEligibilitySection address={address} />
 
             <CreatorLevelSection address={address} />
 

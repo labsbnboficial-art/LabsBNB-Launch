@@ -20,8 +20,10 @@ import { Route as CreateRouteImport } from './routes/create'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as RewardsIndexRouteImport } from './routes/rewards.index'
 import { Route as LeaderboardIndexRouteImport } from './routes/leaderboard.index'
 import { Route as TokenAddressRouteImport } from './routes/token.$address'
+import { Route as RewardsSlugRouteImport } from './routes/rewards.$slug'
 import { Route as LeaderboardSeasonsRouteImport } from './routes/leaderboard.seasons'
 import { Route as CreatorAddressRouteImport } from './routes/creator.$address'
 import { Route as CampaignsNewRouteImport } from './routes/campaigns.new'
@@ -30,14 +32,19 @@ import { Route as ApiAiCopilotRouteImport } from './routes/api/ai-copilot'
 import { Route as LeaderboardSeasonSlugRouteImport } from './routes/leaderboard.season.$slug'
 import { Route as ApiPublicTrendingRouteImport } from './routes/api/public/trending'
 import { Route as ApiPublicTokenMediaRouteImport } from './routes/api/public/token-media'
+import { Route as ApiPublicRewardsRouteImport } from './routes/api/public/rewards'
 import { Route as ApiPublicLeaderboardRouteImport } from './routes/api/public/leaderboard'
 import { Route as ApiPublicCreatorsRouteImport } from './routes/api/public/creators'
 import { Route as ApiPublicCreatorPointsRouteImport } from './routes/api/public/creator-points'
 import { Route as ApiPublicTrendingRunRouteImport } from './routes/api/public/trending/run'
 import { Route as ApiPublicSignalsRunRouteImport } from './routes/api/public/signals/run'
+import { Route as ApiPublicRewardsRunRouteImport } from './routes/api/public/rewards/run'
+import { Route as ApiPublicRewardsSlugRouteImport } from './routes/api/public/rewards/$slug'
 import { Route as ApiPublicLeaderboardSeasonsRouteImport } from './routes/api/public/leaderboard/seasons'
 import { Route as ApiPublicCreatorPointsRunRouteImport } from './routes/api/public/creator-points/run'
+import { Route as ApiPublicRewardsSlugEligibilityRouteImport } from './routes/api/public/rewards/$slug/eligibility'
 import { Route as ApiPublicLeaderboardSeasonSlugRouteImport } from './routes/api/public/leaderboard/season.$slug'
+import { Route as ApiPublicCreatorAddressRewardsRouteImport } from './routes/api/public/creator/$address/rewards'
 import { Route as ApiPublicCreatorAddressLevelHistoryRouteImport } from './routes/api/public/creator/$address/level-history'
 import { Route as ApiPublicCreatorAddressLeaderboardRouteImport } from './routes/api/public/creator/$address/leaderboard'
 import { Route as ApiPublicCreatorAddressAchievementsRouteImport } from './routes/api/public/creator/$address/achievements'
@@ -97,6 +104,11 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const RewardsIndexRoute = RewardsIndexRouteImport.update({
+  id: '/rewards/',
+  path: '/rewards/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const LeaderboardIndexRoute = LeaderboardIndexRouteImport.update({
   id: '/leaderboard/',
   path: '/leaderboard/',
@@ -105,6 +117,11 @@ const LeaderboardIndexRoute = LeaderboardIndexRouteImport.update({
 const TokenAddressRoute = TokenAddressRouteImport.update({
   id: '/token/$address',
   path: '/token/$address',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RewardsSlugRoute = RewardsSlugRouteImport.update({
+  id: '/rewards/$slug',
+  path: '/rewards/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LeaderboardSeasonsRoute = LeaderboardSeasonsRouteImport.update({
@@ -147,6 +164,11 @@ const ApiPublicTokenMediaRoute = ApiPublicTokenMediaRouteImport.update({
   path: '/api/public/token-media',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicRewardsRoute = ApiPublicRewardsRouteImport.update({
+  id: '/api/public/rewards',
+  path: '/api/public/rewards',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicLeaderboardRoute = ApiPublicLeaderboardRouteImport.update({
   id: '/api/public/leaderboard',
   path: '/api/public/leaderboard',
@@ -172,6 +194,16 @@ const ApiPublicSignalsRunRoute = ApiPublicSignalsRunRouteImport.update({
   path: '/api/public/signals/run',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicRewardsRunRoute = ApiPublicRewardsRunRouteImport.update({
+  id: '/run',
+  path: '/run',
+  getParentRoute: () => ApiPublicRewardsRoute,
+} as any)
+const ApiPublicRewardsSlugRoute = ApiPublicRewardsSlugRouteImport.update({
+  id: '/$slug',
+  path: '/$slug',
+  getParentRoute: () => ApiPublicRewardsRoute,
+} as any)
 const ApiPublicLeaderboardSeasonsRoute =
   ApiPublicLeaderboardSeasonsRouteImport.update({
     id: '/seasons',
@@ -184,11 +216,23 @@ const ApiPublicCreatorPointsRunRoute =
     path: '/run',
     getParentRoute: () => ApiPublicCreatorPointsRoute,
   } as any)
+const ApiPublicRewardsSlugEligibilityRoute =
+  ApiPublicRewardsSlugEligibilityRouteImport.update({
+    id: '/eligibility',
+    path: '/eligibility',
+    getParentRoute: () => ApiPublicRewardsSlugRoute,
+  } as any)
 const ApiPublicLeaderboardSeasonSlugRoute =
   ApiPublicLeaderboardSeasonSlugRouteImport.update({
     id: '/season/$slug',
     path: '/season/$slug',
     getParentRoute: () => ApiPublicLeaderboardRoute,
+  } as any)
+const ApiPublicCreatorAddressRewardsRoute =
+  ApiPublicCreatorAddressRewardsRouteImport.update({
+    id: '/api/public/creator/$address/rewards',
+    path: '/api/public/creator/$address/rewards',
+    getParentRoute: () => rootRouteImport,
   } as any)
 const ApiPublicCreatorAddressLevelHistoryRoute =
   ApiPublicCreatorAddressLevelHistoryRouteImport.update({
@@ -226,22 +270,29 @@ export interface FileRoutesByFullPath {
   '/campaigns/new': typeof CampaignsNewRoute
   '/creator/$address': typeof CreatorAddressRoute
   '/leaderboard/seasons': typeof LeaderboardSeasonsRoute
+  '/rewards/$slug': typeof RewardsSlugRoute
   '/token/$address': typeof TokenAddressRoute
   '/leaderboard/': typeof LeaderboardIndexRoute
+  '/rewards/': typeof RewardsIndexRoute
   '/api/public/creator-points': typeof ApiPublicCreatorPointsRouteWithChildren
   '/api/public/creators': typeof ApiPublicCreatorsRoute
   '/api/public/leaderboard': typeof ApiPublicLeaderboardRouteWithChildren
+  '/api/public/rewards': typeof ApiPublicRewardsRouteWithChildren
   '/api/public/token-media': typeof ApiPublicTokenMediaRoute
   '/api/public/trending': typeof ApiPublicTrendingRouteWithChildren
   '/leaderboard/season/$slug': typeof LeaderboardSeasonSlugRoute
   '/api/public/creator-points/run': typeof ApiPublicCreatorPointsRunRoute
   '/api/public/leaderboard/seasons': typeof ApiPublicLeaderboardSeasonsRoute
+  '/api/public/rewards/$slug': typeof ApiPublicRewardsSlugRouteWithChildren
+  '/api/public/rewards/run': typeof ApiPublicRewardsRunRoute
   '/api/public/signals/run': typeof ApiPublicSignalsRunRoute
   '/api/public/trending/run': typeof ApiPublicTrendingRunRoute
   '/api/public/creator/$address/achievements': typeof ApiPublicCreatorAddressAchievementsRoute
   '/api/public/creator/$address/leaderboard': typeof ApiPublicCreatorAddressLeaderboardRoute
   '/api/public/creator/$address/level-history': typeof ApiPublicCreatorAddressLevelHistoryRoute
+  '/api/public/creator/$address/rewards': typeof ApiPublicCreatorAddressRewardsRoute
   '/api/public/leaderboard/season/$slug': typeof ApiPublicLeaderboardSeasonSlugRoute
+  '/api/public/rewards/$slug/eligibility': typeof ApiPublicRewardsSlugEligibilityRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -260,22 +311,29 @@ export interface FileRoutesByTo {
   '/campaigns/new': typeof CampaignsNewRoute
   '/creator/$address': typeof CreatorAddressRoute
   '/leaderboard/seasons': typeof LeaderboardSeasonsRoute
+  '/rewards/$slug': typeof RewardsSlugRoute
   '/token/$address': typeof TokenAddressRoute
   '/leaderboard': typeof LeaderboardIndexRoute
+  '/rewards': typeof RewardsIndexRoute
   '/api/public/creator-points': typeof ApiPublicCreatorPointsRouteWithChildren
   '/api/public/creators': typeof ApiPublicCreatorsRoute
   '/api/public/leaderboard': typeof ApiPublicLeaderboardRouteWithChildren
+  '/api/public/rewards': typeof ApiPublicRewardsRouteWithChildren
   '/api/public/token-media': typeof ApiPublicTokenMediaRoute
   '/api/public/trending': typeof ApiPublicTrendingRouteWithChildren
   '/leaderboard/season/$slug': typeof LeaderboardSeasonSlugRoute
   '/api/public/creator-points/run': typeof ApiPublicCreatorPointsRunRoute
   '/api/public/leaderboard/seasons': typeof ApiPublicLeaderboardSeasonsRoute
+  '/api/public/rewards/$slug': typeof ApiPublicRewardsSlugRouteWithChildren
+  '/api/public/rewards/run': typeof ApiPublicRewardsRunRoute
   '/api/public/signals/run': typeof ApiPublicSignalsRunRoute
   '/api/public/trending/run': typeof ApiPublicTrendingRunRoute
   '/api/public/creator/$address/achievements': typeof ApiPublicCreatorAddressAchievementsRoute
   '/api/public/creator/$address/leaderboard': typeof ApiPublicCreatorAddressLeaderboardRoute
   '/api/public/creator/$address/level-history': typeof ApiPublicCreatorAddressLevelHistoryRoute
+  '/api/public/creator/$address/rewards': typeof ApiPublicCreatorAddressRewardsRoute
   '/api/public/leaderboard/season/$slug': typeof ApiPublicLeaderboardSeasonSlugRoute
+  '/api/public/rewards/$slug/eligibility': typeof ApiPublicRewardsSlugEligibilityRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -295,22 +353,29 @@ export interface FileRoutesById {
   '/campaigns/new': typeof CampaignsNewRoute
   '/creator/$address': typeof CreatorAddressRoute
   '/leaderboard/seasons': typeof LeaderboardSeasonsRoute
+  '/rewards/$slug': typeof RewardsSlugRoute
   '/token/$address': typeof TokenAddressRoute
   '/leaderboard/': typeof LeaderboardIndexRoute
+  '/rewards/': typeof RewardsIndexRoute
   '/api/public/creator-points': typeof ApiPublicCreatorPointsRouteWithChildren
   '/api/public/creators': typeof ApiPublicCreatorsRoute
   '/api/public/leaderboard': typeof ApiPublicLeaderboardRouteWithChildren
+  '/api/public/rewards': typeof ApiPublicRewardsRouteWithChildren
   '/api/public/token-media': typeof ApiPublicTokenMediaRoute
   '/api/public/trending': typeof ApiPublicTrendingRouteWithChildren
   '/leaderboard/season/$slug': typeof LeaderboardSeasonSlugRoute
   '/api/public/creator-points/run': typeof ApiPublicCreatorPointsRunRoute
   '/api/public/leaderboard/seasons': typeof ApiPublicLeaderboardSeasonsRoute
+  '/api/public/rewards/$slug': typeof ApiPublicRewardsSlugRouteWithChildren
+  '/api/public/rewards/run': typeof ApiPublicRewardsRunRoute
   '/api/public/signals/run': typeof ApiPublicSignalsRunRoute
   '/api/public/trending/run': typeof ApiPublicTrendingRunRoute
   '/api/public/creator/$address/achievements': typeof ApiPublicCreatorAddressAchievementsRoute
   '/api/public/creator/$address/leaderboard': typeof ApiPublicCreatorAddressLeaderboardRoute
   '/api/public/creator/$address/level-history': typeof ApiPublicCreatorAddressLevelHistoryRoute
+  '/api/public/creator/$address/rewards': typeof ApiPublicCreatorAddressRewardsRoute
   '/api/public/leaderboard/season/$slug': typeof ApiPublicLeaderboardSeasonSlugRoute
+  '/api/public/rewards/$slug/eligibility': typeof ApiPublicRewardsSlugEligibilityRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -331,22 +396,29 @@ export interface FileRouteTypes {
     | '/campaigns/new'
     | '/creator/$address'
     | '/leaderboard/seasons'
+    | '/rewards/$slug'
     | '/token/$address'
     | '/leaderboard/'
+    | '/rewards/'
     | '/api/public/creator-points'
     | '/api/public/creators'
     | '/api/public/leaderboard'
+    | '/api/public/rewards'
     | '/api/public/token-media'
     | '/api/public/trending'
     | '/leaderboard/season/$slug'
     | '/api/public/creator-points/run'
     | '/api/public/leaderboard/seasons'
+    | '/api/public/rewards/$slug'
+    | '/api/public/rewards/run'
     | '/api/public/signals/run'
     | '/api/public/trending/run'
     | '/api/public/creator/$address/achievements'
     | '/api/public/creator/$address/leaderboard'
     | '/api/public/creator/$address/level-history'
+    | '/api/public/creator/$address/rewards'
     | '/api/public/leaderboard/season/$slug'
+    | '/api/public/rewards/$slug/eligibility'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -365,22 +437,29 @@ export interface FileRouteTypes {
     | '/campaigns/new'
     | '/creator/$address'
     | '/leaderboard/seasons'
+    | '/rewards/$slug'
     | '/token/$address'
     | '/leaderboard'
+    | '/rewards'
     | '/api/public/creator-points'
     | '/api/public/creators'
     | '/api/public/leaderboard'
+    | '/api/public/rewards'
     | '/api/public/token-media'
     | '/api/public/trending'
     | '/leaderboard/season/$slug'
     | '/api/public/creator-points/run'
     | '/api/public/leaderboard/seasons'
+    | '/api/public/rewards/$slug'
+    | '/api/public/rewards/run'
     | '/api/public/signals/run'
     | '/api/public/trending/run'
     | '/api/public/creator/$address/achievements'
     | '/api/public/creator/$address/leaderboard'
     | '/api/public/creator/$address/level-history'
+    | '/api/public/creator/$address/rewards'
     | '/api/public/leaderboard/season/$slug'
+    | '/api/public/rewards/$slug/eligibility'
   id:
     | '__root__'
     | '/'
@@ -399,22 +478,29 @@ export interface FileRouteTypes {
     | '/campaigns/new'
     | '/creator/$address'
     | '/leaderboard/seasons'
+    | '/rewards/$slug'
     | '/token/$address'
     | '/leaderboard/'
+    | '/rewards/'
     | '/api/public/creator-points'
     | '/api/public/creators'
     | '/api/public/leaderboard'
+    | '/api/public/rewards'
     | '/api/public/token-media'
     | '/api/public/trending'
     | '/leaderboard/season/$slug'
     | '/api/public/creator-points/run'
     | '/api/public/leaderboard/seasons'
+    | '/api/public/rewards/$slug'
+    | '/api/public/rewards/run'
     | '/api/public/signals/run'
     | '/api/public/trending/run'
     | '/api/public/creator/$address/achievements'
     | '/api/public/creator/$address/leaderboard'
     | '/api/public/creator/$address/level-history'
+    | '/api/public/creator/$address/rewards'
     | '/api/public/leaderboard/season/$slug'
+    | '/api/public/rewards/$slug/eligibility'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -434,11 +520,14 @@ export interface RootRouteChildren {
   CampaignsNewRoute: typeof CampaignsNewRoute
   CreatorAddressRoute: typeof CreatorAddressRoute
   LeaderboardSeasonsRoute: typeof LeaderboardSeasonsRoute
+  RewardsSlugRoute: typeof RewardsSlugRoute
   TokenAddressRoute: typeof TokenAddressRoute
   LeaderboardIndexRoute: typeof LeaderboardIndexRoute
+  RewardsIndexRoute: typeof RewardsIndexRoute
   ApiPublicCreatorPointsRoute: typeof ApiPublicCreatorPointsRouteWithChildren
   ApiPublicCreatorsRoute: typeof ApiPublicCreatorsRoute
   ApiPublicLeaderboardRoute: typeof ApiPublicLeaderboardRouteWithChildren
+  ApiPublicRewardsRoute: typeof ApiPublicRewardsRouteWithChildren
   ApiPublicTokenMediaRoute: typeof ApiPublicTokenMediaRoute
   ApiPublicTrendingRoute: typeof ApiPublicTrendingRouteWithChildren
   LeaderboardSeasonSlugRoute: typeof LeaderboardSeasonSlugRoute
@@ -446,6 +535,7 @@ export interface RootRouteChildren {
   ApiPublicCreatorAddressAchievementsRoute: typeof ApiPublicCreatorAddressAchievementsRoute
   ApiPublicCreatorAddressLeaderboardRoute: typeof ApiPublicCreatorAddressLeaderboardRoute
   ApiPublicCreatorAddressLevelHistoryRoute: typeof ApiPublicCreatorAddressLevelHistoryRoute
+  ApiPublicCreatorAddressRewardsRoute: typeof ApiPublicCreatorAddressRewardsRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -527,6 +617,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/rewards/': {
+      id: '/rewards/'
+      path: '/rewards'
+      fullPath: '/rewards/'
+      preLoaderRoute: typeof RewardsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/leaderboard/': {
       id: '/leaderboard/'
       path: '/leaderboard'
@@ -539,6 +636,13 @@ declare module '@tanstack/react-router' {
       path: '/token/$address'
       fullPath: '/token/$address'
       preLoaderRoute: typeof TokenAddressRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/rewards/$slug': {
+      id: '/rewards/$slug'
+      path: '/rewards/$slug'
+      fullPath: '/rewards/$slug'
+      preLoaderRoute: typeof RewardsSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/leaderboard/seasons': {
@@ -597,6 +701,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicTokenMediaRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/rewards': {
+      id: '/api/public/rewards'
+      path: '/api/public/rewards'
+      fullPath: '/api/public/rewards'
+      preLoaderRoute: typeof ApiPublicRewardsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/leaderboard': {
       id: '/api/public/leaderboard'
       path: '/api/public/leaderboard'
@@ -632,6 +743,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicSignalsRunRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/rewards/run': {
+      id: '/api/public/rewards/run'
+      path: '/run'
+      fullPath: '/api/public/rewards/run'
+      preLoaderRoute: typeof ApiPublicRewardsRunRouteImport
+      parentRoute: typeof ApiPublicRewardsRoute
+    }
+    '/api/public/rewards/$slug': {
+      id: '/api/public/rewards/$slug'
+      path: '/$slug'
+      fullPath: '/api/public/rewards/$slug'
+      preLoaderRoute: typeof ApiPublicRewardsSlugRouteImport
+      parentRoute: typeof ApiPublicRewardsRoute
+    }
     '/api/public/leaderboard/seasons': {
       id: '/api/public/leaderboard/seasons'
       path: '/seasons'
@@ -646,12 +771,26 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicCreatorPointsRunRouteImport
       parentRoute: typeof ApiPublicCreatorPointsRoute
     }
+    '/api/public/rewards/$slug/eligibility': {
+      id: '/api/public/rewards/$slug/eligibility'
+      path: '/eligibility'
+      fullPath: '/api/public/rewards/$slug/eligibility'
+      preLoaderRoute: typeof ApiPublicRewardsSlugEligibilityRouteImport
+      parentRoute: typeof ApiPublicRewardsSlugRoute
+    }
     '/api/public/leaderboard/season/$slug': {
       id: '/api/public/leaderboard/season/$slug'
       path: '/season/$slug'
       fullPath: '/api/public/leaderboard/season/$slug'
       preLoaderRoute: typeof ApiPublicLeaderboardSeasonSlugRouteImport
       parentRoute: typeof ApiPublicLeaderboardRoute
+    }
+    '/api/public/creator/$address/rewards': {
+      id: '/api/public/creator/$address/rewards'
+      path: '/api/public/creator/$address/rewards'
+      fullPath: '/api/public/creator/$address/rewards'
+      preLoaderRoute: typeof ApiPublicCreatorAddressRewardsRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/api/public/creator/$address/level-history': {
       id: '/api/public/creator/$address/level-history'
@@ -704,6 +843,30 @@ const ApiPublicLeaderboardRouteChildren: ApiPublicLeaderboardRouteChildren = {
 const ApiPublicLeaderboardRouteWithChildren =
   ApiPublicLeaderboardRoute._addFileChildren(ApiPublicLeaderboardRouteChildren)
 
+interface ApiPublicRewardsSlugRouteChildren {
+  ApiPublicRewardsSlugEligibilityRoute: typeof ApiPublicRewardsSlugEligibilityRoute
+}
+
+const ApiPublicRewardsSlugRouteChildren: ApiPublicRewardsSlugRouteChildren = {
+  ApiPublicRewardsSlugEligibilityRoute: ApiPublicRewardsSlugEligibilityRoute,
+}
+
+const ApiPublicRewardsSlugRouteWithChildren =
+  ApiPublicRewardsSlugRoute._addFileChildren(ApiPublicRewardsSlugRouteChildren)
+
+interface ApiPublicRewardsRouteChildren {
+  ApiPublicRewardsSlugRoute: typeof ApiPublicRewardsSlugRouteWithChildren
+  ApiPublicRewardsRunRoute: typeof ApiPublicRewardsRunRoute
+}
+
+const ApiPublicRewardsRouteChildren: ApiPublicRewardsRouteChildren = {
+  ApiPublicRewardsSlugRoute: ApiPublicRewardsSlugRouteWithChildren,
+  ApiPublicRewardsRunRoute: ApiPublicRewardsRunRoute,
+}
+
+const ApiPublicRewardsRouteWithChildren =
+  ApiPublicRewardsRoute._addFileChildren(ApiPublicRewardsRouteChildren)
+
 interface ApiPublicTrendingRouteChildren {
   ApiPublicTrendingRunRoute: typeof ApiPublicTrendingRunRoute
 }
@@ -732,11 +895,14 @@ const rootRouteChildren: RootRouteChildren = {
   CampaignsNewRoute: CampaignsNewRoute,
   CreatorAddressRoute: CreatorAddressRoute,
   LeaderboardSeasonsRoute: LeaderboardSeasonsRoute,
+  RewardsSlugRoute: RewardsSlugRoute,
   TokenAddressRoute: TokenAddressRoute,
   LeaderboardIndexRoute: LeaderboardIndexRoute,
+  RewardsIndexRoute: RewardsIndexRoute,
   ApiPublicCreatorPointsRoute: ApiPublicCreatorPointsRouteWithChildren,
   ApiPublicCreatorsRoute: ApiPublicCreatorsRoute,
   ApiPublicLeaderboardRoute: ApiPublicLeaderboardRouteWithChildren,
+  ApiPublicRewardsRoute: ApiPublicRewardsRouteWithChildren,
   ApiPublicTokenMediaRoute: ApiPublicTokenMediaRoute,
   ApiPublicTrendingRoute: ApiPublicTrendingRouteWithChildren,
   LeaderboardSeasonSlugRoute: LeaderboardSeasonSlugRoute,
@@ -747,6 +913,7 @@ const rootRouteChildren: RootRouteChildren = {
     ApiPublicCreatorAddressLeaderboardRoute,
   ApiPublicCreatorAddressLevelHistoryRoute:
     ApiPublicCreatorAddressLevelHistoryRoute,
+  ApiPublicCreatorAddressRewardsRoute: ApiPublicCreatorAddressRewardsRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
