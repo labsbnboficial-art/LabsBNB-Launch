@@ -34,11 +34,25 @@ export const Route = createFileRoute("/api/public/creator-points/run")({
         try {
           const engine = await import("@/lib/points/points-engine.server");
           const result = await engine.runCreatorPointsEngine("cron");
+
+          // 🎁 Fase 2F — the Eligibility Engine reads the ledger this run just
+          // updated, so it is chained right after it. It never blocks points.
+          let rewards: { eligible: number; snapshots: number } | null = null;
+          try {
+            const rewardsEngine = await import("@/lib/rewards/rewards-engine.server");
+            const r = await rewardsEngine.runRewardsEngine("cron");
+            rewards = { eligible: r.state.eligible, snapshots: r.state.snapshotsCreated };
+          } catch (e) {
+            console.error(`[CREATOR_REWARDS] chained run failed: ${e instanceof Error ? e.message : "unknown"}`);
+          }
+
           return Response.json({
             ok: result.ok,
             skipped: result.skipped ?? null,
             state: result.state,
+            rewards,
           });
+
         } catch (e) {
           const message = e instanceof Error ? e.message : "Creator Points Engine failure";
           console.error(`[CREATOR_POINTS] cron run failed: ${message}`);
