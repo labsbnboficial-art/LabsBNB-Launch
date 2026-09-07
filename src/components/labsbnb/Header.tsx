@@ -214,6 +214,10 @@ export function Header() {
           <Link to="/ranking" className="px-3 py-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-white/5 transition">
             <span className="inline-flex items-center gap-1.5"><Trophy className="h-3.5 w-3.5" />{t("nav.ranking")}</span>
           </Link>
+          <Link to="/rewards" className="px-3 py-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-white/5 transition">
+            <span className="inline-flex items-center gap-1.5">🎁 Rewards</span>
+          </Link>
+
           {user && (
             <Link to="/profile" className="px-3 py-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-white/5 transition">
               <span className="inline-flex items-center gap-1.5"><User className="h-3.5 w-3.5" />{t("nav.profile")}</span>
