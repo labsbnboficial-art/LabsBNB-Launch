@@ -95,10 +95,12 @@ export async function listPrograms(chainId: number): Promise<RewardProgram[]> {
       .eq("chain_id", chainId)
       .order("created_at", { ascending: false })
       .limit(200);
-    if (error || !data) return [];
+    if (error) throw new Error(`No se pudieron leer los programas de Rewards: ${error.message}`);
+    if (!data) throw new Error("No se pudieron leer los programas de Rewards: respuesta sin datos.");
     return (data as ProgramRow[]).map(toProgram);
-  } catch {
-    return [];
+  } catch (e) {
+    if (e instanceof Error && e.message.startsWith("No se pudieron leer los programas de Rewards:")) throw e;
+    throw new Error(`No se pudieron leer los programas de Rewards: ${e instanceof Error ? e.message : "storage unavailable"}`);
   }
 }
 
