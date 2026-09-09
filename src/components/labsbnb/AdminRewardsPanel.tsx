@@ -178,6 +178,7 @@ export function AdminRewardsPanel({ csrf }: { csrf: string }) {
       runRewardsEvaluation({ data: { csrf, dryRun: v.dryRun, backfill: v.backfill, programId: null } }),
     onSuccess: (r) => {
       if (r.skipped) toast.warning(r.skippedReason ?? "Ejecución omitida.");
+      else if (r.state.errors > 0) toast.error(r.state.lastError ?? "La evaluación terminó con errores.");
       else
         toast.success(
           `Elegibilidad: ${r.state.creatorsEvaluated} creadores · ${r.state.eligible} elegibles · ${r.state.snapshotsCreated} snapshots`,

@@ -360,7 +360,15 @@ export async function runRewardsEngine(
       ? all.filter((p) => p.id === opts.programId)
       : all.filter((p) => effectiveProgramStatus(p) === "active");
 
-    if (!targets.length) state.notes.push("No hay programas activos que evaluar.");
+    if (!targets.length) {
+      const reason = opts.programId
+        ? "El programa solicitado no existe en la red activa."
+        : "No hay programas activos que evaluar. Crea y activa un Reward Program antes de ejecutar el Preview.";
+      state.notes.push(reason);
+      state.finishedAt = new Date().toISOString();
+      state.durationMs = Date.now() - started;
+      return { state, dryRun, skipped: true, skippedReason: reason };
+    }
 
     const evaluatedAt = evaluationBucket();
 
