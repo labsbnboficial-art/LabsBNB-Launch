@@ -1,4 +1,4 @@
-import { getCreatorIndex } from "@/lib/creator/creator-service.server";
-const idx = await getCreatorIndex();
-console.log("profiles", idx.profiles.length, Object.keys(idx));
-console.log(JSON.stringify(idx.profiles.map(p=>[p.address,p.score,p.stats.graduatedTokens]),null,2));
+const engine = await import("@/lib/trending/trending-engine.server");
+const { rows, source } = await engine.getRanking();
+console.log("source", source, "rows", rows.length);
+console.log(JSON.stringify(rows.slice(0,5).map(r=>[r.address,r.creator]),null,2));
