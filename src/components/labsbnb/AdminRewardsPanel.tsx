@@ -181,7 +181,7 @@ export function AdminRewardsPanel({ csrf }: { csrf: string }) {
       else if (r.state.errors > 0) toast.error(r.state.lastError ?? "La evaluación terminó con errores.");
       else
         toast.success(
-          `Elegibilidad: ${r.state.creatorsEvaluated} creadores · ${r.state.eligible} elegibles · ${r.state.snapshotsCreated} snapshots`,
+          `Elegibilidad: ${r.state.creatorsEvaluated} creadores · ${r.state.eligible} elegibles · ${r.state.notEligible} no elegibles · ${r.state.pending} pending · ${r.state.snapshotsCreated} snapshots · ${r.state.duplicates} duplicados`,
         );
       refresh();
     },
