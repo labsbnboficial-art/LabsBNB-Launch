@@ -431,11 +431,12 @@ export async function runRewardsEngine(
         if (res.error) {
           state.errors += 1;
           state.lastError = res.error;
+          state.notes.push(`EVALUATION_ERROR: ${program.name}: ${res.error}`);
         }
       } catch (e) {
         state.errors += 1;
         state.lastError = e instanceof Error ? e.message : "evaluación fallida";
-        state.notes.push(`${program.name}: ${state.lastError}`);
+        state.notes.push(`EVALUATION_ERROR: ${program.name}: ${state.lastError}`);
       }
     }
 
