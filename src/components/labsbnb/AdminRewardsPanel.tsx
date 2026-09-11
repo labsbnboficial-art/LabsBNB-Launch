@@ -259,12 +259,30 @@ export function AdminRewardsPanel({ csrf }: { csrf: string }) {
       )}
 
       {d && (
-        <div className="mt-3 grid grid-cols-2 gap-2 text-[11px] md:grid-cols-4">
-          <Cell label="Última ejecución" value={fmt(d.state.lastSuccessAt)} />
-          <Cell label="Creadores evaluados" value={String(d.state.creatorsEvaluated)} />
-          <Cell label="Elegibles" value={String(d.state.eligible)} />
-          <Cell label="Snapshots" value={String(d.state.snapshotsCreated)} />
-        </div>
+        <>
+          <div className="mt-3 grid grid-cols-2 gap-2 text-[11px] md:grid-cols-4">
+            <Cell label="Última ejecución" value={fmt(d.state.lastSuccessAt)} />
+            <Cell label="Creadores evaluados" value={String(d.state.creatorsEvaluated)} />
+            <Cell label="Elegibles" value={String(d.state.eligible)} />
+            <Cell label="No elegibles" value={String(d.state.notEligible)} />
+            <Cell label="Pending / revisión" value={String(d.state.pending)} />
+            <Cell label="Excluidos" value={String(d.state.excluded)} />
+            <Cell label="Snapshots" value={String(d.state.snapshotsCreated)} />
+            <Cell label="Duplicados evitados" value={String(d.state.duplicates)} />
+          </div>
+          {d.state.errors > 0 && (
+            <p className="mt-2 rounded-xl border border-destructive/40 bg-destructive/10 px-3 py-2 text-[11px] text-destructive">
+              EVALUATION_ERROR · {d.state.errors} error(es): {d.state.lastError ?? "sin detalle"}
+            </p>
+          )}
+          {d.state.notes.length > 0 && (
+            <ul className="mt-2 space-y-1 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-[11px] text-muted-foreground">
+              {d.state.notes.slice(0, 8).map((n) => (
+                <li key={n}>{n}</li>
+              ))}
+            </ul>
+          )}
+        </>
       )}
 
       <div className="mt-4 rounded-xl border border-white/10 p-3">
