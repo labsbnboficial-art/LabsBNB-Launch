@@ -362,8 +362,8 @@ export async function runRewardsEngine(
 
     if (!targets.length) {
       const reason = opts.programId
-        ? "El programa solicitado no existe en la red activa."
-        : "No hay programas activos que evaluar. Crea y activa un Reward Program antes de ejecutar el Preview.";
+        ? "PROGRAM_NOT_FOUND: El programa solicitado no existe en la red activa."
+        : "NO_ACTIVE_PROGRAM: No hay programas activos que evaluar. Crea y activa un Reward Program antes de ejecutar el Preview.";
       state.notes.push(reason);
       state.finishedAt = new Date().toISOString();
       state.durationMs = Date.now() - started;
