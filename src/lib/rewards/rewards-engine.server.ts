@@ -382,7 +382,12 @@ export async function runRewardsEngine(
         state.notEligible += counts.not_eligible;
         state.pending += counts.pending;
         state.excluded += counts.excluded;
-        for (const w of warnings) state.notes.push(`${program.name}: ${w} — criterio marcado como N/A.`);
+        for (const w of warnings) state.notes.push(`PENDING_DATA: ${program.name}: ${w} — criterio marcado como N/A.`);
+        if (!evaluations.length) {
+          state.notes.push(
+            `NO_CREATORS: ${program.name}: el Creator Index no devolvió creators para la red activa. Revisa el Trending/Creator Index antes de interpretar el resultado.`,
+          );
+        }
 
         if (dryRun || !evaluations.length) continue;
 
