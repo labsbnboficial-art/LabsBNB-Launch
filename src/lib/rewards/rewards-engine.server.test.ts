@@ -174,4 +174,36 @@ describe("Rewards creator discovery", () => {
     expect(result.state.errors).toBe(1);
     expect(result.state.lastError).toContain("permission denied");
   });
+
+  it("marca NO_ACTIVE_PROGRAM cuando no hay programas activos", async () => {
+    const result = await runRewardsEngine("test", { dryRun: true });
+    expect(result.skippedReason).toContain("NO_ACTIVE_PROGRAM");
+  });
+
+  it("marca PROGRAM_NOT_FOUND con un programId inexistente", async () => {
+    mocks.programs = [program()];
+    const result = await runRewardsEngine("test", {
+      dryRun: true,
+      programId: "00000000-0000-4000-8000-000000000099",
+    });
+    expect(result.skippedReason).toContain("PROGRAM_NOT_FOUND");
+  });
+
+  it("marca NO_CREATORS cuando el programa existe pero el índice está vacío", async () => {
+    mocks.programs = [program()];
+    mocks.profiles = [];
+    const result = await runRewardsEngine("test", { dryRun: true });
+    expect(result.skipped).toBe(false);
+    expect(result.state.creatorsEvaluated).toBe(0);
+    expect(result.state.notes.some((n) => n.startsWith("NO_CREATORS:"))).toBe(true);
+  });
+
+  it("marca PENDING_DATA cuando falta una métrica y no la convierte en 0", async () => {
+    mocks.programs = [program()];
+    mocks.profiles = [profile(ADDRESS_A)];
+    mocks.achievementsAvailable = false;
+    const result = await runRewardsEngine("test", { dryRun: true });
+    expect(result.state.creatorsEvaluated).toBe(1);
+    expect(result.state.notes.some((n) => n.startsWith("PENDING_DATA:"))).toBe(true);
+  });
 });

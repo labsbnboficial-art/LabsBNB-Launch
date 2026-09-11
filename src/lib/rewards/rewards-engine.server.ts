@@ -362,8 +362,8 @@ export async function runRewardsEngine(
 
     if (!targets.length) {
       const reason = opts.programId
-        ? "El programa solicitado no existe en la red activa."
-        : "No hay programas activos que evaluar. Crea y activa un Reward Program antes de ejecutar el Preview.";
+        ? "PROGRAM_NOT_FOUND: El programa solicitado no existe en la red activa."
+        : "NO_ACTIVE_PROGRAM: No hay programas activos que evaluar. Crea y activa un Reward Program antes de ejecutar el Preview.";
       state.notes.push(reason);
       state.finishedAt = new Date().toISOString();
       state.durationMs = Date.now() - started;
@@ -382,7 +382,12 @@ export async function runRewardsEngine(
         state.notEligible += counts.not_eligible;
         state.pending += counts.pending;
         state.excluded += counts.excluded;
-        for (const w of warnings) state.notes.push(`${program.name}: ${w} — criterio marcado como N/A.`);
+        for (const w of warnings) state.notes.push(`PENDING_DATA: ${program.name}: ${w} — criterio marcado como N/A.`);
+        if (!evaluations.length) {
+          state.notes.push(
+            `NO_CREATORS: ${program.name}: el Creator Index no devolvió creators para la red activa. Revisa el Trending/Creator Index antes de interpretar el resultado.`,
+          );
+        }
 
         if (dryRun || !evaluations.length) continue;
 
@@ -426,11 +431,12 @@ export async function runRewardsEngine(
         if (res.error) {
           state.errors += 1;
           state.lastError = res.error;
+          state.notes.push(`EVALUATION_ERROR: ${program.name}: ${res.error}`);
         }
       } catch (e) {
         state.errors += 1;
         state.lastError = e instanceof Error ? e.message : "evaluación fallida";
-        state.notes.push(`${program.name}: ${state.lastError}`);
+        state.notes.push(`EVALUATION_ERROR: ${program.name}: ${state.lastError}`);
       }
     }
 
