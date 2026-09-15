@@ -43,6 +43,7 @@ import { Route as ApiPublicRewardsSlugRouteImport } from './routes/api/public/re
 import { Route as ApiPublicLeaderboardSeasonsRouteImport } from './routes/api/public/leaderboard/seasons'
 import { Route as ApiPublicCreatorPointsRunRouteImport } from './routes/api/public/creator-points/run'
 import { Route as ApiPublicRewardsSlugEligibilityRouteImport } from './routes/api/public/rewards/$slug/eligibility'
+import { Route as ApiPublicRewardsSlugAllocationRouteImport } from './routes/api/public/rewards/$slug/allocation'
 import { Route as ApiPublicLeaderboardSeasonSlugRouteImport } from './routes/api/public/leaderboard/season.$slug'
 import { Route as ApiPublicCreatorAddressRewardsRouteImport } from './routes/api/public/creator/$address/rewards'
 import { Route as ApiPublicCreatorAddressLevelHistoryRouteImport } from './routes/api/public/creator/$address/level-history'
@@ -222,6 +223,12 @@ const ApiPublicRewardsSlugEligibilityRoute =
     path: '/eligibility',
     getParentRoute: () => ApiPublicRewardsSlugRoute,
   } as any)
+const ApiPublicRewardsSlugAllocationRoute =
+  ApiPublicRewardsSlugAllocationRouteImport.update({
+    id: '/allocation',
+    path: '/allocation',
+    getParentRoute: () => ApiPublicRewardsSlugRoute,
+  } as any)
 const ApiPublicLeaderboardSeasonSlugRoute =
   ApiPublicLeaderboardSeasonSlugRouteImport.update({
     id: '/season/$slug',
@@ -292,6 +299,7 @@ export interface FileRoutesByFullPath {
   '/api/public/creator/$address/level-history': typeof ApiPublicCreatorAddressLevelHistoryRoute
   '/api/public/creator/$address/rewards': typeof ApiPublicCreatorAddressRewardsRoute
   '/api/public/leaderboard/season/$slug': typeof ApiPublicLeaderboardSeasonSlugRoute
+  '/api/public/rewards/$slug/allocation': typeof ApiPublicRewardsSlugAllocationRoute
   '/api/public/rewards/$slug/eligibility': typeof ApiPublicRewardsSlugEligibilityRoute
 }
 export interface FileRoutesByTo {
@@ -333,6 +341,7 @@ export interface FileRoutesByTo {
   '/api/public/creator/$address/level-history': typeof ApiPublicCreatorAddressLevelHistoryRoute
   '/api/public/creator/$address/rewards': typeof ApiPublicCreatorAddressRewardsRoute
   '/api/public/leaderboard/season/$slug': typeof ApiPublicLeaderboardSeasonSlugRoute
+  '/api/public/rewards/$slug/allocation': typeof ApiPublicRewardsSlugAllocationRoute
   '/api/public/rewards/$slug/eligibility': typeof ApiPublicRewardsSlugEligibilityRoute
 }
 export interface FileRoutesById {
@@ -375,6 +384,7 @@ export interface FileRoutesById {
   '/api/public/creator/$address/level-history': typeof ApiPublicCreatorAddressLevelHistoryRoute
   '/api/public/creator/$address/rewards': typeof ApiPublicCreatorAddressRewardsRoute
   '/api/public/leaderboard/season/$slug': typeof ApiPublicLeaderboardSeasonSlugRoute
+  '/api/public/rewards/$slug/allocation': typeof ApiPublicRewardsSlugAllocationRoute
   '/api/public/rewards/$slug/eligibility': typeof ApiPublicRewardsSlugEligibilityRoute
 }
 export interface FileRouteTypes {
@@ -418,6 +428,7 @@ export interface FileRouteTypes {
     | '/api/public/creator/$address/level-history'
     | '/api/public/creator/$address/rewards'
     | '/api/public/leaderboard/season/$slug'
+    | '/api/public/rewards/$slug/allocation'
     | '/api/public/rewards/$slug/eligibility'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -459,6 +470,7 @@ export interface FileRouteTypes {
     | '/api/public/creator/$address/level-history'
     | '/api/public/creator/$address/rewards'
     | '/api/public/leaderboard/season/$slug'
+    | '/api/public/rewards/$slug/allocation'
     | '/api/public/rewards/$slug/eligibility'
   id:
     | '__root__'
@@ -500,6 +512,7 @@ export interface FileRouteTypes {
     | '/api/public/creator/$address/level-history'
     | '/api/public/creator/$address/rewards'
     | '/api/public/leaderboard/season/$slug'
+    | '/api/public/rewards/$slug/allocation'
     | '/api/public/rewards/$slug/eligibility'
   fileRoutesById: FileRoutesById
 }
@@ -778,6 +791,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicRewardsSlugEligibilityRouteImport
       parentRoute: typeof ApiPublicRewardsSlugRoute
     }
+    '/api/public/rewards/$slug/allocation': {
+      id: '/api/public/rewards/$slug/allocation'
+      path: '/allocation'
+      fullPath: '/api/public/rewards/$slug/allocation'
+      preLoaderRoute: typeof ApiPublicRewardsSlugAllocationRouteImport
+      parentRoute: typeof ApiPublicRewardsSlugRoute
+    }
     '/api/public/leaderboard/season/$slug': {
       id: '/api/public/leaderboard/season/$slug'
       path: '/season/$slug'
@@ -844,10 +864,12 @@ const ApiPublicLeaderboardRouteWithChildren =
   ApiPublicLeaderboardRoute._addFileChildren(ApiPublicLeaderboardRouteChildren)
 
 interface ApiPublicRewardsSlugRouteChildren {
+  ApiPublicRewardsSlugAllocationRoute: typeof ApiPublicRewardsSlugAllocationRoute
   ApiPublicRewardsSlugEligibilityRoute: typeof ApiPublicRewardsSlugEligibilityRoute
 }
 
 const ApiPublicRewardsSlugRouteChildren: ApiPublicRewardsSlugRouteChildren = {
+  ApiPublicRewardsSlugAllocationRoute: ApiPublicRewardsSlugAllocationRoute,
   ApiPublicRewardsSlugEligibilityRoute: ApiPublicRewardsSlugEligibilityRoute,
 }
 
