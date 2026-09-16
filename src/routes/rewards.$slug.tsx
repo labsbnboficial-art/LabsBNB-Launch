@@ -63,6 +63,14 @@ function ProgramPage() {
     placeholderData: keepPreviousData,
   });
 
+  const allocationQ = useQuery({
+    queryKey: ["reward-allocation", slug],
+    queryFn: () => getProgramAllocation({ data: { slug } }),
+    staleTime: 60_000,
+  });
+  const allocation = allocationQ.data ?? null;
+  const showAllocation = !!allocation?.visible;
+
   const program = programQ.data?.program ?? null;
   const table = eligibilityQ.data;
   const pages = table ? Math.max(1, Math.ceil(table.total / table.pageSize)) : 1;
