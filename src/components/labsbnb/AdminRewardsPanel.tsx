@@ -398,6 +398,17 @@ export function AdminRewardsPanel({ csrf }: { csrf: string }) {
                   onSaved={refresh}
                 />
               )}
+
+              <button
+                type="button"
+                onClick={() => setOpenAllocation((v) => (v === program.id ? null : program.id))}
+                className="mt-2 rounded-full border border-white/10 px-3 py-1 text-[11px]"
+              >
+                {openAllocation === program.id ? "Ocultar Allocation" : "Allocation"}
+              </button>
+              {openAllocation === program.id && (
+                <AdminAllocationPanel csrf={csrf} programId={program.id} programName={program.name} />
+              )}
             </div>
           ))
         )}
