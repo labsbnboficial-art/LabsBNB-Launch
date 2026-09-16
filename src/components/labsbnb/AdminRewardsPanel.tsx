@@ -12,6 +12,7 @@ import {
   transitionRewardProgram,
   updateRewardRules,
 } from "@/lib/rewards.functions";
+import { AdminAllocationPanel } from "@/components/labsbnb/AdminAllocationPanel";
 import {
   CRITERIA_KEYS,
   CRITERION_LABEL,
@@ -165,6 +166,7 @@ export function AdminRewardsPanel({ csrf }: { csrf: string }) {
   const [endsAt, setEndsAt] = useState("");
   const [seasonId, setSeasonId] = useState("");
   const [openRules, setOpenRules] = useState<string | null>(null);
+  const [openAllocation, setOpenAllocation] = useState<string | null>(null);
 
   const overview = useQuery({
     queryKey: ["admin-rewards", csrf],
