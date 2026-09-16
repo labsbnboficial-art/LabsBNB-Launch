@@ -115,7 +115,7 @@ function ProgramPage() {
             </div>
 
             <div className="mt-4 flex gap-2 text-xs">
-              {(["eligibility", "stats", "rules"] as Tab[]).map((t) => (
+              {(["eligibility", ...(showAllocation ? (["allocation"] as Tab[]) : []), "stats", "rules"] as Tab[]).map((t) => (
                 <button
                   key={t}
                   type="button"
@@ -124,10 +124,54 @@ function ProgramPage() {
                     tab === t ? "border-accent/60 bg-accent/10" : "border-white/10 bg-white/5 text-muted-foreground"
                   }`}
                 >
-                  {t === "eligibility" ? "Elegibilidad" : t === "stats" ? "Estadísticas" : "Reglas"}
+                  {t === "eligibility"
+                    ? "Elegibilidad"
+                    : t === "allocation"
+                      ? "Allocation"
+                      : t === "stats"
+                        ? "Estadísticas"
+                        : "Reglas"}
                 </button>
               ))}
             </div>
+
+            {tab === "allocation" && allocation && showAllocation && (
+              <div className="glass mt-4 rounded-2xl p-4">
+                <h2 className="mb-3 font-display text-sm font-semibold">⚖️ Allocation</h2>
+                <div className="grid grid-cols-2 gap-2 text-[11px] md:grid-cols-4">
+                  <Cell label="Método" value={allocation.method ? ALLOCATION_METHOD_LABEL[allocation.method] : "N/A"} />
+                  <Cell label="Creadores con peso" value={String(allocation.recipients)} />
+                  <Cell label="Total asignado" value={allocation.totalPct == null ? "N/A" : `${allocation.totalPct.toFixed(2)} %`} />
+                  <Cell label="Último cálculo" value={fmt(allocation.evaluatedAt)} />
+                </div>
+                <div className="mt-3 space-y-1">
+                  {allocation.entries.map((e) => (
+                    <Link
+                      key={e.address}
+                      to="/creator/$address"
+                      params={{ address: e.address }}
+                      className="glass flex flex-wrap items-center gap-3 rounded-xl p-3 text-xs transition hover:border-accent/40"
+                    >
+                      <span className="w-8 font-mono text-muted-foreground">#{e.rank}</span>
+                      <span className="min-w-0 flex-1 truncate font-mono">{short(e.address)}</span>
+                      <span className="font-mono tabular-nums">{e.allocationPct.toFixed(2)} %</span>
+                      <span className="hidden font-mono tabular-nums text-muted-foreground md:inline">
+                        peso {e.normalizedWeight.toFixed(4)}
+                      </span>
+                      {e.allocationAmount != null && (
+                        <span className="font-mono tabular-nums">
+                          {e.allocationAmount} {allocation.poolUnit ?? ""}
+                        </span>
+                      )}
+                    </Link>
+                  ))}
+                </div>
+                <p className="mt-3 text-[10px] text-muted-foreground">
+                  Estos pesos son un cálculo interno del programa sobre la última evaluación de elegibilidad. No
+                  representan una distribución, ni un compromiso de cantidad, token o fecha.
+                </p>
+              </div>
+            )}
 
             {tab === "rules" && (
               <div className="glass mt-4 rounded-2xl p-4">
