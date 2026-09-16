@@ -76,7 +76,7 @@ export function validateAllocationConfig(input: unknown): AllocationConfig {
     throw new RewardsError("El máximo de destinatarios debe ser un entero ≥ 1.");
   }
 
-  const poolRaw = raw.pool ?? {};
+  const poolRaw: Record<string, unknown> = (raw.pool ?? {}) as Record<string, unknown>;
   const poolTotal = num(poolRaw["total"], fb.pool.total, "Reward pool");
   if (poolTotal != null && poolTotal < 0) throw new RewardsError("El reward pool no puede ser negativo.");
   const poolEnabled = poolRaw["enabled"] === undefined ? fb.pool.enabled : !!poolRaw["enabled"];

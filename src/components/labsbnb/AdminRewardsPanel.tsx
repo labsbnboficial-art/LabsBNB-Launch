@@ -12,6 +12,7 @@ import {
   transitionRewardProgram,
   updateRewardRules,
 } from "@/lib/rewards.functions";
+import { AdminAllocationPanel } from "@/components/labsbnb/AdminAllocationPanel";
 import {
   CRITERIA_KEYS,
   CRITERION_LABEL,
@@ -165,6 +166,7 @@ export function AdminRewardsPanel({ csrf }: { csrf: string }) {
   const [endsAt, setEndsAt] = useState("");
   const [seasonId, setSeasonId] = useState("");
   const [openRules, setOpenRules] = useState<string | null>(null);
+  const [openAllocation, setOpenAllocation] = useState<string | null>(null);
 
   const overview = useQuery({
     queryKey: ["admin-rewards", csrf],
@@ -397,6 +399,17 @@ export function AdminRewardsPanel({ csrf }: { csrf: string }) {
                   disabled={program.status === "ended" || program.status === "archived"}
                   onSaved={refresh}
                 />
+              )}
+
+              <button
+                type="button"
+                onClick={() => setOpenAllocation((v) => (v === program.id ? null : program.id))}
+                className="mt-2 rounded-full border border-white/10 px-3 py-1 text-[11px]"
+              >
+                {openAllocation === program.id ? "Ocultar Allocation" : "Allocation"}
+              </button>
+              {openAllocation === program.id && (
+                <AdminAllocationPanel csrf={csrf} programId={program.id} programName={program.name} />
               )}
             </div>
           ))
