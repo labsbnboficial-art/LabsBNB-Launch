@@ -5,6 +5,8 @@ import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { AppShell } from "@/components/labsbnb/AppShell";
 import { getRewardEligibility, getRewardProgram } from "@/lib/rewards.functions";
+import { getProgramAllocation } from "@/lib/allocation.functions";
+import { ALLOCATION_METHOD_LABEL } from "@/lib/rewards/allocation-types";
 import { RequirementList } from "@/routes/rewards.index";
 import {
   ELIGIBILITY_LABEL,
@@ -40,7 +42,7 @@ const STATUS_TONE: Record<EligibilityStatus, string> = {
   excluded: "text-muted-foreground",
 };
 
-type Tab = "eligibility" | "stats" | "rules";
+type Tab = "eligibility" | "allocation" | "stats" | "rules";
 const FILTERS: (EligibilityStatus | "all")[] = ["all", "eligible", "pending", "not_eligible", "excluded"];
 
 function ProgramPage() {
