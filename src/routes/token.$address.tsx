@@ -33,6 +33,7 @@ import { tokenMediaUrl } from "@/lib/media-url";
 import { BoostPurchaseModal } from "@/components/labsbnb/BoostPurchaseModal";
 import { ImagePicker } from "@/components/labsbnb/ImagePicker";
 import { withRpcTimeout } from "@/lib/web3/timeout";
+import { AiAgentStudio } from "@/components/labsbnb/AiAgentStudio";
 
 type TradeHistoryData = {
   pages: TradePage[];
@@ -711,6 +712,16 @@ function TokenPage() {
               }}
               onSaved={() => tokenQ.refetch()}
             />
+            {(() => {
+              const agentAddress = (tk.contract_address as string | null) ?? (isAddress(address) ? address : null);
+              return agentAddress ? (
+                <AiAgentStudio
+                  address={agentAddress}
+                  symbol={String(tk.ticker)}
+                  image={tokenMediaUrl(tk.logo_url as string | null)}
+                />
+              ) : null;
+            })()}
 
 
             <div className="glass rounded-2xl p-6">
