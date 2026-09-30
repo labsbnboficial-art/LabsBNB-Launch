@@ -27,7 +27,7 @@ export const saveAiCofounder = createServerFn({ method: "POST" })
     const { data: token, error: findError } = await adminClient
       .from("tokens")
       .select("id, creator_id")
-      .eq("address", address)
+      .eq("contract_address", address)
       .maybeSingle();
     if (findError) throw new Error(findError.message);
     if (!token) throw new Error("Token no encontrado.");
