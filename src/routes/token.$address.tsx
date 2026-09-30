@@ -33,6 +33,7 @@ import { tokenMediaUrl } from "@/lib/media-url";
 import { BoostPurchaseModal } from "@/components/labsbnb/BoostPurchaseModal";
 import { ImagePicker } from "@/components/labsbnb/ImagePicker";
 import { withRpcTimeout } from "@/lib/web3/timeout";
+import { AiAgentStudio } from "@/components/labsbnb/AiAgentStudio";
 
 type TradeHistoryData = {
   pages: TradePage[];

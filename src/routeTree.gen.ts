@@ -29,6 +29,7 @@ import { Route as CreatorAddressRouteImport } from './routes/creator.$address'
 import { Route as CampaignsNewRouteImport } from './routes/campaigns.new'
 import { Route as CampaignsIdRouteImport } from './routes/campaigns.$id'
 import { Route as ApiAiCopilotRouteImport } from './routes/api/ai-copilot'
+import { Route as ApiAiAgentRouteImport } from './routes/api/ai-agent'
 import { Route as LeaderboardSeasonSlugRouteImport } from './routes/leaderboard.season.$slug'
 import { Route as ApiPublicTrendingRouteImport } from './routes/api/public/trending'
 import { Route as ApiPublicTokenMediaRouteImport } from './routes/api/public/token-media'
@@ -148,6 +149,11 @@ const CampaignsIdRoute = CampaignsIdRouteImport.update({
 const ApiAiCopilotRoute = ApiAiCopilotRouteImport.update({
   id: '/api/ai-copilot',
   path: '/api/ai-copilot',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAiAgentRoute = ApiAiAgentRouteImport.update({
+  id: '/api/ai-agent',
+  path: '/api/ai-agent',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LeaderboardSeasonSlugRoute = LeaderboardSeasonSlugRouteImport.update({
@@ -272,6 +278,7 @@ export interface FileRoutesByFullPath {
   '/profile': typeof ProfileRoute
   '/ranking': typeof RankingRoute
   '/trending': typeof TrendingRoute
+  '/api/ai-agent': typeof ApiAiAgentRoute
   '/api/ai-copilot': typeof ApiAiCopilotRoute
   '/campaigns/$id': typeof CampaignsIdRoute
   '/campaigns/new': typeof CampaignsNewRoute
@@ -314,6 +321,7 @@ export interface FileRoutesByTo {
   '/profile': typeof ProfileRoute
   '/ranking': typeof RankingRoute
   '/trending': typeof TrendingRoute
+  '/api/ai-agent': typeof ApiAiAgentRoute
   '/api/ai-copilot': typeof ApiAiCopilotRoute
   '/campaigns/$id': typeof CampaignsIdRoute
   '/campaigns/new': typeof CampaignsNewRoute
@@ -357,6 +365,7 @@ export interface FileRoutesById {
   '/profile': typeof ProfileRoute
   '/ranking': typeof RankingRoute
   '/trending': typeof TrendingRoute
+  '/api/ai-agent': typeof ApiAiAgentRoute
   '/api/ai-copilot': typeof ApiAiCopilotRoute
   '/campaigns/$id': typeof CampaignsIdRoute
   '/campaigns/new': typeof CampaignsNewRoute
@@ -401,6 +410,7 @@ export interface FileRouteTypes {
     | '/profile'
     | '/ranking'
     | '/trending'
+    | '/api/ai-agent'
     | '/api/ai-copilot'
     | '/campaigns/$id'
     | '/campaigns/new'
@@ -443,6 +453,7 @@ export interface FileRouteTypes {
     | '/profile'
     | '/ranking'
     | '/trending'
+    | '/api/ai-agent'
     | '/api/ai-copilot'
     | '/campaigns/$id'
     | '/campaigns/new'
@@ -485,6 +496,7 @@ export interface FileRouteTypes {
     | '/profile'
     | '/ranking'
     | '/trending'
+    | '/api/ai-agent'
     | '/api/ai-copilot'
     | '/campaigns/$id'
     | '/campaigns/new'
@@ -528,6 +540,7 @@ export interface RootRouteChildren {
   ProfileRoute: typeof ProfileRoute
   RankingRoute: typeof RankingRoute
   TrendingRoute: typeof TrendingRoute
+  ApiAiAgentRoute: typeof ApiAiAgentRoute
   ApiAiCopilotRoute: typeof ApiAiCopilotRoute
   CampaignsIdRoute: typeof CampaignsIdRoute
   CampaignsNewRoute: typeof CampaignsNewRoute
@@ -691,6 +704,13 @@ declare module '@tanstack/react-router' {
       path: '/api/ai-copilot'
       fullPath: '/api/ai-copilot'
       preLoaderRoute: typeof ApiAiCopilotRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/ai-agent': {
+      id: '/api/ai-agent'
+      path: '/api/ai-agent'
+      fullPath: '/api/ai-agent'
+      preLoaderRoute: typeof ApiAiAgentRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/leaderboard/season/$slug': {
@@ -912,6 +932,7 @@ const rootRouteChildren: RootRouteChildren = {
   ProfileRoute: ProfileRoute,
   RankingRoute: RankingRoute,
   TrendingRoute: TrendingRoute,
+  ApiAiAgentRoute: ApiAiAgentRoute,
   ApiAiCopilotRoute: ApiAiCopilotRoute,
   CampaignsIdRoute: CampaignsIdRoute,
   CampaignsNewRoute: CampaignsNewRoute,
