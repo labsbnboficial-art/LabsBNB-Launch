@@ -712,6 +712,16 @@ function TokenPage() {
               }}
               onSaved={() => tokenQ.refetch()}
             />
+            {(() => {
+              const agentAddress = (tk.contract_address as string | null) ?? (isAddress(address) ? address : null);
+              return agentAddress ? (
+                <AiAgentStudio
+                  address={agentAddress}
+                  symbol={String(tk.ticker)}
+                  image={tokenMediaUrl(tk.logo_url as string | null)}
+                />
+              ) : null;
+            })()}
 
 
             <div className="glass rounded-2xl p-6">
