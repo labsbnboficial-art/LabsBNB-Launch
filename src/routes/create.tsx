@@ -4,6 +4,8 @@ import { useServerFn } from "@tanstack/react-start";
 import { uploadTokenMedia } from "@/lib/media.functions";
 import { uploadTokenImage } from "@/lib/image-upload";
 import { saveTokenProfile } from "@/lib/tokens.functions";
+import { saveAiCofounder } from "@/lib/ai-cofounder.functions";
+import { AI_COFOUNDER_LABEL, AI_COFOUNDER_PERSONALITIES, type AiCofounderPersonality } from "@/lib/ai-cofounder";
 import { SOCIAL_FIELDS, normalizeSocial, type SocialKey } from "@/lib/social";
 import { useEffect, useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -148,6 +150,12 @@ function CreatePage() {
   const [saving, setSaving] = useState(false);
   const ensureSession = useSiweSignIn();
   const persistProfile = useServerFn(saveTokenProfile);
+  const persistAi = useServerFn(saveAiCofounder);
+  const [ai, setAi] = useState<{ enabled: boolean; personality: AiCofounderPersonality; lore: string }>({
+    enabled: false,
+    personality: "degen",
+    lore: "",
+  });
 
   const set = <K extends keyof FormState>(k: K, v: FormState[K]) => setForm((f) => ({ ...f, [k]: v }));
 
@@ -239,6 +247,14 @@ function CreatePage() {
         }
       } catch (activityErr) {
         console.warn("[create] activity log skipped", activityErr);
+      }
+      if (ai.enabled) {
+        try {
+          await persistAi({ data: { address: tokenAddress, enabled: true, personality: ai.personality, lore: ai.lore } });
+        } catch (aiErr) {
+          console.warn("[create] AI co-founder not saved", aiErr);
+          toast.warning("El token se guardó, pero no la configuración del AI Co-Founder.");
+        }
       }
       setDeployState("Deployed and saved");
       // Refresh the launchpad listings so the new token shows up immediately.
@@ -427,6 +443,38 @@ function CreatePage() {
                   {CATEGORIES.map((c) => <option key={c} value={c} className="bg-background">{c}</option>)}
                 </select>
               </Field>
+              <div className="md:col-span-2 rounded-xl border border-accent/20 bg-accent/5 p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <div className="font-medium">🤖 AI Agent Co-Founder</div>
+                    <p className="text-xs text-muted-foreground">Un agente con personalidad propia que acompaña a tu token.</p>
+                  </div>
+                  <Switch checked={ai.enabled} onCheckedChange={(v) => setAi((s) => ({ ...s, enabled: v }))} aria-label="Activar AI Agent Co-Founder" />
+                </div>
+                {ai.enabled && (
+                  <div className="mt-4 space-y-4">
+                    <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
+                      {AI_COFOUNDER_PERSONALITIES.map((p) => (
+                        <button
+                          key={p}
+                          type="button"
+                          onClick={() => setAi((s) => ({ ...s, personality: p }))}
+                          className={`rounded-xl border p-3 text-left text-xs transition ${ai.personality === p ? "border-accent bg-accent/10" : "border-border bg-background/40 text-muted-foreground"}`}
+                        >
+                          <div className="text-lg">{AI_COFOUNDER_LABEL[p].emoji}</div>
+                          <div className="font-medium text-foreground">{AI_COFOUNDER_LABEL[p].label}</div>
+                          <div className="mt-1">{AI_COFOUNDER_LABEL[p].hint}</div>
+                        </button>
+                      ))}
+                    </div>
+                    <div>
+                      <Label className="text-xs">Lore / descripción del agente</Label>
+                      <Textarea rows={4} maxLength={1500} value={ai.lore} onChange={(e) => setAi((s) => ({ ...s, lore: e.target.value }))} placeholder="Quién es, de dónde viene, cómo habla…" />
+                      <div className="mt-1 text-right text-[10px] text-muted-foreground">{ai.lore.length}/1500</div>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           )}
           {step === 1 && (
